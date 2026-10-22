@@ -94,21 +94,30 @@ body {
 }
 
 /*
- * Safari no iOS: inputs de data/hora têm largura mínima própria (vazam de grids e linhas flex),
- * centralizam o valor e encolhem quando vazios. Aqui eles passam a se comportar como campos de texto.
+ * Safari no iOS: campos de texto ganham sombra interna e arredondamento próprios, e inputs de data/hora
+ * têm largura mínima própria (vazam de grids e linhas flex), deixam o valor no topo do campo e colapsam
+ * quando vazios. Aqui todos passam a seguir o estilo do app. Checkbox e radio mantêm o visual nativo.
  */
-input[type='date'],
-input[type='time'] {
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
   -webkit-appearance: none;
   appearance: none;
+}
+
+input[type='date'],
+input[type='time'] {
   display: block;
   min-width: 0;
   max-width: 100%;
+  /* Altura da linha = altura interna do campo (h-11 menos a borda): o valor fica centralizado na vertical. */
+  line-height: calc(2.75rem - 2px);
 }
 
 input[type='date']::-webkit-date-and-time-value,
 input[type='time']::-webkit-date-and-time-value {
   margin: 0;
+  min-height: 1.5em;
   text-align: left;
 }
 
