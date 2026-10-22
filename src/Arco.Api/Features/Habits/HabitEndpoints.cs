@@ -19,7 +19,14 @@ public static class HabitEndpoints
         int? LevelUpWeeks = null,
         int? LevelUpDaysPerWeek = null);
 
-    public sealed record PlannedLevelRequest(string? LevelDescription, string? MinimumDescription);
+    /// <summary>
+    /// A planned level, with the same field names as <c>plannedLevels[]</c> in the responses, so a ladder read with GET
+    /// can be sent back as is. <c>LevelDescription</c> is the old name of <c>Description</c>, still accepted.
+    /// </summary>
+    public sealed record PlannedLevelRequest(string? Description, string? MinimumDescription, string? LevelDescription = null)
+    {
+        public string? EffectiveDescription => Description ?? LevelDescription;
+    }
 
     /// <summary>Both fields optional when the habit has a planned next level (it is used instead).</summary>
     public sealed record LevelUpRequest(string? LevelDescription, string? MinimumDescription);
@@ -278,7 +285,7 @@ public static class HabitEndpoints
         if (r.PlannedLevels is { } plannedLevels)
         {
             if (plannedLevels.Length > MaxPlannedLevels) return $"Planeje no máximo {MaxPlannedLevels} níveis à frente.";
-            if (plannedLevels.Any(l => !Text.LengthBetween(l?.LevelDescription?.Trim(), 1, 120)))
+            if (plannedLevels.Any(l => !Text.LengthBetween(l?.EffectiveDescription?.Trim(), 1, 120)))
                 return "A dose de cada nível planejado deve ter entre 1 e 120 caracteres.";
             if (plannedLevels.Any(l => !Text.LengthBetween(l?.MinimumDescription?.Trim(), 1, 120)))
                 return "O mínimo de cada nível planejado deve ter entre 1 e 120 caracteres.";
@@ -320,7 +327,7 @@ public static class HabitEndpoints
             habit.PlannedLevels.Add(new HabitPlannedLevel
             {
                 Position = i,
-                Description = level.LevelDescription!.Trim(),
+                Description = level.EffectiveDescription!.Trim(),
                 MinimumDescription = level.MinimumDescription!.Trim(),
             });
         }

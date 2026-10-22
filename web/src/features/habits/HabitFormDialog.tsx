@@ -129,7 +129,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         minimumDescription: minimumDescription.trim(),
         reminderTime: reminderTime || null,
         plannedLevels: planned.map((l) => ({
-          levelDescription: l.levelDescription.trim(),
+          description: l.levelDescription.trim(),
           minimumDescription: l.minimumDescription.trim(),
         })),
         levelUpWeeks: rule.weeks,

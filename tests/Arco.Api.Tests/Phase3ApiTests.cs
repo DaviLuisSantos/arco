@@ -58,8 +58,8 @@ public sealed class Phase3ApiTests : IDisposable
             minimumDescription = "5 min",
             plannedLevels = new[]
             {
-                new { levelDescription = "25 min", minimumDescription = "5 min" },
-                new { levelDescription = "35 min", minimumDescription = "5 min" },
+                new { description = "25 min", minimumDescription = "5 min" },
+                new { description = "35 min", minimumDescription = "5 min" },
             },
             levelUpWeeks = 2,
             levelUpDaysPerWeek = 5,
@@ -226,7 +226,7 @@ public sealed class Phase3ApiTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         Assert.Equal("arco-2030-03-04.db", res.Content.Headers.ContentDisposition?.FileNameStar ?? res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
         var bytes = await res.Content.ReadAsByteArrayAsync();
-        Assert.Equal("SQLite format 3 ", System.Text.Encoding.ASCII.GetString(bytes, 0, 16));
+        Assert.Equal("SQLite format 3\0", System.Text.Encoding.ASCII.GetString(bytes, 0, 16));
 
         // The copy is a working database with the data.
         var copy = Path.Combine(Path.GetTempPath(), $"arco-test-{Guid.NewGuid():N}.db");
@@ -265,6 +265,7 @@ public sealed class Phase3ApiTests : IDisposable
         var res = await client.PostAsJsonAsync("/api/habits", new
         {
             name = "Inglês", frequencyType = "Daily", levelDescription = "15 min", minimumDescription = "5 min",
+            // Old field name for planned levels, still accepted.
             plannedLevels = new[]
             {
                 new { levelDescription = "25 min", minimumDescription = "5 min" },
@@ -314,5 +315,38 @@ public sealed class Phase3ApiTests : IDisposable
         // The next level-up starts from the level that came back.
         var again = await client.PostAsJsonAsync($"/api/habits/{habitId}/level-up", new { });
         Assert.Equal("25 min", (string?)(await again.JsonAsync())["habit"]!["levelDescription"]);
+    }
+
+    [Fact]
+    public async Task A_ladder_read_with_get_goes_back_unchanged_in_put()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var res = await client.PostAsJsonAsync("/api/habits", new
+        {
+            name = "Inglês", frequencyType = "Daily", levelDescription = "15 min", minimumDescription = "5 min",
+            plannedLevels = new[]
+            {
+                new { description = "25 min", minimumDescription = "5 min" },
+                new { description = "35 min", minimumDescription = "10 min" },
+            },
+        });
+        var habit = await res.JsonAsync();
+        var habitId = (int)habit["id"]!;
+
+        // Send back exactly what GET returned (including the computed "level", which is ignored).
+        var read = await client.GetJsonAsync($"/api/habits/{habitId}");
+        var put = await client.PutAsJsonAsync($"/api/habits/{habitId}", new
+        {
+            name = (string)read["name"]!,
+            frequencyType = (string)read["frequencyType"]!,
+            levelDescription = (string)read["levelDescription"]!,
+            minimumDescription = (string)read["minimumDescription"]!,
+            plannedLevels = read["plannedLevels"],
+        });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        var planned = (await put.JsonAsync())["plannedLevels"]!.AsArray();
+        Assert.Equal(["25 min", "35 min"], planned.Select(p => (string)p!["description"]!).ToArray());
+        Assert.Equal(["5 min", "10 min"], planned.Select(p => (string)p!["minimumDescription"]!).ToArray());
+        Assert.Equal([2, 3], planned.Select(p => (int)p!["level"]!).ToArray());
     }
 }

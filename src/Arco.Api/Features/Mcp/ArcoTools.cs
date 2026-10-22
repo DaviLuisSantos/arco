@@ -57,7 +57,8 @@ public sealed class ArcoTools(ArcoApiClient api)
 
     [McpServerTool(Name = "criar_habito", Title = "Criar hábito")]
     [Description("Cria um hábito no nível 1. Para escada planejada e regra de subida por semanas, use chamar_api " +
-                 "(POST /api/habits com plannedLevels, levelUpWeeks e levelUpDaysPerWeek; veja ler_documentacao_api).")]
+                 "(POST /api/habits com plannedLevels: [{ description, minimumDescription }], levelUpWeeks e " +
+                 "levelUpDaysPerWeek; veja ler_documentacao_api).")]
     public Task<string> CriarHabito(
         [Description("Nome (até 80 caracteres).")] string nome,
         [Description("Daily (todo dia), SpecificDays (dias da semana) ou WeeklyTarget (N vezes por semana).")] string frequencia,

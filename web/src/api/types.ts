@@ -346,7 +346,8 @@ export interface HabitInput {
   levelDescription: string
   minimumDescription: string
   reminderTime?: string | null
-  plannedLevels?: Array<{ levelDescription: string; minimumDescription: string }>
+  /** Mesmos campos de `Habit.plannedLevels` (sem o `level`, que é calculado). */
+  plannedLevels?: Array<{ description: string; minimumDescription: string }>
   levelUpWeeks?: number | null
   levelUpDaysPerWeek?: number | null
 }

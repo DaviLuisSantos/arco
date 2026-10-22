@@ -207,7 +207,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
     levelDescription, minimumDescription, reminderTime?,
-    plannedLevels?: Array<{ levelDescription, minimumDescription }>,
+    plannedLevels?: Array<{ description, minimumDescription }>,
     levelUpWeeks?, levelUpDaysPerWeek? }
   ```
 
@@ -217,12 +217,14 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
     levelDescription, minimumDescription, reminderTime?,
-    plannedLevels?: Array<{ levelDescription, minimumDescription }>,
+    plannedLevels?: Array<{ description, minimumDescription }>,
     levelUpWeeks?, levelUpDaysPerWeek? }
   ```
 
   `levelDescription` e `minimumDescription` editam o nível atual. `reminderTime` ausente ou null remove o lembrete.
-  `plannedLevels` substitui a escada inteira (ausente = sem níveis planejados). `levelUpWeeks` ausente ou null volta à
+  `plannedLevels` substitui a escada inteira (ausente = sem níveis planejados). Cada item usa os mesmos nomes de
+  `Habit.plannedLevels`, então a escada lida no GET pode voltar como está no PUT (o `level` é ignorado: a ordem define
+  a numeração). O nome antigo `levelDescription` no lugar de `description` ainda é aceito, mas está obsoleto. `levelUpWeeks` ausente ou null volta à
   regra padrão.
 - `POST /api/habits/{id}/level-up` `{ levelDescription?, minimumDescription? }` → `{ habit: Habit, xpDelta: 50, player }`.
   Campo ausente ou vazio usa o do primeiro nível planejado; havendo nível planejado, ele é consumido (sai da escada).
