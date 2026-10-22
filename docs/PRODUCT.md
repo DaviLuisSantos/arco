@@ -145,6 +145,23 @@ O app abre e funciona sem internet para **ler** e **marcar check-in**:
   falham na hora com o aviso "Você está offline. Sem internet, só o check-in funciona."
 - Indicador global: "Offline" (com quantos check-ins estão na fila) e "Sincronizando…" enquanto a fila é enviada.
 
+## Pendências (em 22/10/2026)
+
+**Verificar em produção e no uso real**
+- MCP: criar a chave "Claude Code" no Perfil e conectar
+  (`claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_…"`).
+- Backup: o cartão do Perfil deve mostrar a cópia automática do dia; baixar a primeira cópia para fora do Azure.
+- Offline: testar no celular em modo avião (check-in na fila, "Sincronizando…" ao voltar a conexão).
+- Escada do inglês: cadastrar 25/35/45/60 min com a regra "3 semanas seguidas, 5+ dias" e acompanhar as sugestões de
+  subir e de voltar.
+- Histórico: navegação entre meses (só aparece com dados de mais de um mês).
+
+**Opcionais de infraestrutura**
+- Backup externo automático (ex.: cópia diária para um Blob Storage), para não depender do download manual.
+- Infraestrutura como código (Bicep ou script `az`) para recriar o ambiente do Azure com um comando.
+- Ambiente local: a porta 5080 está ocupada por outro programa nesta máquina; `NODE_ENV=production` faz o
+  `npm install` pular as devDependencies (use `npm install --include=dev`).
+
 ## Próximos passos (rumo a SaaS)
 Em ordem de impacto. O servidor MCP (o primeiro da lista original) já está feito (veja "API e chaves de API").
 
