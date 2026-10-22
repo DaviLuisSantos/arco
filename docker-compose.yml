@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     environment:
       Auth__PasswordHash: ${ARCO_PASSWORD_HASH:?defina ARCO_PASSWORD_HASH no .env}
+      # As chaves VAPID são geradas em /data/vapid.json no primeiro start.
+      Push__Subject: ${ARCO_PUSH_SUBJECT:-mailto:arco@example.com}
     volumes:
       - arco-data:/data
     expose:

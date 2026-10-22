@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { LogOut, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, NotebookPen, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { authApi, playerApi, settingsApi } from '../api/endpoints'
-import type { Settings, XpEvent } from '../api/types'
+import type { SettingsInput, XpEvent } from '../api/types'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Select } from '../components/ui/Input'
@@ -11,6 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { PlayerProgress } from '../features/player/PlayerProgress'
+import { NotificationsCard } from '../features/push/NotificationsCard'
 import { formatInstant } from '../lib/dates'
 import { errorMessage } from '../lib/errors'
 import { formatNumber, formatXp, XP_SOURCE_LABELS } from '../lib/format'
@@ -41,6 +42,15 @@ export function ProfilePage() {
         </>
       )}
 
+      <Link
+        to="/review"
+        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
+      >
+        <NotebookPen className="size-5 text-accent" aria-hidden />
+        <span className="flex-1 font-semibold">Revisões semanais</span>
+        <ChevronRight className="size-5 text-muted" aria-hidden />
+      </Link>
+      <NotificationsSection />
       <SettingsCard />
       <LogoutButton />
     </div>
@@ -80,10 +90,28 @@ function RecentEvents({ events }: { events: XpEvent[] }) {
   )
 }
 
+function NotificationsSection() {
+  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
+  return (
+    <section aria-labelledby="notifications-title">
+      <h2 id="notifications-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
+        Notificações
+      </h2>
+      {settings.isPending ? (
+        <Spinner />
+      ) : settings.isError ? (
+        <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
+      ) : (
+        <NotificationsCard settings={settings.data} />
+      )}
+    </section>
+  )
+}
+
 function SettingsCard() {
   const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
   const [selected, setSelected] = useState<string | null>(null)
-  const save = useAppMutation((input: Settings) => settingsApi.update(input), {
+  const save = useAppMutation((input: SettingsInput) => settingsApi.update(input), {
     successMessage: 'Fuso horário salvo.',
     onSuccess: () => setSelected(null),
   })

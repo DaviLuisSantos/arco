@@ -26,13 +26,16 @@ public sealed record CycleDto(
     int DayNumber,
     int TotalDays,
     string? ReviewNotes,
+    string? ReviewWins,
+    string? ReviewObstacles,
+    string? ReviewNext,
     DateTime? CompletedAt)
 {
     public static CycleDto From(Cycle c, DateOnly today) => new(
         c.Id, c.Name, c.StartDate, c.EndDate, c.Status,
         CycleMath.DayNumber(c.StartDate, c.EndDate, today),
         CycleMath.TotalDays(c.StartDate, c.EndDate),
-        c.ReviewNotes, c.CompletedAt);
+        c.ReviewNotes, c.ReviewWins, c.ReviewObstacles, c.ReviewNext, c.CompletedAt);
 }
 
 public sealed record MilestoneDto(int Id, string Title, int Order, DateTime? DoneAt);
@@ -91,6 +94,7 @@ public class HabitDto
         FrequencyType = h.FrequencyType;
         FrequencyDays = h.FrequencyType == FrequencyType.SpecificDays ? h.FrequencyDays.Order().ToList() : [];
         TimesPerWeek = h.FrequencyType == FrequencyType.WeeklyTarget ? h.TimesPerWeek : null;
+        ReminderTime = h.ReminderTime?.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         Level = current?.Level ?? 1;
         LevelDescription = current?.Description ?? "";
         MinimumDescription = current?.MinimumDescription ?? "";
@@ -106,12 +110,20 @@ public class HabitDto
     public FrequencyType FrequencyType { get; }
     public IReadOnlyList<int> FrequencyDays { get; }
     public int? TimesPerWeek { get; }
+    /// <summary>"HH:mm" or null.</summary>
+    public string? ReminderTime { get; }
     public int Level { get; }
     public string LevelDescription { get; }
     public string MinimumDescription { get; }
     public IReadOnlyList<HabitLevelDto> Levels { get; }
     public DateTime? ArchivedAt { get; }
     public DateTime CreatedAt { get; }
+}
+
+public sealed record ConsistencyDto(DateOnly From, DateOnly To, int Done, int Expected, double Rate)
+{
+    public static ConsistencyDto Of(LevelUpSuggestion.Consistency c) =>
+        new(c.From, c.To, c.Done, c.Expected, Math.Round(c.Rate, 4));
 }
 
 /// <summary>Response shape for XP-changing actions: <c>{ &lt;name&gt;, xpDelta, player }</c>.</summary>

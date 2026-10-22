@@ -6,6 +6,7 @@ import { HabitDetailPage } from '../pages/HabitDetailPage'
 import { HabitsPage } from '../pages/HabitsPage'
 import { LoginPage } from '../pages/LoginPage'
 import { ProfilePage } from '../pages/ProfilePage'
+import { ReviewPage } from '../pages/ReviewPage'
 import { TodayPage } from '../pages/TodayPage'
 
 export const router = createBrowserRouter([
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
           { path: 'habits/:id', element: <HabitDetailPage /> },
           { path: 'cycle', element: <CyclePage /> },
           { path: 'profile', element: <ProfilePage /> },
+          { path: 'review', element: <ReviewPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

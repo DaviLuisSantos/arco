@@ -6,6 +6,15 @@ public class Settings
     public const int SingletonId = 1;
     public int Id { get; set; } = SingletonId;
     public string Timezone { get; set; } = TimeZones.Default;
+
+    /// <summary>Push reminder for the weekly review (local day and time in <see cref="Timezone"/>).</summary>
+    public bool WeeklyReviewReminderEnabled { get; set; } = true;
+    /// <summary>0 = Sunday … 6 = Saturday.</summary>
+    public int WeeklyReviewReminderDay { get; set; } = DefaultWeeklyReviewReminderDay;
+    public TimeOnly WeeklyReviewReminderTime { get; set; } = DefaultWeeklyReviewReminderTime;
+
+    public const int DefaultWeeklyReviewReminderDay = 0;
+    public static readonly TimeOnly DefaultWeeklyReviewReminderTime = new(18, 0);
 }
 
 public class Cycle
@@ -15,7 +24,14 @@ public class Cycle
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public CycleStatus Status { get; set; } = CycleStatus.Active;
+    /// <summary>Free notes of the end-of-cycle review.</summary>
     public string? ReviewNotes { get; set; }
+    /// <summary>Guided review: what worked.</summary>
+    public string? ReviewWins { get; set; }
+    /// <summary>Guided review: what got in the way.</summary>
+    public string? ReviewObstacles { get; set; }
+    /// <summary>Guided review: what to take into the next cycle.</summary>
+    public string? ReviewNext { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<Goal> Goals { get; set; } = [];
@@ -70,6 +86,10 @@ public class Habit
     public FrequencyType FrequencyType { get; set; }
     public List<int> FrequencyDays { get; set; } = [];
     public int? TimesPerWeek { get; set; }
+    /// <summary>Local time of the daily push reminder (in Settings.Timezone), or null for none.</summary>
+    public TimeOnly? ReminderTime { get; set; }
+    /// <summary>A dismissed level-up suggestion stays hidden until this date (exclusive).</summary>
+    public DateOnly? LevelUpSnoozedUntil { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<HabitLevel> Levels { get; set; } = [];
@@ -118,4 +138,40 @@ public class XpEvent
     public int? GoalId { get; set; }
     public int? MilestoneId { get; set; }
     public int? CycleId { get; set; }
+    public int? WeeklyReviewId { get; set; }
+    public WeeklyReview? WeeklyReview { get; set; }
+}
+
+/// <summary>Guided review of a Monday–Sunday week. At most one per week.</summary>
+public class WeeklyReview
+{
+    public int Id { get; set; }
+    public DateOnly WeekStart { get; set; }
+    public string? Wins { get; set; }
+    public string? Obstacles { get; set; }
+    public string? Next { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>A browser/device subscribed to Web Push.</summary>
+public class PushSubscription
+{
+    public int Id { get; set; }
+    public string Endpoint { get; set; } = "";
+    /// <summary>Client public key (base64url, uncompressed P-256 point).</summary>
+    public string P256dh { get; set; } = "";
+    /// <summary>Client auth secret (base64url, 16 bytes).</summary>
+    public string Auth { get; set; } = "";
+    public string? UserAgent { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastSuccessAt { get; set; }
+    public int FailureCount { get; set; }
+}
+
+/// <summary>Records a reminder that was already sent, so it is sent at most once (e.g. "habit:5:2026-10-21").</summary>
+public class PushDispatch
+{
+    public int Id { get; set; }
+    public string Key { get; set; } = "";
+    public DateTime SentAt { get; set; }
 }

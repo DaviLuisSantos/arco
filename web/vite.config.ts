@@ -14,9 +14,11 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Fase 1: generateSW. Na Fase 2 (push) trocar para strategies: 'injectManifest'
-    // com um service worker próprio (src/sw.ts) que trate os eventos de push.
+    // Service worker próprio (src/sw.ts): pré-cache do app shell + eventos de push.
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon-32x32.png', 'apple-touch-icon.png'],
       manifest: {
@@ -36,14 +38,9 @@ export default defineConfig({
           { src: '/maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // Só o app shell é pré-cacheado. Nenhuma resposta de /api é cacheada
-        // (sem runtimeCaching).
+      injectManifest: {
+        // Só o app shell é pré-cacheado. Nenhuma resposta de /api é cacheada.
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
       },
     }),
   ],

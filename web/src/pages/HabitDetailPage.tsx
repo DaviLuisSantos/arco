@@ -13,7 +13,7 @@ import { HabitFormDialog } from '../features/habits/HabitFormDialog'
 import { LevelTimeline } from '../features/habits/LevelTimeline'
 import { LevelUpDialog } from '../features/habits/LevelUpDialog'
 import { localToday } from '../lib/dates'
-import { frequencyText } from '../lib/format'
+import { formatPercent, frequencyText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
 import { useAppMutation } from '../lib/useAppMutation'
 
@@ -28,6 +28,9 @@ export function HabitDetailPage() {
   const close = () => setModal(null)
 
   const archive = useAppMutation(() => habitsApi.archive(id), { successMessage: 'Hábito arquivado.', onSuccess: close })
+  const dismiss = useAppMutation(() => habitsApi.dismissLevelUpSuggestion(id), {
+    successMessage: 'Sugestão adiada por 7 dias.',
+  })
   const restore = useAppMutation(() => habitsApi.restore(id), { successMessage: 'Hábito restaurado.' })
 
   const back = (
@@ -80,11 +83,43 @@ export function HabitDetailPage() {
         </header>
       </div>
 
+      {h.levelUpSuggested && (
+        <Card className="flex flex-col gap-3 border-accent/60 bg-accent/10">
+          <div>
+            <p className="flex items-center gap-1.5 font-semibold text-accent">
+              <ChevronsUp className="size-4" aria-hidden />
+              Pronto para o nível {h.level + 1}?
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Você fez a dose completa {h.consistency.done} de {h.consistency.expected} vezes nos últimos 14 dias (
+              {formatPercent(h.consistency.rate)}). Parece que “{h.levelDescription}” ficou fácil.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" block loading={dismiss.isPending} onClick={() => dismiss.mutate()}>
+              Agora não
+            </Button>
+            <Button block onClick={() => setModal('levelUp')}>
+              Subir de nível
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="flex flex-col gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Dose atual</p>
           <p className="text-lg font-semibold">{h.levelDescription}</p>
           <p className="text-sm text-muted">Mínimo: {h.minimumDescription}</p>
+          {!archived && (
+            <p className="mt-2 text-xs text-muted">
+              Consistência (14 dias, só “Feito”):{' '}
+              <span className="font-semibold text-text">
+                {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
+              </span>
+              {h.reminderTime && <> · Lembrete às {h.reminderTime}</>}
+            </p>
+          )}
         </div>
         {!archived && (
           <Button onClick={() => setModal('levelUp')}>

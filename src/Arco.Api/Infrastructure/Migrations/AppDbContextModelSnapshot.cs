@@ -73,7 +73,19 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ReviewNext")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ReviewNotes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewObstacles")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewWins")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("StartDate")
@@ -197,9 +209,15 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateOnly?>("LevelUpSnoozedUntil")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("TimesPerWeek")
@@ -272,6 +290,70 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.ToTable("Milestones");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.PushDispatch", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("PushDispatches");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.PushSubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.ToTable("PushSubscriptions");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.Settings", b =>
                 {
                     b.Property<int>("Id")
@@ -282,6 +364,15 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("WeeklyReviewReminderDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("WeeklyReviewReminderEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeOnly>("WeeklyReviewReminderTime")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("Settings");
@@ -290,8 +381,43 @@ namespace Arco.Api.Infrastructure.Migrations
                         new
                         {
                             Id = 1,
-                            Timezone = "America/Sao_Paulo"
+                            Timezone = "America/Sao_Paulo",
+                            WeeklyReviewReminderDay = 0,
+                            WeeklyReviewReminderEnabled = true,
+                            WeeklyReviewReminderTime = new TimeOnly(18, 0, 0)
                         });
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.WeeklyReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Next")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Obstacles")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("WeekStart")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Wins")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeekStart")
+                        .IsUnique();
+
+                    b.ToTable("WeeklyReviews");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.XpEvent", b =>
@@ -334,6 +460,9 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("WeeklyReviewId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CheckInId");
@@ -347,6 +476,8 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasIndex("HabitId");
 
                     b.HasIndex("MilestoneId");
+
+                    b.HasIndex("WeeklyReviewId");
 
                     b.ToTable("XpEvents");
                 });
@@ -439,7 +570,14 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasForeignKey("MilestoneId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Arco.Api.Domain.WeeklyReview", "WeeklyReview")
+                        .WithMany()
+                        .HasForeignKey("WeeklyReviewId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CheckIn");
+
+                    b.Navigation("WeeklyReview");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.Cycle", b =>

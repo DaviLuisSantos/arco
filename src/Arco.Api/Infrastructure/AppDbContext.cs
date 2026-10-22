@@ -14,6 +14,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<HabitLevel> HabitLevels => Set<HabitLevel>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
+    public DbSet<WeeklyReview> WeeklyReviews => Set<WeeklyReview>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<PushDispatch> PushDispatches => Set<PushDispatch>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -34,6 +37,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Name).HasMaxLength(80);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.ReviewWins).HasMaxLength(2000);
+            e.Property(x => x.ReviewObstacles).HasMaxLength(2000);
+            e.Property(x => x.ReviewNext).HasMaxLength(2000);
             // At most one active cycle.
             e.HasIndex(x => x.Status).IsUnique().HasFilter("\"Status\" = 'Active'");
         });
@@ -87,6 +93,30 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne<Goal>().WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Milestone>().WithMany().HasForeignKey(x => x.MilestoneId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Cycle>().WithMany().HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.WeeklyReview).WithMany().HasForeignKey(x => x.WeeklyReviewId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<WeeklyReview>(e =>
+        {
+            e.HasIndex(x => x.WeekStart).IsUnique();
+            e.Property(x => x.Wins).HasMaxLength(2000);
+            e.Property(x => x.Obstacles).HasMaxLength(2000);
+            e.Property(x => x.Next).HasMaxLength(2000);
+        });
+
+        b.Entity<PushSubscription>(e =>
+        {
+            e.Property(x => x.Endpoint).HasMaxLength(2048);
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.Property(x => x.P256dh).HasMaxLength(200);
+            e.Property(x => x.Auth).HasMaxLength(100);
+            e.Property(x => x.UserAgent).HasMaxLength(300);
+        });
+
+        b.Entity<PushDispatch>(e =>
+        {
+            e.Property(x => x.Key).HasMaxLength(100);
+            e.HasIndex(x => x.Key).IsUnique();
         });
     }
 }

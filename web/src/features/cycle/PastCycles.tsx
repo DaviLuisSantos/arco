@@ -1,6 +1,8 @@
 import type { Cycle } from '../../api/types'
 import { Card } from '../../components/ui/Card'
 import { formatFullDate } from '../../lib/dates'
+import { CYCLE_PROMPTS } from '../reviews/review-answers'
+import { ReviewAnswersView } from '../reviews/ReviewQuestions'
 
 export function PastCycles({ cycles }: { cycles: Cycle[] }) {
   const past = cycles.filter((c) => c.status === 'Completed')
@@ -19,8 +21,14 @@ export function PastCycles({ cycles }: { cycles: Cycle[] }) {
               <p className="text-xs text-muted">
                 {formatFullDate(c.startDate)} – {formatFullDate(c.endDate)} · {c.totalDays} dias
               </p>
-              {c.reviewNotes ? (
-                <p className="mt-2 whitespace-pre-line text-sm">{c.reviewNotes}</p>
+              {c.reviewNotes || c.reviewWins || c.reviewObstacles || c.reviewNext ? (
+                <div className="mt-3 flex flex-col gap-3">
+                  <ReviewAnswersView
+                    prompts={CYCLE_PROMPTS}
+                    answers={{ wins: c.reviewWins, obstacles: c.reviewObstacles, next: c.reviewNext }}
+                  />
+                  {c.reviewNotes && <p className="whitespace-pre-line text-sm">{c.reviewNotes}</p>}
+                </div>
               ) : (
                 <p className="mt-2 text-sm text-muted italic">Sem revisão.</p>
               )}

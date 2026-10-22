@@ -33,4 +33,19 @@ public static class Queries
             .ToListAsync(ct);
         return await ToGoalDtosAsync(db, goals, ct);
     }
+
+    /// <summary>
+    /// 14-day consistency of a habit (Levels loaded) and whether to suggest leveling up.
+    /// <paramref name="checkIns"/> must cover at least the 15 days ending today.
+    /// </summary>
+    public static (ConsistencyDto Consistency, bool Suggested) LevelUp(
+        Habit habit, IEnumerable<CheckIn> checkIns, DateOnly today, string timezone)
+    {
+        var consistency = LevelUpSuggestion.Measure(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
+            checkIns.Select(c => (c.Date, c.Status)), today);
+        var reachedOn = habit.CurrentLevel is { } level ? TimeZones.ToLocalDate(level.ReachedAt, timezone) : today;
+        var suggested = LevelUpSuggestion.ShouldSuggest(consistency, reachedOn, habit.LevelUpSnoozedUntil, today,
+            habit.ArchivedAt is not null);
+        return (ConsistencyDto.Of(consistency), suggested);
+    }
 }

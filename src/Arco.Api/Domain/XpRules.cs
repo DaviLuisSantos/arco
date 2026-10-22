@@ -7,6 +7,7 @@ public static class XpRules
     public const int MilestoneDone = 25;
     public const int GoalCompleted = 150;
     public const int CycleCompleted = 100;
+    public const int WeeklyReview = 30;
 
     /// <summary>Done = 10 + 2 × (habit level − 1).</summary>
     public static int ForDone(int habitLevel) => 10 + 2 * (Math.Max(1, habitLevel) - 1);

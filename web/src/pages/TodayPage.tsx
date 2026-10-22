@@ -8,6 +8,7 @@ import { HabitCheckInCard } from '../features/checkins/HabitCheckInCard'
 import { CycleStrip } from '../features/cycle/CycleStrip'
 import { GoalMiniCard } from '../features/goals/GoalMiniCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
+import { TodayNudges } from '../features/reviews/TodayNudges'
 import { formatLongDate } from '../lib/dates'
 import { queryKeys } from '../lib/queryKeys'
 
@@ -33,6 +34,8 @@ export function TodayPage() {
       <Card>
         <PlayerProgress player={player} xpToday={xpToday} />
       </Card>
+
+      <TodayNudges today={today.data} />
 
       <CycleStrip cycle={cycle} />
 

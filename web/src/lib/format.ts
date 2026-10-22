@@ -44,6 +44,11 @@ export const XP_SOURCE_LABELS: Record<XpSource, string> = {
   Milestone: 'Marco concluído',
   GoalCompleted: 'Objetivo concluído',
   CycleCompleted: 'Ciclo encerrado',
+  WeeklyReview: 'Revisão semanal',
+}
+
+export function formatPercent(rate: number): string {
+  return `${Math.round(rate * 100)}%`
 }
 
 /** XP esperado de um check-in (mesma regra do backend); usado só na atualização otimista. */

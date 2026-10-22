@@ -12,13 +12,20 @@ public static class HabitEndpoints
         int[]? FrequencyDays,
         int? TimesPerWeek,
         string? LevelDescription,
-        string? MinimumDescription);
+        string? MinimumDescription,
+        string? ReminderTime = null);
 
     public sealed record LevelUpRequest(string? LevelDescription, string? MinimumDescription);
 
-    public sealed class HabitDetailDto(Habit habit, IReadOnlyList<CheckInDto> recentCheckIns) : HabitDto(habit)
+    public sealed class HabitDetailDto(
+        Habit habit,
+        IReadOnlyList<CheckInDto> recentCheckIns,
+        ConsistencyDto consistency,
+        bool levelUpSuggested) : HabitDto(habit)
     {
         public IReadOnlyList<CheckInDto> RecentCheckIns { get; } = recentCheckIns;
+        public ConsistencyDto Consistency { get; } = consistency;
+        public bool LevelUpSuggested { get; } = levelUpSuggested;
     }
 
     public static IEndpointRouteBuilder MapHabits(this IEndpointRouteBuilder api)
@@ -29,6 +36,7 @@ public static class HabitEndpoints
         group.MapPost("", Create);
         group.MapPut("/{id:int}", Update);
         group.MapPost("/{id:int}/level-up", LevelUp);
+        group.MapPost("/{id:int}/level-up-suggestion/dismiss", DismissSuggestion);
         group.MapPost("/{id:int}/archive", Archive);
         group.MapPost("/{id:int}/restore", Restore);
         return api;
@@ -57,7 +65,19 @@ public static class HabitEndpoints
             .Where(c => c.HabitId == id && c.Date >= from && c.Date <= today)
             .OrderBy(c => c.Date)
             .ToListAsync(ct);
-        return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList()));
+        var (consistency, suggested) = Queries.LevelUp(habit, checkIns, today, await clock.GetTimezoneAsync(ct));
+        return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested));
+    }
+
+    /// <summary>Hides the level-up suggestion for <see cref="LevelUpSuggestion.SnoozeDays"/> days.</summary>
+    private static async Task<IResult> DismissSuggestion(int id, AppDbContext db, AppClock clock, CancellationToken ct)
+    {
+        var habit = await db.Habits.FirstOrDefaultAsync(h => h.Id == id, ct);
+        if (habit is null) return ApiResults.NotFound(HabitNotFound);
+
+        habit.LevelUpSnoozedUntil = (await clock.GetTodayAsync(ct)).AddDays(LevelUpSuggestion.SnoozeDays);
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -121,6 +141,7 @@ public static class HabitEndpoints
             MinimumDescription = minimum!,
             ReachedAt = now,
         });
+        habit.LevelUpSnoozedUntil = null;
         db.XpEvents.Add(new XpEvent
         {
             Date = await clock.GetTodayAsync(ct),
@@ -191,6 +212,9 @@ public static class HabitEndpoints
         if (!Text.LengthBetween(r.LevelDescription?.Trim(), 1, 120)) return LevelDescriptionError;
         if (!Text.LengthBetween(r.MinimumDescription?.Trim(), 1, 120)) return MinimumDescriptionError;
 
+        if (Text.Clean(r.ReminderTime) is { } reminder && !TryParseTime(reminder, out _))
+            return "O horário do lembrete deve estar no formato HH:mm.";
+
         if (r.GoalId is { } goalId && !await db.Goals.AnyAsync(g => g.Id == goalId, ct))
             return "Objetivo não encontrado.";
 
@@ -205,7 +229,12 @@ public static class HabitEndpoints
         habit.FrequencyType = r.FrequencyType!.Value;
         habit.FrequencyDays = habit.FrequencyType == FrequencyType.SpecificDays ? r.FrequencyDays!.Order().ToList() : [];
         habit.TimesPerWeek = habit.FrequencyType == FrequencyType.WeeklyTarget ? r.TimesPerWeek : null;
+        habit.ReminderTime = Text.Clean(r.ReminderTime) is { } reminder && TryParseTime(reminder, out var time) ? time : null;
     }
+
+    /// <summary>Strict "HH:mm" (24h).</summary>
+    internal static bool TryParseTime(string value, out TimeOnly time) =>
+        TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out time);
 
     private static string Truncate(string s) => s.Length <= 200 ? s : s[..200];
 }

@@ -13,7 +13,7 @@ import { CreateCycleForm } from '../features/cycle/CreateCycleForm'
 import { PastCycles } from '../features/cycle/PastCycles'
 import { CreateGoalDialog } from '../features/goals/CreateGoalDialog'
 import { GoalCard } from '../features/goals/GoalCard'
-import { formatFullDate, localToday } from '../lib/dates'
+import { diffDays, formatFullDate, localToday } from '../lib/dates'
 import { queryKeys } from '../lib/queryKeys'
 
 /** Recomendação de UI (não é regra do backend). */
@@ -48,6 +48,7 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
   const [modal, setModal] = useState<'goal' | 'complete' | null>(null)
   const close = () => setModal(null)
   const goalCount = goals.data?.length ?? 0
+  const over = diffDays(cycle.endDate, today) >= 0
 
   return (
     <>
@@ -65,6 +66,20 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         </div>
         <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label="Progresso do ciclo" />
       </Card>
+
+      {over && (
+        <Card className="flex flex-col gap-3 border-accent/60 bg-accent/10">
+          <div>
+            <p className="font-semibold">
+              {diffDays(cycle.endDate, today) === 0 ? 'Último dia do ciclo' : 'O ciclo terminou'}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Veja os números do ciclo, responda três perguntas e encerre. <span className="font-semibold text-xp">+100 XP</span>
+            </p>
+          </div>
+          <Button onClick={() => setModal('complete')}>Fazer a revisão do ciclo</Button>
+        </Card>
+      )}
 
       <section aria-labelledby="cycle-goals-title" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

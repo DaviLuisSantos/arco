@@ -1,10 +1,22 @@
+using Arco.Api.Features.Reviews;
+
 namespace Arco.Api.Features.Cycles;
 
 public static class CycleEndpoints
 {
     public sealed record CreateCycleRequest(string? Name, DateOnly? StartDate, int? Weeks);
     public sealed record UpdateCycleRequest(string? Name, DateOnly? EndDate);
-    public sealed record CompleteCycleRequest(string? ReviewNotes);
+    public sealed record CompleteCycleRequest(string? ReviewNotes, string? Wins = null, string? Obstacles = null, string? Next = null);
+
+    public sealed record CycleSummaryResponse(
+        CycleDto Cycle,
+        DateOnly From,
+        DateOnly To,
+        int Xp,
+        CheckInTotalsDto CheckIns,
+        IReadOnlyList<GoalDto> Goals,
+        IReadOnlyList<HabitPeriodStatsDto> Habits,
+        IReadOnlyList<ReviewEndpoints.WeeklyReviewDto> WeeklyReviews);
 
     private const string NameError = "O nome do ciclo deve ter entre 1 e 80 caracteres.";
     private const string NotFound = "Ciclo não encontrado.";
@@ -18,6 +30,7 @@ public static class CycleEndpoints
         group.MapGet("/current", Current);
         group.MapPost("", Create);
         group.MapPut("/{id:int}", Update);
+        group.MapGet("/{id:int}/summary", Summary);
         group.MapPost("/{id:int}/complete", Complete);
         return api;
     }
@@ -35,6 +48,33 @@ public static class CycleEndpoints
     {
         var cycle = await Queries.GetActiveCycleAsync(db, ct);
         return cycle is null ? Results.NoContent() : Results.Ok(CycleDto.From(cycle, await clock.GetTodayAsync(ct)));
+    }
+
+    /// <summary>Numbers for the end-of-cycle review, from the start date up to min(end date, today).</summary>
+    private static async Task<IResult> Summary(int id, AppDbContext db, AppClock clock, CancellationToken ct)
+    {
+        var cycle = await db.Cycles.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (cycle is null) return ApiResults.NotFound(NotFound);
+
+        var today = await clock.GetTodayAsync(ct);
+        var timezone = await clock.GetTimezoneAsync(ct);
+        var from = cycle.StartDate;
+        var to = cycle.EndDate < today ? cycle.EndDate : today;
+        if (to < from) to = from;
+
+        var habits = await ReviewStats.ForRangeAsync(db, from, to, today, timezone, ct);
+        var reviews = await db.WeeklyReviews.AsNoTracking()
+            .Where(r => r.WeekStart >= HabitSchedule.WeekStart(from) && r.WeekStart <= to)
+            .OrderBy(r => r.WeekStart)
+            .ToListAsync(ct);
+
+        return Results.Ok(new CycleSummaryResponse(
+            CycleDto.From(cycle, today), from, to,
+            await ReviewStats.XpInRangeAsync(db, from, to, ct),
+            ReviewStats.Totals(habits),
+            await Queries.GetGoalDtosForCycleAsync(db, cycle.Id, ct),
+            habits,
+            reviews.Select(ReviewEndpoints.WeeklyReviewDto.From).ToList()));
     }
 
     private static async Task<IResult> Create(CreateCycleRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -97,12 +137,20 @@ public static class CycleEndpoints
         var notes = Text.Clean(request?.ReviewNotes);
         if (notes is { Length: > MaxReviewLength })
             return ApiResults.Validation($"A revisão deve ter no máximo {MaxReviewLength} caracteres.");
+        var wins = Text.Clean(request?.Wins);
+        var obstacles = Text.Clean(request?.Obstacles);
+        var next = Text.Clean(request?.Next);
+        if (new[] { wins, obstacles, next }.Any(a => a is { Length: > WeeklyReviewRules.MaxAnswerLength }))
+            return ApiResults.Validation($"Cada resposta deve ter no máximo {WeeklyReviewRules.MaxAnswerLength} caracteres.");
 
         var now = clock.UtcNow;
         var today = await clock.GetTodayAsync(ct);
         cycle.Status = CycleStatus.Completed;
         cycle.CompletedAt = now;
         cycle.ReviewNotes = notes;
+        cycle.ReviewWins = wins;
+        cycle.ReviewObstacles = obstacles;
+        cycle.ReviewNext = next;
         db.XpEvents.Add(new XpEvent
         {
             Date = today,

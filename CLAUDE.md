@@ -5,8 +5,8 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
 ## Layout
 - `src/Arco.Api`: .NET 10 Minimal APIs, organizado em fatias.
   - `Features/<Feature>/` contém o endpoint e a lógica de cada funcionalidade.
-  - `Domain/` tem entidades e regras puras e testáveis: `XpRules`, `PlayerLevel`, `HabitSchedule`, `GoalProgress`, `CycleMath`.
-  - `Infrastructure/` tem DbContext, migrations, clock, auth e `ApiResults`.
+  - `Domain/` tem entidades e regras puras e testáveis: `XpRules`, `PlayerLevel`, `HabitSchedule`, `GoalProgress`, `CycleMath`, `LevelUpSuggestion`, `WeeklyReviewRules`.
+  - `Infrastructure/` tem DbContext, migrations, clock, auth e `ApiResults`. `Infrastructure/Push` faz o Web Push (VAPID + aes128gcm, sem pacote externo); os lembretes rodam em `Features/Push/ReminderDispatcher` (hosted service, 1×/min).
   - Não há MediatR nem repositórios.
 - `tests/Arco.Api.Tests`: xUnit, com testes unitários de domínio e de integração (WebApplicationFactory + SQLite temporário).
 - `web/`: React 19 + Vite + TS + TanStack Query + React Router 7 + Tailwind v4 + vite-plugin-pwa.
@@ -26,5 +26,6 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
 - **Dias da semana:** 0 = domingo … 6 = sábado. A semana do `WeeklyTarget` começa na segunda.
 - **XP:** é um livro-razão (`XpEvent`). Toda ação que dá ou tira XP grava o evento na mesma transação, e as respostas devolvem `{ xpDelta, player }`.
 - **Erros:** o formato é `{ error, code }`, com mensagens em pt-BR. `/api/*` nunca redireciona: devolve 401 em JSON.
-- **Frontend:** nunca use `new Date("YYYY-MM-DD")`; use `web/src/lib/dates.ts`. O service worker nunca cacheia `/api`.
+- **Frontend:** nunca use `new Date("YYYY-MM-DD")`; use `web/src/lib/dates.ts`. O service worker (`web/src/sw.ts`, injectManifest) nunca cacheia `/api`; ele não é registrado em `npm run dev`, então push só funciona no build.
+- **Testes de integração com tempo:** `new ApiFactory(now)` usa um relógio controlável (`MutableTime`) e um `FakePushSender`; use datas futuras para o cookie de login não expirar.
 - **UI:** todo o texto é em pt-BR.

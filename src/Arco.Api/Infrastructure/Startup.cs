@@ -8,8 +8,11 @@ using Arco.Api.Features.Goals;
 using Arco.Api.Features.Habits;
 using Arco.Api.Features.Health;
 using Arco.Api.Features.Player;
+using Arco.Api.Features.Push;
+using Arco.Api.Features.Reviews;
 using Arco.Api.Features.Settings;
 using Arco.Api.Features.Today;
+using Arco.Api.Infrastructure.Push;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
@@ -51,6 +54,13 @@ public static class Startup
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<AppClock>();
+
+        // Web Push: VAPID keys (generated into the data dir when not configured) and the reminder loop.
+        services.AddSingleton(VapidKeys.Load(config, dataDir));
+        services.AddHttpClient<IPushSender, WebPushSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
+        services.AddScoped<PushNotifier>();
+        services.AddScoped<ReminderDispatcher>();
+        if (config.GetValue("Push:SchedulerEnabled", true)) services.AddHostedService<ReminderService>();
 
         // JSON: camelCase (default for web) + enums as strings.
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -173,6 +183,8 @@ public static class Startup
         secured.MapCycles();
         secured.MapGoals();
         secured.MapPlayer();
+        secured.MapReviews();
+        secured.MapPush();
         secured.MapSettings();
 
         // Unknown /api routes are JSON 404s, never the SPA.

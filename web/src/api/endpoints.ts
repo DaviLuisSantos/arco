@@ -4,7 +4,9 @@ import type {
   CheckInInput,
   CheckInResult,
   Cycle,
+  CycleCompleteInput,
   CycleCompleteResult,
+  CycleSummary,
   CycleInput,
   CycleUpdateInput,
   Goal,
@@ -19,8 +21,14 @@ import type {
   Health,
   LevelUpInput,
   PlayerDetail,
+  PushConfig,
   Settings,
+  SettingsInput,
   Today,
+  WeeklyReview,
+  WeeklyReviewInput,
+  WeeklyReviewResult,
+  WeeklySummary,
   XpResult,
 } from './types'
 
@@ -67,6 +75,7 @@ export const habitsApi = {
   create: (input: HabitInput) => api.post<Habit>('/habits', input),
   update: (id: number, input: HabitInput) => api.put<Habit>(`/habits/${id}`, input),
   levelUp: (id: number, input: LevelUpInput) => api.post<HabitLevelUpResult>(`/habits/${id}/level-up`, input),
+  dismissLevelUpSuggestion: (id: number) => api.post<void>(`/habits/${id}/level-up-suggestion/dismiss`),
   archive: (id: number) => api.post<Habit>(`/habits/${id}/archive`),
   restore: (id: number) => api.post<Habit>(`/habits/${id}/restore`),
 }
@@ -77,8 +86,8 @@ export const cyclesApi = {
   current: async (): Promise<Cycle | null> => (await api.get<Cycle | undefined>('/cycles/current')) ?? null,
   create: (input: CycleInput) => api.post<Cycle>('/cycles', input),
   update: (id: number, input: CycleUpdateInput) => api.put<Cycle>(`/cycles/${id}`, input),
-  complete: (id: number, reviewNotes: string) =>
-    api.post<CycleCompleteResult>(`/cycles/${id}/complete`, { reviewNotes }),
+  summary: (id: number) => api.get<CycleSummary>(`/cycles/${id}/summary`),
+  complete: (id: number, input: CycleCompleteInput) => api.post<CycleCompleteResult>(`/cycles/${id}/complete`, input),
 }
 
 export const goalsApi = {
@@ -98,5 +107,18 @@ export const playerApi = {
 
 export const settingsApi = {
   get: () => api.get<Settings>('/settings'),
-  update: (input: Settings) => api.put<Settings>('/settings', input),
+  update: (input: SettingsInput) => api.put<Settings>('/settings', input),
+}
+
+export const reviewsApi = {
+  current: () => api.get<WeeklySummary>('/reviews/weekly/current'),
+  list: () => api.get<WeeklyReview[]>('/reviews/weekly'),
+  create: (input: WeeklyReviewInput) => api.post<WeeklyReviewResult>('/reviews/weekly', input),
+}
+
+export const pushApi = {
+  config: () => api.get<PushConfig>('/push/config'),
+  subscribe: (subscription: PushSubscriptionJSON) => api.post<void>('/push/subscriptions', subscription),
+  unsubscribe: (endpoint: string) => api.post<void>('/push/subscriptions/remove', { endpoint }),
+  test: () => api.post<{ sent: number }>('/push/test'),
 }

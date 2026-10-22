@@ -9,4 +9,8 @@ export const queryKeys = {
   currentGoals: ['goals', 'current'] as const,
   player: ['player'] as const,
   settings: ['settings'] as const,
+  weeklyReview: ['reviews', 'weekly', 'current'] as const,
+  weeklyReviews: ['reviews', 'weekly'] as const,
+  cycleSummary: (id: number) => ['cycles', id, 'summary'] as const,
+  pushConfig: ['push', 'config'] as const,
 }

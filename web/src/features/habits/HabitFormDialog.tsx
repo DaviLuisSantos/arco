@@ -51,7 +51,7 @@ export function HabitFormDialog({ open, onClose, habit, onSaved }: HabitFormDial
   )
 }
 
-type Errors = Partial<Record<'name' | 'emoji' | 'days' | 'level' | 'minimum', string>>
+type Errors = Partial<Record<'name' | 'emoji' | 'days' | 'level' | 'minimum' | 'reminder', string>>
 
 interface HabitFormProps {
   formId: string
@@ -71,6 +71,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
   const [timesPerWeek, setTimesPerWeek] = useState(habit?.timesPerWeek ?? 3)
   const [levelDescription, setLevelDescription] = useState(habit?.levelDescription ?? '')
   const [minimumDescription, setMinimumDescription] = useState(habit?.minimumDescription ?? '')
+  const [reminderTime, setReminderTime] = useState(habit?.reminderTime ?? '')
   const [errors, setErrors] = useState<Errors>({})
 
   const save = useAppMutation((input: HabitInput) => (habit ? habitsApi.update(habit.id, input) : habitsApi.create(input)), {
@@ -95,6 +96,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     else if (levelDescription.trim().length > 120) e.level = 'Use até 120 caracteres.'
     if (!minimumDescription.trim()) e.minimum = 'Descreva a versão mínima.'
     else if (minimumDescription.trim().length > 120) e.minimum = 'Use até 120 caracteres.'
+    if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) e.reminder = 'Use o formato HH:mm.'
     return e
   }
 
@@ -114,6 +116,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         timesPerWeek: frequencyType === 'WeeklyTarget' ? timesPerWeek : null,
         levelDescription: levelDescription.trim(),
         minimumDescription: minimumDescription.trim(),
+        reminderTime: reminderTime || null,
       },
       { onSettled: () => onPendingChange(false) },
     )
@@ -228,6 +231,14 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         maxLength={120}
         hint="O mínimo para não quebrar a corrente em dias difíceis."
         error={errors.minimum}
+      />
+      <Input
+        label="Lembrete (opcional)"
+        type="time"
+        value={reminderTime}
+        onChange={(e) => setReminderTime(e.target.value)}
+        hint="Notificação nos dias em que o hábito é devido e ainda não foi marcado. Ative as notificações no Perfil."
+        error={errors.reminder}
       />
     </form>
   )

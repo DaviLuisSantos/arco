@@ -1,6 +1,8 @@
 import { CircleUser, ListChecks, Sun, Target } from 'lucide-react'
+import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { cn } from '../../lib/cn'
+import { syncPushSubscription } from '../../lib/push'
 import { ArcoLogo } from './ArcoLogo'
 
 const NAV = [
@@ -11,6 +13,11 @@ const NAV = [
 ]
 
 export function AppLayout() {
+  // Mantém a inscrição push deste dispositivo registrada no servidor.
+  useEffect(() => {
+    void syncPushSubscription()
+  }, [])
+
   return (
     <div className="min-h-dvh">
       {/* Sidebar (≥ md) */}

@@ -1,9 +1,9 @@
-// Tipos espelhando docs/API.md (Fase 1). Datas de calendário: "YYYY-MM-DD"; instantes: ISO-8601 UTC.
+// Tipos espelhando docs/API.md (Fase 2). Datas de calendário: "YYYY-MM-DD"; instantes: ISO-8601 UTC.
 
 export type FrequencyType = 'Daily' | 'SpecificDays' | 'WeeklyTarget'
 export type CheckInStatus = 'Done' | 'Minimum' | 'Missed'
 export type GoalType = 'Numeric' | 'Milestones'
-export type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted'
+export type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted' | 'WeeklyReview'
 export type CycleStatus = 'Active' | 'Completed'
 
 export interface ApiErrorBody {
@@ -27,6 +27,9 @@ export interface Cycle {
   dayNumber: number
   totalDays: number
   reviewNotes: string | null
+  reviewWins: string | null
+  reviewObstacles: string | null
+  reviewNext: string | null
   completedAt: string | null
 }
 
@@ -76,6 +79,8 @@ export interface Habit {
   frequencyType: FrequencyType
   frequencyDays: number[]
   timesPerWeek: number | null
+  /** "HH:mm" no fuso configurado, ou null. */
+  reminderTime: string | null
   level: number
   levelDescription: string
   minimumDescription: string
@@ -84,8 +89,19 @@ export interface Habit {
   createdAt: string
 }
 
+/** Consistência dos últimos 14 dias (só "Feito" conta). */
+export interface Consistency {
+  from: string
+  to: string
+  done: number
+  expected: number
+  rate: number
+}
+
 export interface HabitDetail extends Habit {
   recentCheckIns: CheckIn[]
+  consistency: Consistency
+  levelUpSuggested: boolean
 }
 
 export interface TodayHabit extends Habit {
@@ -94,6 +110,14 @@ export interface TodayHabit extends Habit {
   weekTarget: number | null
   checkIn: CheckIn | null
   goalTitle: string | null
+  consistency: Consistency
+  levelUpSuggested: boolean
+}
+
+export interface WeeklyReviewStatus {
+  weekStart: string
+  weekEnd: string
+  due: boolean
 }
 
 export interface Today {
@@ -103,6 +127,7 @@ export interface Today {
   cycle: Cycle | null
   goals: Goal[]
   habits: TodayHabit[]
+  weeklyReview: WeeklyReviewStatus
 }
 
 /** Toda mutação que gera ou remove XP devolve este par. */
@@ -138,8 +163,84 @@ export interface PlayerDetail extends Player {
   recentEvents: XpEvent[]
 }
 
+export interface WeeklyReviewReminder {
+  enabled: boolean
+  /** 0 = domingo … 6 = sábado. */
+  day: number
+  /** "HH:mm" */
+  time: string
+}
+
 export interface Settings {
   timezone: string
+  weeklyReviewReminder: WeeklyReviewReminder
+}
+
+export interface SettingsInput {
+  timezone?: string
+  weeklyReviewReminder?: Partial<WeeklyReviewReminder>
+}
+
+export interface WeeklyReview {
+  id: number
+  weekStart: string
+  weekEnd: string
+  wins: string | null
+  obstacles: string | null
+  next: string | null
+  createdAt: string
+}
+
+export interface HabitPeriodStats {
+  habitId: number
+  name: string
+  emoji: string | null
+  level: number
+  levelsGained: number
+  done: number
+  minimum: number
+  missed: number
+  expected: number
+  /** (Feito + Mínimo) / esperado, de 0 a 1. */
+  rate: number
+  levelUpSuggested: boolean
+}
+
+export interface CheckInTotals {
+  done: number
+  minimum: number
+  missed: number
+}
+
+export interface WeeklySummary {
+  weekStart: string
+  weekEnd: string
+  review: WeeklyReview | null
+  xp: number
+  checkIns: CheckInTotals
+  habits: HabitPeriodStats[]
+  cycle: Cycle | null
+  goals: Goal[]
+}
+
+export interface WeeklyReviewResult extends XpResult {
+  review: WeeklyReview
+}
+
+export interface CycleSummary {
+  cycle: Cycle
+  from: string
+  to: string
+  xp: number
+  checkIns: CheckInTotals
+  goals: Goal[]
+  habits: HabitPeriodStats[]
+  weeklyReviews: WeeklyReview[]
+}
+
+export interface PushConfig {
+  publicKey: string
+  subscriptions: number
 }
 
 export interface Health {
@@ -158,6 +259,7 @@ export interface HabitInput {
   timesPerWeek?: number | null
   levelDescription: string
   minimumDescription: string
+  reminderTime?: string | null
 }
 
 export interface LevelUpInput {
@@ -175,6 +277,21 @@ export interface CycleInput {
   name: string
   startDate?: string
   weeks?: number
+}
+
+/** Respostas guiadas da revisão (semanal ou de ciclo). */
+export interface ReviewAnswers {
+  wins?: string | null
+  obstacles?: string | null
+  next?: string | null
+}
+
+export interface WeeklyReviewInput extends ReviewAnswers {
+  weekStart: string
+}
+
+export interface CycleCompleteInput extends ReviewAnswers {
+  reviewNotes?: string | null
 }
 
 export interface CycleUpdateInput {

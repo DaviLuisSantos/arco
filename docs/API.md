@@ -1,4 +1,4 @@
-# Arco — Contrato da API (Fase 1)
+# Arco — Contrato da API (Fase 2)
 
 ## Convenções
 
@@ -25,7 +25,7 @@
 type FrequencyType = 'Daily' | 'SpecificDays' | 'WeeklyTarget';
 type CheckInStatus = 'Done' | 'Minimum' | 'Missed';
 type GoalType = 'Numeric' | 'Milestones';
-type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted';
+type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted' | 'WeeklyReview';
 
 interface Player {
   level: number;          // começa em 1
@@ -40,7 +40,10 @@ interface Cycle {
   status: 'Active' | 'Completed';
   dayNumber: number;     // 1..totalDays (limitado ao intervalo) em relação a hoje
   totalDays: number;
-  reviewNotes: string | null;
+  reviewNotes: string | null;      // notas livres da revisão de encerramento
+  reviewWins: string | null;       // revisão guiada: o que funcionou
+  reviewObstacles: string | null;  // o que não funcionou
+  reviewNext: string | null;       // o que levar para o próximo ciclo
   completedAt: string | null;
 }
 
@@ -68,6 +71,7 @@ interface Habit {
   frequencyType: FrequencyType;
   frequencyDays: number[];             // 0=domingo..6=sábado, só em SpecificDays
   timesPerWeek: number | null;         // 1..7, só em WeeklyTarget
+  reminderTime: string | null;         // "HH:mm" no fuso configurado; lembrete push do hábito
   level: number;                       // nível atual
   levelDescription: string;            // descrição do nível atual
   minimumDescription: string;
@@ -75,6 +79,31 @@ interface Habit {
   archivedAt: string | null;
   createdAt: string;
 }
+
+// Consistência para a sugestão de subir de nível: 14 dias terminando hoje (se hoje já tem
+// check-in) ou ontem. Só "Feito" conta. expected: Daily = 14; SpecificDays = dias da lista
+// na janela; WeeklyTarget = ceil(timesPerWeek × 14 / 7).
+interface Consistency { from: string; to: string; done: number; expected: number; rate: number; } // rate 0..1
+
+interface WeeklyReview {
+  id: number;
+  weekStart: string; weekEnd: string;  // segunda a domingo
+  wins: string | null; obstacles: string | null; next: string | null;
+  createdAt: string;
+}
+
+// Números de um hábito num período (revisões semanal e de ciclo).
+interface HabitPeriodStats {
+  habitId: number; name: string; emoji: string | null;
+  level: number;                       // nível atual
+  levelsGained: number;                // níveis alcançados no período
+  done: number; minimum: number; missed: number;
+  expected: number;                    // pela frequência atual, a partir da criação do hábito
+  rate: number;                        // (done + minimum) / expected, 0..1
+  levelUpSuggested: boolean;           // sugestão de subir de nível hoje
+}
+
+interface CheckInTotals { done: number; minimum: number; missed: number; }
 ```
 
 ## Auth
@@ -104,7 +133,13 @@ interface Habit {
     weekTarget: number | null;        // timesPerWeek em WeeklyTarget, senão null
     checkIn: CheckIn | null;          // check-in de hoje
     goalTitle: string | null;
+    consistency: Consistency;
+    levelUpSuggested: boolean;        // ver "Sugestão de subir de nível"
   }>;                                 // só não arquivados; ordem: devidos hoje primeiro, depois por nome
+  weeklyReview: {
+    weekStart: string; weekEnd: string; // semana revisável (ver "Revisão semanal")
+    due: boolean;                     // a semana teve check-ins e ainda não foi revisada
+  };
 }
 ```
 
@@ -119,12 +154,12 @@ interface Habit {
 ## Hábitos
 
 - `GET /api/habits?includeArchived=false` → `Habit[]`
-- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[] }` (últimos 28 dias)
+- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
-    levelDescription, minimumDescription }
+    levelDescription, minimumDescription, reminderTime? }
   ```
 
   Cria o nível 1.
@@ -132,12 +167,17 @@ interface Habit {
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
-    levelDescription, minimumDescription }
+    levelDescription, minimumDescription, reminderTime? }
   ```
 
-  `levelDescription` e `minimumDescription` editam o nível atual.
+  `levelDescription` e `minimumDescription` editam o nível atual. `reminderTime` ausente ou null remove o lembrete.
 - `POST /api/habits/{id}/level-up` `{ levelDescription, minimumDescription }` → `{ habit: Habit, xpDelta: 50, player }`.
+- `POST /api/habits/{id}/level-up-suggestion/dismiss` → **204**. Esconde a sugestão por 7 dias.
 - `POST /api/habits/{id}/archive` → `Habit`; `POST /api/habits/{id}/restore` → `Habit`.
+
+Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado, `consistency.rate ≥ 0.8`,
+`expected > 0`, a janela inteira no nível atual (nível alcançado em `from` ou antes, no fuso
+configurado) e sem adiamento ativo. Subir de nível limpa o adiamento.
 
 Validação dos hábitos:
 - `name` com 1 a 80 caracteres.
@@ -146,6 +186,7 @@ Validação dos hábitos:
 - `SpecificDays` exige ao menos 1 dia entre 0 e 6, sem repetições.
 - `WeeklyTarget` exige `timesPerWeek` entre 1 e 7.
 - `goalId` precisa existir.
+- `reminderTime`, se informado, no formato `"HH:mm"` (24h).
 
 ## Ciclos
 
@@ -155,7 +196,20 @@ Validação dos hábitos:
   - `startDate` padrão = hoje e `weeks` padrão = 6 (aceita 1 a 12).
   - Se já existe ciclo ativo → 409 `active_cycle_exists`.
 - `PUT /api/cycles/{id}` `{ name, endDate }` → `Cycle`. Só para ciclos ativos; `endDate` precisa ser ≥ `startDate`.
-- `POST /api/cycles/{id}/complete` `{ reviewNotes }` → `{ cycle, xpDelta: 100, player }`. Ciclo já concluído → 409 `conflict`.
+- `GET /api/cycles/{id}/summary` → números para a revisão de encerramento, de `startDate` até min(`endDate`, hoje):
+
+  ```ts
+  { cycle: Cycle; from: string; to: string;
+    xp: number;                       // soma dos XpEvents com data no intervalo
+    checkIns: CheckInTotals;
+    goals: Goal[];
+    habits: HabitPeriodStats[];       // ordem: maior rate primeiro
+    weeklyReviews: WeeklyReview[] }   // semanas que tocam o intervalo
+  ```
+
+- `POST /api/cycles/{id}/complete` `{ reviewNotes?, wins?, obstacles?, next? }` → `{ cycle, xpDelta: 100, player }`.
+  - `reviewNotes` até 4000 caracteres; `wins`, `obstacles` e `next` até 2000 cada. Todos opcionais.
+  - Ciclo já concluído → 409 `conflict`.
 
 ## Objetivos
 
@@ -183,7 +237,57 @@ Validação dos hábitos:
 
 - `GET /api/player` → `Player & { recentEvents: Array<{ date, amount, source: XpSource, description }> }` (últimos 20).
 
+## Revisão semanal
+
+A semana revisável é a semana atual no domingo (ela termina hoje) e a anterior de segunda a sábado.
+Cada semana tem no máximo uma revisão.
+
+- `GET /api/reviews/weekly/current` →
+
+  ```ts
+  { weekStart: string; weekEnd: string;
+    review: WeeklyReview | null;      // null enquanto não foi feita
+    xp: number;                       // XP com data na semana
+    checkIns: CheckInTotals;
+    habits: HabitPeriodStats[];
+    cycle: Cycle | null; goals: Goal[] } // ciclo ativo e seus objetivos
+  ```
+
+- `GET /api/reviews/weekly` → `WeeklyReview[]` (mais recentes primeiro).
+- `POST /api/reviews/weekly` `{ weekStart, wins?, obstacles?, next? }` → **201** `{ review, xpDelta: 30, player }`.
+  - `weekStart` diferente da semana revisável → 400 `validation`.
+  - Pelo menos uma resposta não vazia; cada uma até 2000 caracteres → senão 400.
+  - Semana já revisada → 409 `conflict`.
+
+## Push
+
+Web Push com VAPID (RFC 8291/8292). As chaves vêm de `Push:VapidPublicKey`/`Push:VapidPrivateKey`
+(base64url) ou são geradas uma vez em `vapid.json`, ao lado do banco. `Push:Subject` (padrão
+`mailto:arco@example.com`) vai no JWT do VAPID.
+
+- `GET /api/push/config` → `{ publicKey: string, subscriptions: number }` (`publicKey` em base64url, para `applicationServerKey`).
+- `POST /api/push/subscriptions` `{ endpoint, keys: { p256dh, auth } }` (o `PushSubscription.toJSON()` do navegador) → **204**.
+  Cria ou atualiza pelo `endpoint`. `endpoint` precisa ser https; `p256dh` um ponto P-256 não comprimido e `auth` 16 bytes (base64url) → senão 400.
+- `POST /api/push/subscriptions/remove` `{ endpoint }` → **204** (idempotente).
+- `POST /api/push/test` → `{ sent: number }`: manda uma notificação de teste para todos os dispositivos.
+
+Payload entregue ao service worker: `{ title, body, url, tag }`. O push service respondendo 404/410
+apaga a inscrição; 10 falhas seguidas também.
+
+Lembretes (verificados a cada minuto, no fuso configurado, enviados no máximo uma vez):
+- **Hábito**: a partir de `reminderTime`, nos dias em que o hábito é devido e ainda não tem check-in hoje.
+- **Revisão semanal**: no dia e horário de `weeklyReviewReminder`, se a semana revisável ainda não foi revisada.
+- Um lembrete com mais de 2 h de atraso (ex.: servidor fora do ar) é pulado, não enviado tarde.
+
 ## Settings
 
-- `GET /api/settings` → `{ timezone }`
-- `PUT /api/settings` `{ timezone }`: o fuso precisa ser um id IANA válido.
+- `GET /api/settings` →
+
+  ```ts
+  { timezone: string;
+    weeklyReviewReminder: { enabled: boolean; day: number; time: string } } // day 0=domingo..6; time "HH:mm"
+  ```
+
+  Padrão do lembrete: ativado, domingo, 18:00.
+- `PUT /api/settings` `{ timezone?, weeklyReviewReminder?: { enabled?, day?, time? } }` → o mesmo formato do GET.
+  Campos ausentes ficam como estão. O fuso precisa ser um id IANA válido; `day` entre 0 e 6; `time` em `"HH:mm"`.
