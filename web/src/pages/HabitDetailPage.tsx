@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, ArrowLeft, ChevronsUp, Flag, Pencil } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowLeft, Bell, ChevronsUp, Flag, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
@@ -112,13 +112,21 @@ export function HabitDetailPage() {
           <p className="text-lg font-semibold">{h.levelDescription}</p>
           <p className="text-sm text-muted">Mínimo: {h.minimumDescription}</p>
           {!archived && (
-            <p className="mt-2 text-xs text-muted">
-              Consistência (14 dias, só “Feito”):{' '}
-              <span className="font-semibold text-text">
-                {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
+            <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+              <span
+                className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
+                title="Só “Feito” conta para a sugestão de subir de nível."
+              >
+                14 dias:{' '}
+                <span className="font-semibold text-text">
+                  {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
+                </span>
               </span>
-              {h.reminderTime && <> · Lembrete às {h.reminderTime}</>}
-            </p>
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-muted">
+                <Bell className="size-3" aria-hidden />
+                {h.reminderTime ? `Lembrete às ${h.reminderTime}` : 'Sem lembrete'}
+              </span>
+            </div>
           )}
         </div>
         {!archived && (

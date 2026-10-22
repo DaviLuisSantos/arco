@@ -58,7 +58,8 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
     >
       {open && (
         <div className="flex max-h-[92dvh] flex-col">
-          <header className="flex items-start gap-3 px-5 pt-5 pb-3">
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border md:hidden" aria-hidden />
+          <header className="flex items-start gap-3 px-5 pt-3 pb-3 md:pt-5">
             <div className="flex-1">
               <h2 id={titleId} className="text-lg font-bold">
                 {title}

@@ -24,11 +24,14 @@ export function CycleStrip({ cycle }: { cycle: Cycle | null }) {
 
   return (
     <Link to="/cycle" className="block rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60">
-      <div className="mb-2 flex items-baseline justify-between gap-2 text-sm">
-        <span className="truncate font-semibold">
-          {cycle.name} · dia {cycle.dayNumber} de {cycle.totalDays}
-        </span>
-        <span className="shrink-0 text-muted">
+      <div className="mb-2 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{cycle.name}</p>
+          <p className="text-sm text-muted">
+            Dia {cycle.dayNumber} de {cycle.totalDays}
+          </p>
+        </div>
+        <span className="shrink-0 text-sm text-muted">
           {Math.max(0, cycle.totalDays - cycle.dayNumber)} dias restantes
         </span>
       </div>

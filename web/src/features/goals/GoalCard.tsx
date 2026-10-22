@@ -153,7 +153,7 @@ function NumericDetails({ goal }: { goal: Goal }) {
       {goal.completedAt === null && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-2" noValidate>
           <div className="flex items-start gap-2">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Input
                 aria-label="Novo valor"
                 inputMode="decimal"
@@ -163,8 +163,8 @@ function NumericDetails({ goal }: { goal: Goal }) {
                 error={error}
               />
             </div>
-            <Button type="submit" loading={progress.isPending}>
-              Registrar progresso
+            <Button type="submit" loading={progress.isPending} className="shrink-0">
+              Registrar
             </Button>
           </div>
           {value && (

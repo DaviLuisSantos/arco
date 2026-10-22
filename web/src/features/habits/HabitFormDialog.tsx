@@ -232,14 +232,25 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         hint="O mínimo para não quebrar a corrente em dias difíceis."
         error={errors.minimum}
       />
-      <Input
-        label="Lembrete (opcional)"
-        type="time"
-        value={reminderTime}
-        onChange={(e) => setReminderTime(e.target.value)}
-        hint="Notificação nos dias em que o hábito é devido e ainda não foi marcado. Ative as notificações no Perfil."
-        error={errors.reminder}
-      />
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            label="Lembrete (opcional)"
+            type="time"
+            value={reminderTime}
+            onChange={(e) => setReminderTime(e.target.value)}
+            error={errors.reminder}
+          />
+        </div>
+        {reminderTime && (
+          <Button variant="ghost" className="shrink-0" onClick={() => setReminderTime('')}>
+            Remover
+          </Button>
+        )}
+      </div>
+      <p className="-mt-2 text-xs text-muted">
+        Notificação nos dias em que o hábito é devido e ainda não foi marcado. Ative as notificações no Perfil.
+      </p>
     </form>
   )
 }

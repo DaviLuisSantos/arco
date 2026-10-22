@@ -138,11 +138,11 @@ function SettingsCard() {
               label="Fuso horário"
               value={value}
               onChange={(e) => setSelected(e.target.value)}
-              hint={`Atual: ${currentTz}. Define quando o “hoje” vira.`}
+              hint={`${value}. Define quando o “hoje” vira.`}
             >
               {options.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.label} ({t.id})
+                  {t.label}
                 </option>
               ))}
             </Select>

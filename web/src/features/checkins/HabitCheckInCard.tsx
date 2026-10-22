@@ -27,7 +27,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           {habit.emoji || '•'}
         </span>
         <div className="min-w-0 flex-1">
-          <Link to={`/habits/${habit.id}`} className="block truncate font-semibold hover:underline">
+          <Link to={`/habits/${habit.id}`} className="line-clamp-2 font-semibold break-words hover:underline">
             {habit.name}
           </Link>
           <p className="truncate text-sm text-muted">
@@ -66,12 +66,12 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               disabled={checkIn.isPending}
               onClick={() => handleTap(status)}
               className={cn(
-                'flex h-12 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition active:scale-95',
+                'flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-1 text-sm font-semibold transition active:scale-95',
                 'disabled:cursor-wait',
                 selected ? active : 'border-border bg-surface-2 text-muted hover:text-text',
               )}
             >
-              <Icon className="size-4" aria-hidden />
+              <Icon className="size-4 shrink-0" aria-hidden />
               {STATUS_LABELS[status]}
             </button>
           )

@@ -81,11 +81,39 @@ body {
   color: var(--text);
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Safari no iOS: inputs de data/hora têm largura mínima própria (vazam de grids e linhas flex),
+ * centralizam o valor e encolhem quando vazios. Aqui eles passam a se comportar como campos de texto.
+ */
+input[type='date'],
+input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  margin: 0;
+  text-align: left;
+}
+
+input::-webkit-datetime-edit {
+  padding: 0;
 }
 
 :focus-visible {

@@ -65,13 +65,24 @@ export function AppLayout() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    'flex flex-col items-center gap-1 py-2.5 text-xs font-medium',
+                    'group flex flex-col items-center gap-1 py-2 text-xs font-medium',
                     isActive ? 'text-accent' : 'text-muted',
                   )
                 }
               >
-                <Icon className="size-6" aria-hidden />
-                {label}
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={cn(
+                        'grid h-8 w-14 place-items-center rounded-full transition',
+                        isActive ? 'bg-accent/15' : 'group-active:bg-surface-2',
+                      )}
+                    >
+                      <Icon className="size-6" aria-hidden />
+                    </span>
+                    {label}
+                  </>
+                )}
               </NavLink>
             </li>
           ))}
