@@ -75,6 +75,9 @@ public sealed record GoalDto(
 
 public sealed record HabitLevelDto(int Level, string Description, string MinimumDescription, DateTime ReachedAt);
 
+/// <summary>A planned (not yet reached) level; <c>Level</c> is the number it will get.</summary>
+public sealed record HabitPlannedLevelDto(int Level, string Description, string MinimumDescription);
+
 public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp)
 {
     public static CheckInDto From(CheckIn c) => new(c.HabitId, c.Date, c.Status, c.Xp);
@@ -82,7 +85,7 @@ public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status
 
 public class HabitDto
 {
-    /// <param name="h">Habit with Levels loaded.</param>
+    /// <param name="h">Habit with Levels and PlannedLevels loaded.</param>
     public HabitDto(Habit h)
     {
         var levels = h.Levels.OrderBy(l => l.Level).ToList();
@@ -99,6 +102,10 @@ public class HabitDto
         LevelDescription = current?.Description ?? "";
         MinimumDescription = current?.MinimumDescription ?? "";
         Levels = levels.Select(l => new HabitLevelDto(l.Level, l.Description, l.MinimumDescription, l.ReachedAt)).ToList();
+        PlannedLevels = h.PlannedLevels.OrderBy(p => p.Position).ThenBy(p => p.Id)
+            .Select((p, i) => new HabitPlannedLevelDto(Level + i + 1, p.Description, p.MinimumDescription)).ToList();
+        LevelUpWeeks = h.LevelUpWeeks;
+        LevelUpDaysPerWeek = h.LevelUpDaysPerWeek;
         ArchivedAt = h.ArchivedAt;
         CreatedAt = h.CreatedAt;
     }
@@ -116,6 +123,10 @@ public class HabitDto
     public string LevelDescription { get; }
     public string MinimumDescription { get; }
     public IReadOnlyList<HabitLevelDto> Levels { get; }
+    public IReadOnlyList<HabitPlannedLevelDto> PlannedLevels { get; }
+    /// <summary>Weeks rule (null = default 80%-in-14-days rule).</summary>
+    public int? LevelUpWeeks { get; }
+    public int? LevelUpDaysPerWeek { get; }
     public DateTime? ArchivedAt { get; }
     public DateTime CreatedAt { get; }
 }

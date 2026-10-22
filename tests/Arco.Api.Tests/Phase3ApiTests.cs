@@ -41,4 +41,79 @@ public sealed class Phase3ApiTests : IDisposable
         Assert.Equal(0, (int)detailStreak["current"]!);
         Assert.Equal(3, (int)detailStreak["best"]!);
     }
+
+    [Fact]
+    public async Task Planned_ladder_and_weeks_rule_drive_the_level_up()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var res = await client.PostAsJsonAsync("/api/habits", new
+        {
+            name = "Inglês",
+            frequencyType = "WeeklyTarget",
+            timesPerWeek = 5,
+            levelDescription = "15 min",
+            minimumDescription = "5 min",
+            plannedLevels = new[]
+            {
+                new { levelDescription = "25 min", minimumDescription = "5 min" },
+                new { levelDescription = "35 min", minimumDescription = "5 min" },
+            },
+            levelUpWeeks = 2,
+            levelUpDaysPerWeek = 5,
+        });
+        Assert.Equal(HttpStatusCode.Created, res.StatusCode);
+        var created = await res.JsonAsync();
+        var habitId = (int)created["id"]!;
+        Assert.Equal(2, (int)created["plannedLevels"]![0]!["level"]!);
+        Assert.Equal("35 min", (string?)created["plannedLevels"]![1]!["description"]);
+        Assert.Equal(2, (int)created["levelUpWeeks"]!);
+
+        // The habit was created on Monday 2030-03-04: two weeks with 5 days (Minimum counts).
+        for (var day = 0; day < 14; day++)
+        {
+            if (day % 7 < 5)
+            {
+                var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+                var status = day < 7 ? "Done" : "Minimum";
+                Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/checkins", new { habitId, date, status })).StatusCode);
+            }
+            if (day < 13) Time.AdvanceDays(1);
+        }
+
+        var detail = await client.GetJsonAsync($"/api/habits/{habitId}");
+        Assert.Equal(2, (int)detail["levelUpWeeksDone"]!);
+        Assert.True((bool)detail["levelUpSuggested"]!);
+        var todayHabit = (await client.GetJsonAsync("/api/today"))["habits"]!.AsArray().Single()!;
+        Assert.True((bool)todayHabit["levelUpSuggested"]!);
+
+        // Leveling up with an empty body uses (and consumes) the planned next level.
+        var levelUp = await client.PostAsJsonAsync($"/api/habits/{habitId}/level-up", new { });
+        Assert.Equal(HttpStatusCode.OK, levelUp.StatusCode);
+        var habit = (await levelUp.JsonAsync())["habit"]!;
+        Assert.Equal(2, (int)habit["level"]!);
+        Assert.Equal("25 min", (string?)habit["levelDescription"]);
+        var planned = habit["plannedLevels"]!.AsArray();
+        Assert.Equal(3, (int)planned.Single()!["level"]!);
+        Assert.False((bool)(await client.GetJsonAsync($"/api/habits/{habitId}"))["levelUpSuggested"]!);
+
+        // Without a planned level and without a body, the level-up is rejected.
+        var put = await client.PutAsJsonAsync($"/api/habits/{habitId}", new
+        {
+            name = "Inglês", frequencyType = "WeeklyTarget", timesPerWeek = 5,
+            levelDescription = "25 min", minimumDescription = "5 min",
+        });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        var updated = await put.JsonAsync();
+        Assert.Empty(updated["plannedLevels"]!.AsArray());
+        Assert.Null(updated["levelUpWeeks"]);
+        var rejected = await client.PostAsJsonAsync($"/api/habits/{habitId}/level-up", new { });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+
+        var invalid = await client.PutAsJsonAsync($"/api/habits/{habitId}", new
+        {
+            name = "Inglês", frequencyType = "Daily", levelDescription = "25 min", minimumDescription = "5 min",
+            levelUpWeeks = 9, levelUpDaysPerWeek = 5,
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
 }

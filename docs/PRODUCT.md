@@ -31,7 +31,15 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Ligação opcional a um objetivo.
 - Cada nível tem uma **descrição** (a dose: "20 min") e uma **versão mínima** ("5 min").
 - Nível atual = o maior nível. "Subir de nível" cria o próximo nível (com nova descrição e mínimo) e dá XP. A decisão é sempre manual.
-- **Sugestão de subir de nível**: com ≥ 80% de consistência nos últimos 14 dias, todos no nível atual, o app sugere subir (tela Hoje e página do hábito).
+- **Escada planejada** (opcional): ao criar ou editar o hábito, dá para listar os próximos níveis (dose e mínimo de cada
+  um, até 10). "Subir de nível" já vem preenchido com o próximo degrau (editável) e o consome. A página do hábito mostra
+  os degraus planejados.
+- **Regra de subida**, escolhida por hábito:
+  - **80% em 14 dias** (padrão), detalhada abaixo;
+  - **Semanas seguidas**: N semanas seguidas (1–8) com pelo menos X dias (1–7) com Feito ou Mínimo. Só contam semanas
+    inteiras (segunda a domingo) no nível atual; a semana atual entra assim que bate a meta. Ex.: inglês "3 semanas
+    seguidas com 5+ dias".
+- **Sugestão de subir de nível**: quando a regra é cumprida, o app sugere subir (tela Hoje e página do hábito). Na regra padrão, com ≥ 80% de consistência nos últimos 14 dias, todos no nível atual:
   - Só "Feito" conta: o Mínimo mantém o hábito vivo, mas não mostra que a dose ficou fácil.
   - A janela termina hoje se hoje já tem check-in; senão, ontem (um "hoje" ainda não marcado não derruba a taxa).
   - Esperado: Daily = 14; SpecificDays = dias da lista na janela; WeeklyTarget = N × 2.

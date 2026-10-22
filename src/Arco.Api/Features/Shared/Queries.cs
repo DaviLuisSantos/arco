@@ -44,17 +44,27 @@ public static class Queries
     }
 
     /// <summary>
-    /// 14-day consistency of a habit (Levels loaded) and whether to suggest leveling up.
-    /// <paramref name="checkIns"/> must cover at least the 15 days ending today.
+    /// 14-day consistency of a habit (Levels loaded), the weeks counted by its weeks rule (null with the default
+    /// rule) and whether to suggest leveling up. <paramref name="checkIns"/> must cover at least
+    /// <see cref="LevelUpSuggestion.HistoryDays"/> days ending today.
     /// </summary>
-    public static (ConsistencyDto Consistency, bool Suggested) LevelUp(
+    public static (ConsistencyDto Consistency, int? WeeksDone, bool Suggested) LevelUp(
         Habit habit, IEnumerable<CheckIn> checkIns, DateOnly today, string timezone)
     {
+        var list = checkIns.Select(c => (c.Date, c.Status)).ToList();
         var consistency = LevelUpSuggestion.Measure(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
-            checkIns.Select(c => (c.Date, c.Status)), today);
+            list, today);
         var reachedOn = habit.CurrentLevel is { } level ? TimeZones.ToLocalDate(level.ReachedAt, timezone) : today;
-        var suggested = LevelUpSuggestion.ShouldSuggest(consistency, reachedOn, habit.LevelUpSnoozedUntil, today,
-            habit.ArchivedAt is not null);
-        return (ConsistencyDto.Of(consistency), suggested);
+        var archived = habit.ArchivedAt is not null;
+
+        if (habit is { LevelUpWeeks: { } weeks, LevelUpDaysPerWeek: { } days })
+        {
+            var done = LevelUpSuggestion.QualifyingWeeks(list, days, reachedOn, today);
+            return (ConsistencyDto.Of(consistency), done,
+                LevelUpSuggestion.ShouldSuggestWeeks(done, weeks, habit.LevelUpSnoozedUntil, today, archived));
+        }
+
+        var suggested = LevelUpSuggestion.ShouldSuggest(consistency, reachedOn, habit.LevelUpSnoozedUntil, today, archived);
+        return (ConsistencyDto.Of(consistency), null, suggested);
     }
 }

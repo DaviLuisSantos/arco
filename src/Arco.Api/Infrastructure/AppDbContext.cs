@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GoalUpdate> GoalUpdates => Set<GoalUpdate>();
     public DbSet<Habit> Habits => Set<Habit>();
     public DbSet<HabitLevel> HabitLevels => Set<HabitLevel>();
+    public DbSet<HabitPlannedLevel> HabitPlannedLevels => Set<HabitPlannedLevel>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
     public DbSet<WeeklyReview> WeeklyReviews => Set<WeeklyReview>();
@@ -63,6 +64,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.FrequencyType).HasConversion<string>().HasMaxLength(16);
             e.HasOne(x => x.Goal).WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(x => x.Levels).WithOne().HasForeignKey(l => l.HabitId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.PlannedLevels).WithOne().HasForeignKey(l => l.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.Ignore(x => x.CurrentLevel);
             e.Ignore(x => x.CurrentLevelNumber);
         });
@@ -70,6 +72,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<HabitLevel>(e =>
         {
             e.HasIndex(x => new { x.HabitId, x.Level }).IsUnique();
+            e.Property(x => x.Description).HasMaxLength(120);
+            e.Property(x => x.MinimumDescription).HasMaxLength(120);
+        });
+
+        b.Entity<HabitPlannedLevel>(e =>
+        {
+            e.HasIndex(x => new { x.HabitId, x.Position });
             e.Property(x => x.Description).HasMaxLength(120);
             e.Property(x => x.MinimumDescription).HasMaxLength(120);
         });

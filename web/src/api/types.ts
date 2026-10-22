@@ -85,8 +85,20 @@ export interface Habit {
   levelDescription: string
   minimumDescription: string
   levels: HabitLevel[]
+  /** A escada à frente; subir de nível usa (e consome) o primeiro. */
+  plannedLevels: HabitPlannedLevel[]
+  /** Regra "N semanas seguidas com X+ dias" (Feito e Mínimo contam); null = 80% de "Feito" em 14 dias. */
+  levelUpWeeks: number | null
+  levelUpDaysPerWeek: number | null
   archivedAt: string | null
   createdAt: string
+}
+
+/** Nível planejado; `level` é o número que ele vai ter. */
+export interface HabitPlannedLevel {
+  level: number
+  description: string
+  minimumDescription: string
 }
 
 /** Consistência dos últimos 14 dias (só "Feito" conta). */
@@ -114,6 +126,8 @@ export interface HabitDetail extends Habit {
   recentCheckIns: CheckIn[]
   consistency: Consistency
   levelUpSuggested: boolean
+  /** Semanas seguidas que contam para a regra de semanas (null na regra padrão). */
+  levelUpWeeksDone: number | null
   streak: Streak
 }
 
@@ -125,6 +139,7 @@ export interface TodayHabit extends Habit {
   goalTitle: string | null
   consistency: Consistency
   levelUpSuggested: boolean
+  levelUpWeeksDone: number | null
   streak: Streak
 }
 
@@ -274,11 +289,15 @@ export interface HabitInput {
   levelDescription: string
   minimumDescription: string
   reminderTime?: string | null
+  plannedLevels?: Array<{ levelDescription: string; minimumDescription: string }>
+  levelUpWeeks?: number | null
+  levelUpDaysPerWeek?: number | null
 }
 
+/** Sem campos, usa o próximo nível planejado. */
 export interface LevelUpInput {
-  levelDescription: string
-  minimumDescription: string
+  levelDescription?: string
+  minimumDescription?: string
 }
 
 export interface CheckInInput {

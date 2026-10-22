@@ -26,7 +26,7 @@ public static class ReviewStats
     public static async Task<List<HabitPeriodStatsDto>> ForRangeAsync(
         AppDbContext db, DateOnly from, DateOnly to, DateOnly today, string timezone, CancellationToken ct)
     {
-        var suggestionFrom = today.AddDays(-LevelUpSuggestion.WindowDays);
+        var suggestionFrom = today.AddDays(-LevelUpSuggestion.HistoryDays);
         var queryFrom = from < suggestionFrom ? from : suggestionFrom;
         var checkIns = (await db.CheckIns.AsNoTracking()
                 .Where(c => c.Date >= queryFrom && c.Date <= (to > today ? to : today))
@@ -51,7 +51,7 @@ public static class ReviewStats
                 var rate = expected == 0 ? 0 : Math.Min(1, (double)(done + minimum) / expected);
                 var levelsGained = h.Levels.Count(l => l.Level > 1
                     && TimeZones.ToLocalDate(l.ReachedAt, timezone) is var d && d >= from && d <= to);
-                var (_, suggested) = Queries.LevelUp(h, checkIns[h.Id], today, timezone);
+                var (_, _, suggested) = Queries.LevelUp(h, checkIns[h.Id], today, timezone);
                 return new HabitPeriodStatsDto(h.Id, h.Name, h.Emoji, h.CurrentLevelNumber, levelsGained,
                     done, minimum, missed, expected, Math.Round(rate, 4), suggested);
             })

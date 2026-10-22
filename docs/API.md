@@ -63,6 +63,9 @@ interface Goal {
 
 interface HabitLevel { level: number; description: string; minimumDescription: string; reachedAt: string; }
 
+// Degrau planejado (ainda não alcançado); level = número que ele vai ter (nível atual + 1, + 2…).
+interface HabitPlannedLevel { level: number; description: string; minimumDescription: string; }
+
 interface CheckIn { habitId: number; date: string; status: CheckInStatus; xp: number; }
 
 interface Habit {
@@ -76,6 +79,9 @@ interface Habit {
   levelDescription: string;            // descrição do nível atual
   minimumDescription: string;
   levels: HabitLevel[];                // crescente
+  plannedLevels: HabitPlannedLevel[];  // a escada à frente, em ordem; subir de nível consome o primeiro
+  levelUpWeeks: number | null;         // regra "N semanas seguidas com X+ dias"; null = regra padrão (80% em 14 dias)
+  levelUpDaysPerWeek: number | null;
   archivedAt: string | null;
   createdAt: string;
 }
@@ -139,6 +145,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
     goalTitle: string | null;
     consistency: Consistency;
     levelUpSuggested: boolean;        // ver "Sugestão de subir de nível"
+    levelUpWeeksDone: number | null;  // semanas seguidas que contam para a regra de semanas (null na regra padrão)
     streak: Streak;
   }>;                                 // só não arquivados; ordem: devidos hoje primeiro, depois por nome
   weeklyReview: {
@@ -159,12 +166,14 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 ## Hábitos
 
 - `GET /api/habits?includeArchived=false` → `Habit[]`
-- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, streak: Streak }` (check-ins dos últimos 28 dias)
+- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, levelUpWeeksDone: number | null, streak: Streak }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
-    levelDescription, minimumDescription, reminderTime? }
+    levelDescription, minimumDescription, reminderTime?,
+    plannedLevels?: Array<{ levelDescription, minimumDescription }>,
+    levelUpWeeks?, levelUpDaysPerWeek? }
   ```
 
   Cria o nível 1.
@@ -172,22 +181,34 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
-    levelDescription, minimumDescription, reminderTime? }
+    levelDescription, minimumDescription, reminderTime?,
+    plannedLevels?: Array<{ levelDescription, minimumDescription }>,
+    levelUpWeeks?, levelUpDaysPerWeek? }
   ```
 
   `levelDescription` e `minimumDescription` editam o nível atual. `reminderTime` ausente ou null remove o lembrete.
-- `POST /api/habits/{id}/level-up` `{ levelDescription, minimumDescription }` → `{ habit: Habit, xpDelta: 50, player }`.
+  `plannedLevels` substitui a escada inteira (ausente = sem níveis planejados). `levelUpWeeks` ausente ou null volta à
+  regra padrão.
+- `POST /api/habits/{id}/level-up` `{ levelDescription?, minimumDescription? }` → `{ habit: Habit, xpDelta: 50, player }`.
+  Campo ausente ou vazio usa o do primeiro nível planejado; havendo nível planejado, ele é consumido (sai da escada).
+  Sem nível planejado, os dois campos são obrigatórios.
 - `POST /api/habits/{id}/level-up-suggestion/dismiss` → **204**. Esconde a sugestão por 7 dias.
 - `POST /api/habits/{id}/archive` → `Habit`; `POST /api/habits/{id}/restore` → `Habit`.
 
-Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado, `consistency.rate ≥ 0.8`,
-`expected > 0`, a janela inteira no nível atual (nível alcançado em `from` ou antes, no fuso
-configurado) e sem adiamento ativo. Subir de nível limpa o adiamento.
+Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado e sem adiamento ativo, e:
+- regra padrão: `consistency.rate ≥ 0.8`, `expected > 0`, a janela inteira no nível atual (nível alcançado em `from`
+  ou antes, no fuso configurado);
+- regra de semanas: `levelUpWeeksDone ≥ levelUpWeeks`. Contam semanas (segunda a domingo) seguidas, inteiras no nível
+  atual, com pelo menos `levelUpDaysPerWeek` dias com Feito ou Mínimo. A semana atual entra assim que bate a meta.
+
+Subir de nível limpa o adiamento.
 
 Validação dos hábitos:
 - `name` com 1 a 80 caracteres.
 - `emoji` com até 8 caracteres.
-- `levelDescription` e `minimumDescription` com 1 a 120 caracteres.
+- `levelDescription` e `minimumDescription` com 1 a 120 caracteres (também em cada nível planejado).
+- `plannedLevels` com no máximo 10 níveis.
+- `levelUpWeeks` de 1 a 8 e `levelUpDaysPerWeek` de 1 a 7 (os dois juntos).
 - `SpecificDays` exige ao menos 1 dia entre 0 e 6, sem repetições.
 - `WeeklyTarget` exige `timesPerWeek` entre 1 e 7.
 - `goalId` precisa existir.

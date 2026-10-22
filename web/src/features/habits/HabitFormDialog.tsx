@@ -10,6 +10,7 @@ import { cn } from '../../lib/cn'
 import { WEEKDAY_INITIALS, WEEKDAY_NAMES } from '../../lib/dates'
 import { queryKeys } from '../../lib/queryKeys'
 import { useAppMutation } from '../../lib/useAppMutation'
+import { LevelUpRuleField, PlannedLevelsField, type LevelUpRuleDraft, type PlannedLevelDraft } from './LadderFields'
 
 interface HabitFormDialogProps {
   open: boolean
@@ -51,7 +52,7 @@ export function HabitFormDialog({ open, onClose, habit, onSaved }: HabitFormDial
   )
 }
 
-type Errors = Partial<Record<'name' | 'emoji' | 'days' | 'level' | 'minimum' | 'reminder', string>>
+type Errors = Partial<Record<'name' | 'emoji' | 'days' | 'level' | 'minimum' | 'reminder' | 'planned', string>>
 
 interface HabitFormProps {
   formId: string
@@ -72,6 +73,13 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
   const [levelDescription, setLevelDescription] = useState(habit?.levelDescription ?? '')
   const [minimumDescription, setMinimumDescription] = useState(habit?.minimumDescription ?? '')
   const [reminderTime, setReminderTime] = useState(habit?.reminderTime ?? '')
+  const [planned, setPlanned] = useState<PlannedLevelDraft[]>(
+    habit?.plannedLevels.map((l) => ({ levelDescription: l.description, minimumDescription: l.minimumDescription })) ?? [],
+  )
+  const [rule, setRule] = useState<LevelUpRuleDraft>({
+    weeks: habit?.levelUpWeeks ?? null,
+    daysPerWeek: habit?.levelUpDaysPerWeek ?? 5,
+  })
   const [errors, setErrors] = useState<Errors>({})
 
   const save = useAppMutation((input: HabitInput) => (habit ? habitsApi.update(habit.id, input) : habitsApi.create(input)), {
@@ -97,6 +105,9 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     if (!minimumDescription.trim()) e.minimum = 'Descreva a versão mínima.'
     else if (minimumDescription.trim().length > 120) e.minimum = 'Use até 120 caracteres.'
     if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) e.reminder = 'Use o formato HH:mm.'
+    if (planned.some((l) => !l.levelDescription.trim() || !l.minimumDescription.trim())) {
+      e.planned = 'Preencha a dose e o mínimo de cada nível (ou remova os vazios).'
+    }
     return e
   }
 
@@ -117,6 +128,12 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         levelDescription: levelDescription.trim(),
         minimumDescription: minimumDescription.trim(),
         reminderTime: reminderTime || null,
+        plannedLevels: planned.map((l) => ({
+          levelDescription: l.levelDescription.trim(),
+          minimumDescription: l.minimumDescription.trim(),
+        })),
+        levelUpWeeks: rule.weeks,
+        levelUpDaysPerWeek: rule.weeks === null ? null : rule.daysPerWeek,
       },
       { onSettled: () => onPendingChange(false) },
     )
@@ -231,6 +248,20 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         maxLength={120}
         hint="O mínimo para não quebrar a corrente em dias difíceis."
         error={errors.minimum}
+      />
+      <PlannedLevelsField
+        currentLevel={habit?.level ?? 1}
+        currentMinimum={minimumDescription.trim()}
+        value={planned}
+        onChange={setPlanned}
+        error={errors.planned}
+      />
+      <LevelUpRuleField
+        value={rule}
+        onChange={setRule}
+        defaultDays={
+          frequencyType === 'WeeklyTarget' ? timesPerWeek : frequencyType === 'SpecificDays' ? Math.max(1, days.length) : 5
+        }
       />
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">

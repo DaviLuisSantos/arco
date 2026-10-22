@@ -209,8 +209,14 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("LevelUpDaysPerWeek")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly?>("LevelUpSnoozedUntil")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("LevelUpWeeks")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -261,6 +267,35 @@ namespace Arco.Api.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("HabitLevels");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.HabitPlannedLevel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HabitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MinimumDescription")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HabitId", "Position");
+
+                    b.ToTable("HabitPlannedLevels");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.Milestone", b =>
@@ -532,6 +567,15 @@ namespace Arco.Api.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.HabitPlannedLevel", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.Habit", null)
+                        .WithMany("PlannedLevels")
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.Milestone", b =>
                 {
                     b.HasOne("Arco.Api.Domain.Goal", "Goal")
@@ -595,6 +639,8 @@ namespace Arco.Api.Infrastructure.Migrations
             modelBuilder.Entity("Arco.Api.Domain.Habit", b =>
                 {
                     b.Navigation("Levels");
+
+                    b.Navigation("PlannedLevels");
                 });
 #pragma warning restore 612, 618
         }

@@ -10,6 +10,7 @@ public static class TodayEndpoints
         string? goalTitle,
         ConsistencyDto consistency,
         bool levelUpSuggested,
+        int? levelUpWeeksDone,
         StreakDto streak) : HabitDto(habit)
     {
         public bool IsDueToday { get; } = isDueToday;
@@ -19,6 +20,7 @@ public static class TodayEndpoints
         public string? GoalTitle { get; } = goalTitle;
         public ConsistencyDto Consistency { get; } = consistency;
         public bool LevelUpSuggested { get; } = levelUpSuggested;
+        public int? LevelUpWeeksDone { get; } = levelUpWeeksDone;
         public StreakDto Streak { get; } = streak;
     }
 
@@ -52,15 +54,14 @@ public static class TodayEndpoints
 
         var habits = await db.Habits.AsNoTracking()
             .Include(h => h.Levels)
+            .Include(h => h.PlannedLevels)
             .Include(h => h.Goal)
             .Where(h => h.ArchivedAt == null)
             .ToListAsync(ct);
 
         var weekStart = HabitSchedule.WeekStart(today);
         var weekEnd = HabitSchedule.WeekEnd(today);
-        // The whole history feeds the streak; the current week and the last 15 days, the rest.
-        var suggestionStart = today.AddDays(-LevelUpSuggestion.WindowDays);
-        var from = weekStart < suggestionStart ? weekStart : suggestionStart;
+        // The whole history feeds the streak and the level-up rules.
         var allCheckIns = (await db.CheckIns.AsNoTracking()
                 .Where(c => c.Date <= weekEnd && c.Habit!.ArchivedAt == null)
                 .ToListAsync(ct))
@@ -69,15 +70,14 @@ public static class TodayEndpoints
         var items = habits.Select(h =>
         {
             var history = allCheckIns[h.Id].ToList();
-            var recent = history.Where(c => c.Date >= from).ToList();
-            var week = recent.Where(c => c.Date >= weekStart).ToList();
+            var week = history.Where(c => c.Date >= weekStart).ToList();
             var todayCheckIn = week.FirstOrDefault(c => c.Date == today);
             var weekCount = HabitSchedule.WeekCount(week.Select(c => (c.Date, c.Status)), today);
             var due = HabitSchedule.IsDueToday(h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, today, weekCount,
                 todayCheckIn?.Status);
-            var (consistency, suggested) = Queries.LevelUp(h, recent, today, timezone);
+            var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone);
             return new TodayHabitDto(h, due, weekCount,
-                todayCheckIn is null ? null : CheckInDto.From(todayCheckIn), h.Goal?.Title, consistency, suggested,
+                todayCheckIn is null ? null : CheckInDto.From(todayCheckIn), h.Goal?.Title, consistency, suggested, weeksDone,
                 Queries.Streak(h, history, today, timezone));
         })
         .OrderByDescending(h => h.IsDueToday)

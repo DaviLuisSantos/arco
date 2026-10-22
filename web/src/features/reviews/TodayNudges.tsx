@@ -37,7 +37,11 @@ export function TodayNudges({ today }: { today: Today }) {
           to={`/habits/${h.id}`}
           icon={<ChevronsUp className="size-5" aria-hidden />}
           title={`${h.emoji ? `${h.emoji} ` : ''}${h.name}: pronto para o nível ${h.level + 1}`}
-          description={`${formatPercent(h.consistency.rate)} de consistência nos últimos 14 dias.`}
+          description={
+            h.levelUpWeeksDone !== null
+              ? `${h.levelUpWeeksDone} semanas seguidas com ${h.levelUpDaysPerWeek}+ dias.`
+              : `${formatPercent(h.consistency.rate)} de consistência nos últimos 14 dias.`
+          }
         />
       ))}
     </div>

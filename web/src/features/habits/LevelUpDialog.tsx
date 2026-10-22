@@ -25,7 +25,8 @@ export function LevelUpDialog({ habit, open, onClose }: LevelUpDialogProps) {
       title={`Subir para o nível ${habit.level + 1}`}
       description={
         <>
-          Hoje: “{habit.levelDescription}” (mínimo “{habit.minimumDescription}”). Qual é a próxima dose?{' '}
+          Hoje: “{habit.levelDescription}” (mínimo “{habit.minimumDescription}”).{' '}
+          {habit.plannedLevels.length > 0 ? 'Este é o próximo degrau do seu plano:' : 'Qual é a próxima dose?'}{' '}
           <span className="font-semibold text-xp">+50 XP</span>
         </>
       }
@@ -40,24 +41,33 @@ export function LevelUpDialog({ habit, open, onClose }: LevelUpDialogProps) {
         </>
       }
     >
-      <LevelUpForm formId={formId} onSubmit={(input) => levelUp.mutate(input)} />
+      <LevelUpForm formId={formId} habit={habit} onSubmit={(input) => levelUp.mutate(input)} />
     </Dialog>
   )
 }
 
-function LevelUpForm({ formId, onSubmit }: { formId: string; onSubmit: (input: LevelUpInput) => void }) {
-  const [levelDescription, setLevelDescription] = useState('')
-  const [minimumDescription, setMinimumDescription] = useState('')
+function LevelUpForm({
+  formId,
+  habit,
+  onSubmit,
+}: {
+  formId: string
+  habit: Habit
+  onSubmit: (input: LevelUpInput) => void
+}) {
+  const next = habit.plannedLevels[0]
+  const [levelDescription, setLevelDescription] = useState(next?.description ?? '')
+  const [minimumDescription, setMinimumDescription] = useState(next?.minimumDescription ?? '')
   const [errors, setErrors] = useState<{ level?: string; minimum?: string }>({})
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const next = {
+    const found = {
       level: levelDescription.trim() ? undefined : 'Descreva a nova dose.',
       minimum: minimumDescription.trim() ? undefined : 'Descreva o novo mínimo.',
     }
-    setErrors(next)
-    if (next.level || next.minimum) return
+    setErrors(found)
+    if (found.level || found.minimum) return
     onSubmit({ levelDescription: levelDescription.trim(), minimumDescription: minimumDescription.trim() })
   }
 
@@ -69,7 +79,7 @@ function LevelUpForm({ formId, onSubmit }: { formId: string; onSubmit: (input: L
         onChange={(e) => setLevelDescription(e.target.value)}
         placeholder="30 min"
         maxLength={120}
-        autoFocus
+        autoFocus={!next}
         error={errors.level}
       />
       <Input

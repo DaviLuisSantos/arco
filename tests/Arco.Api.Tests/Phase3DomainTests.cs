@@ -125,3 +125,56 @@ public class StreakRulesTests
         Assert.Equal(1, s.Current);
     }
 }
+
+public class LevelUpWeeksRuleTests
+{
+    // 2026-03-02 is a Monday.
+    private static readonly DateOnly Monday = new(2026, 3, 2);
+
+    /// <summary>Check-ins on the first <paramref name="days"/> days (Mon…) of the week starting at <paramref name="week"/>.</summary>
+    private static IEnumerable<(DateOnly, CheckInStatus)> Week(DateOnly week, int days, CheckInStatus status = CheckInStatus.Done) =>
+        Enumerable.Range(0, days).Select(i => (week.AddDays(i), status));
+
+    [Fact]
+    public void Counts_consecutive_weeks_with_enough_days_and_minimum_counts()
+    {
+        var checkIns = Week(Monday, 5).Concat(Week(Monday.AddDays(7), 5, CheckInStatus.Minimum)).Concat(Week(Monday.AddDays(14), 6));
+        // Today = Monday of week 4, nothing yet: the run ends at week 3.
+        Assert.Equal(3, LevelUpSuggestion.QualifyingWeeks(checkIns, 5, Monday, Monday.AddDays(21)));
+    }
+
+    [Fact]
+    public void A_short_week_breaks_the_run()
+    {
+        var checkIns = Week(Monday, 5).Concat(Week(Monday.AddDays(7), 4)).Concat(Week(Monday.AddDays(14), 5));
+        Assert.Equal(1, LevelUpSuggestion.QualifyingWeeks(checkIns, 5, Monday, Monday.AddDays(21)));
+    }
+
+    [Fact]
+    public void Current_week_counts_once_it_qualifies()
+    {
+        var checkIns = Week(Monday, 5).Concat(Week(Monday.AddDays(7), 5)).ToList();
+        // Friday of week 2, with its 5th day done.
+        Assert.Equal(2, LevelUpSuggestion.QualifyingWeeks(checkIns, 5, Monday, Monday.AddDays(11)));
+        // Thursday of week 2: 4 days so far, still pending → only week 1.
+        Assert.Equal(1, LevelUpSuggestion.QualifyingWeeks(checkIns, 5, Monday, Monday.AddDays(10)));
+    }
+
+    [Fact]
+    public void Only_weeks_entirely_at_the_current_level_count()
+    {
+        var checkIns = Week(Monday, 5).Concat(Week(Monday.AddDays(7), 5)).Concat(Week(Monday.AddDays(14), 5));
+        // Level reached on Tuesday of week 2: only week 3 counts.
+        Assert.Equal(1, LevelUpSuggestion.QualifyingWeeks(checkIns, 5, Monday.AddDays(8), Monday.AddDays(21)));
+    }
+
+    [Fact]
+    public void Suggests_when_weeks_are_reached_and_not_snoozed()
+    {
+        var today = Monday.AddDays(21);
+        Assert.True(LevelUpSuggestion.ShouldSuggestWeeks(3, 3, null, today, archived: false));
+        Assert.False(LevelUpSuggestion.ShouldSuggestWeeks(2, 3, null, today, archived: false));
+        Assert.False(LevelUpSuggestion.ShouldSuggestWeeks(3, 3, today.AddDays(1), today, archived: false));
+        Assert.False(LevelUpSuggestion.ShouldSuggestWeeks(3, 3, null, today, archived: true));
+    }
+}

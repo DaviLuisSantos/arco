@@ -90,12 +90,29 @@ public class Habit
     public TimeOnly? ReminderTime { get; set; }
     /// <summary>A dismissed level-up suggestion stays hidden until this date (exclusive).</summary>
     public DateOnly? LevelUpSnoozedUntil { get; set; }
+    /// <summary>
+    /// Level-up rule: suggest after this many weeks in a row with at least <see cref="LevelUpDaysPerWeek"/>
+    /// Done/Minimum days. Both null = the default 80%-in-14-days rule.
+    /// </summary>
+    public int? LevelUpWeeks { get; set; }
+    public int? LevelUpDaysPerWeek { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<HabitLevel> Levels { get; set; } = [];
+    /// <summary>The ladder ahead: the next levels, in order. Leveling up consumes the first one.</summary>
+    public List<HabitPlannedLevel> PlannedLevels { get; set; } = [];
 
     public HabitLevel? CurrentLevel => Levels.Count == 0 ? null : Levels.MaxBy(l => l.Level);
     public int CurrentLevelNumber => CurrentLevel?.Level ?? 1;
+}
+
+public class HabitPlannedLevel
+{
+    public int Id { get; set; }
+    public int HabitId { get; set; }
+    public int Position { get; set; }
+    public string Description { get; set; } = "";
+    public string MinimumDescription { get; set; } = "";
 }
 
 public class HabitLevel

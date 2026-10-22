@@ -91,8 +91,17 @@ export function HabitDetailPage() {
               Pronto para o nível {h.level + 1}?
             </p>
             <p className="mt-1 text-sm text-muted">
-              Você fez a dose completa {h.consistency.done} de {h.consistency.expected} vezes nos últimos 14 dias (
-              {formatPercent(h.consistency.rate)}). Parece que “{h.levelDescription}” ficou fácil.
+              {h.levelUpWeeksDone !== null ? (
+                <>
+                  Você cumpriu {h.levelUpWeeksDone} semanas seguidas com {h.levelUpDaysPerWeek}+ dias.
+                </>
+              ) : (
+                <>
+                  Você fez a dose completa {h.consistency.done} de {h.consistency.expected} vezes nos últimos 14 dias (
+                  {formatPercent(h.consistency.rate)}). Parece que “{h.levelDescription}” ficou fácil.
+                </>
+              )}
+              {h.plannedLevels[0] && <> Próximo degrau: “{h.plannedLevels[0].description}”.</>}
             </p>
           </div>
           <div className="flex gap-2">
@@ -121,15 +130,27 @@ export function HabitDetailPage() {
                 Sequência: <span className="font-semibold text-text">{streakText(h.streak)}</span>
                 {h.streak.best > h.streak.current && ` · recorde ${streakText({ ...h.streak, current: h.streak.best })}`}
               </span>
-              <span
-                className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                title="Só “Feito” conta para a sugestão de subir de nível."
-              >
-                14 dias:{' '}
-                <span className="font-semibold text-text">
-                  {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
+              {h.levelUpWeeksDone !== null && h.levelUpWeeks !== null ? (
+                <span
+                  className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
+                  title={`Sobe depois de ${h.levelUpWeeks} semanas seguidas com ${h.levelUpDaysPerWeek}+ dias (Feito e Mínimo contam).`}
+                >
+                  Semanas com {h.levelUpDaysPerWeek}+ dias:{' '}
+                  <span className="font-semibold text-text">
+                    {Math.min(h.levelUpWeeksDone, h.levelUpWeeks)}/{h.levelUpWeeks}
+                  </span>
                 </span>
-              </span>
+              ) : (
+                <span
+                  className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
+                  title="Só “Feito” conta para a sugestão de subir de nível."
+                >
+                  14 dias:{' '}
+                  <span className="font-semibold text-text">
+                    {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
+                  </span>
+                </span>
+              )}
               <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-muted">
                 <Bell className="size-3" aria-hidden />
                 {h.reminderTime ? `Lembrete às ${h.reminderTime}` : 'Sem lembrete'}
@@ -159,7 +180,7 @@ export function HabitDetailPage() {
           Níveis
         </h2>
         <Card>
-          <LevelTimeline levels={h.levels} current={h.level} />
+          <LevelTimeline levels={h.levels} planned={h.plannedLevels} current={h.level} />
         </Card>
       </section>
 

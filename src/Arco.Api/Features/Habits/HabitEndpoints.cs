@@ -13,20 +13,30 @@ public static class HabitEndpoints
         int? TimesPerWeek,
         string? LevelDescription,
         string? MinimumDescription,
-        string? ReminderTime = null);
+        string? ReminderTime = null,
+        PlannedLevelRequest[]? PlannedLevels = null,
+        int? LevelUpWeeks = null,
+        int? LevelUpDaysPerWeek = null);
 
+    public sealed record PlannedLevelRequest(string? LevelDescription, string? MinimumDescription);
+
+    /// <summary>Both fields optional when the habit has a planned next level (it is used instead).</summary>
     public sealed record LevelUpRequest(string? LevelDescription, string? MinimumDescription);
+
+    private const int MaxPlannedLevels = 10;
 
     public sealed class HabitDetailDto(
         Habit habit,
         IReadOnlyList<CheckInDto> recentCheckIns,
         ConsistencyDto consistency,
         bool levelUpSuggested,
+        int? levelUpWeeksDone,
         StreakDto streak) : HabitDto(habit)
     {
         public IReadOnlyList<CheckInDto> RecentCheckIns { get; } = recentCheckIns;
         public ConsistencyDto Consistency { get; } = consistency;
         public bool LevelUpSuggested { get; } = levelUpSuggested;
+        public int? LevelUpWeeksDone { get; } = levelUpWeeksDone;
         public StreakDto Streak { get; } = streak;
     }
 
@@ -48,7 +58,7 @@ public static class HabitEndpoints
 
     private static async Task<List<HabitDto>> List(AppDbContext db, CancellationToken ct, bool includeArchived = false)
     {
-        var query = db.Habits.AsNoTracking().Include(h => h.Levels).AsQueryable();
+        var query = db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels).AsQueryable();
         if (!includeArchived) query = query.Where(h => h.ArchivedAt == null);
         var habits = await query.ToListAsync(ct);
         return habits
@@ -58,7 +68,8 @@ public static class HabitEndpoints
 
     private static async Task<IResult> Get(int id, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        var habit = await db.Habits.AsNoTracking().Include(h => h.Levels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels)
+            .FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
         var today = await clock.GetTodayAsync(ct);
@@ -69,9 +80,9 @@ public static class HabitEndpoints
             .ToListAsync(ct);
         var from = today.AddDays(-27);
         var checkIns = history.Where(c => c.Date >= from).ToList();
-        var (consistency, suggested) = Queries.LevelUp(habit, checkIns, today, timezone);
+        var (consistency, weeksDone, suggested) = Queries.LevelUp(habit, history, today, timezone);
         return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested,
-            Queries.Streak(habit, history, today, timezone)));
+            weeksDone, Queries.Streak(habit, history, today, timezone)));
     }
 
     /// <summary>Hides the level-up suggestion for <see cref="LevelUpSuggestion.SnoozeDays"/> days.</summary>
@@ -109,7 +120,7 @@ public static class HabitEndpoints
     private static async Task<IResult> Update(int id, HabitRequest? request, AppDbContext db, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
-        var habit = await db.Habits.Include(h => h.Levels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
         var error = await ValidateAsync(request, db, ct);
@@ -128,14 +139,16 @@ public static class HabitEndpoints
 
     private static async Task<IResult> LevelUp(int id, LevelUpRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        var habit = await db.Habits.Include(h => h.Levels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Não é possível subir de nível um hábito arquivado.");
 
-        var description = request?.LevelDescription?.Trim();
-        var minimum = request?.MinimumDescription?.Trim();
+        var planned = habit.PlannedLevels.OrderBy(p => p.Position).ThenBy(p => p.Id).FirstOrDefault();
+        var description = Text.Clean(request?.LevelDescription) ?? planned?.Description;
+        var minimum = Text.Clean(request?.MinimumDescription) ?? planned?.MinimumDescription;
         if (!Text.LengthBetween(description, 1, 120)) return ApiResults.Validation(LevelDescriptionError);
         if (!Text.LengthBetween(minimum, 1, 120)) return ApiResults.Validation(MinimumDescriptionError);
+        if (planned is not null) habit.PlannedLevels.Remove(planned);
 
         var now = clock.UtcNow;
         var newLevel = habit.CurrentLevelNumber + 1;
@@ -177,7 +190,7 @@ public static class HabitEndpoints
 
     private static async Task<IResult> SetArchived(int id, bool archive, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        var habit = await db.Habits.Include(h => h.Levels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
         if (archive) habit.ArchivedAt ??= clock.UtcNow;
@@ -217,6 +230,23 @@ public static class HabitEndpoints
         if (!Text.LengthBetween(r.LevelDescription?.Trim(), 1, 120)) return LevelDescriptionError;
         if (!Text.LengthBetween(r.MinimumDescription?.Trim(), 1, 120)) return MinimumDescriptionError;
 
+        if (r.PlannedLevels is { } plannedLevels)
+        {
+            if (plannedLevels.Length > MaxPlannedLevels) return $"Planeje no máximo {MaxPlannedLevels} níveis à frente.";
+            if (plannedLevels.Any(l => !Text.LengthBetween(l?.LevelDescription?.Trim(), 1, 120)))
+                return "A dose de cada nível planejado deve ter entre 1 e 120 caracteres.";
+            if (plannedLevels.Any(l => !Text.LengthBetween(l?.MinimumDescription?.Trim(), 1, 120)))
+                return "O mínimo de cada nível planejado deve ter entre 1 e 120 caracteres.";
+        }
+
+        if (r.LevelUpWeeks is not null || r.LevelUpDaysPerWeek is not null)
+        {
+            if (r.LevelUpWeeks is not (>= 1 and <= LevelUpSuggestion.MaxRuleWeeks))
+                return $"A regra de subida deve ter de 1 a {LevelUpSuggestion.MaxRuleWeeks} semanas seguidas.";
+            if (r.LevelUpDaysPerWeek is not (>= 1 and <= 7))
+                return "A regra de subida deve ter de 1 a 7 dias por semana.";
+        }
+
         if (Text.Clean(r.ReminderTime) is { } reminder && !TryParseTime(reminder, out _))
             return "O horário do lembrete deve estar no formato HH:mm.";
 
@@ -235,6 +265,20 @@ public static class HabitEndpoints
         habit.FrequencyDays = habit.FrequencyType == FrequencyType.SpecificDays ? r.FrequencyDays!.Order().ToList() : [];
         habit.TimesPerWeek = habit.FrequencyType == FrequencyType.WeeklyTarget ? r.TimesPerWeek : null;
         habit.ReminderTime = Text.Clean(r.ReminderTime) is { } reminder && TryParseTime(reminder, out var time) ? time : null;
+        habit.LevelUpWeeks = r.LevelUpWeeks;
+        habit.LevelUpDaysPerWeek = r.LevelUpWeeks is null ? null : r.LevelUpDaysPerWeek;
+
+        // The ladder ahead is replaced as a whole.
+        habit.PlannedLevels.Clear();
+        foreach (var (level, i) in (r.PlannedLevels ?? []).Select((l, i) => (l, i)))
+        {
+            habit.PlannedLevels.Add(new HabitPlannedLevel
+            {
+                Position = i,
+                Description = level.LevelDescription!.Trim(),
+                MinimumDescription = level.MinimumDescription!.Trim(),
+            });
+        }
     }
 
     /// <summary>Strict "HH:mm" (24h).</summary>
