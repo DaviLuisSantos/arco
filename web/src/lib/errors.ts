@@ -15,6 +15,9 @@ const MESSAGES: Record<string, string> = {
 /** Converte qualquer erro em uma mensagem pt-BR para o usuário. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code === 'network' && !navigator.onLine) {
+      return 'Você está offline. Sem internet, só o check-in funciona.'
+    }
     // validation/conflict: o backend já devolve uma mensagem pt-BR específica.
     if ((error.code === 'validation' || error.code === 'conflict') && error.message) {
       return error.message

@@ -1,9 +1,9 @@
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { setUnauthorizedHandler } from './api/client'
-import { queryClient } from './app/queryClient'
+import { persistOptions, queryClient } from './app/queryClient'
 import { router } from './app/router'
 import { ToastProvider } from './components/ui/Toast'
 import { XpFeedbackProvider } from './features/xp/XpFeedbackProvider'
@@ -19,12 +19,17 @@ setUnauthorizedHandler(() => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={persistOptions}
+      // Check-ins feitos offline antes de fechar o app: envia assim que der.
+      onSuccess={() => void queryClient.resumePausedMutations()}
+    >
       <ToastProvider>
         <XpFeedbackProvider>
           <RouterProvider router={router} />
         </XpFeedbackProvider>
       </ToastProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </StrictMode>,
 )

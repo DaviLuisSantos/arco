@@ -16,7 +16,7 @@ export function TodayPage() {
   const today = useQuery({ queryKey: queryKeys.today, queryFn: todayApi.get })
 
   if (today.isPending) return <Spinner />
-  if (today.isError) return <ErrorState error={today.error} onRetry={() => void today.refetch()} />
+  if (today.isLoadingError) return <ErrorState error={today.error} onRetry={() => void today.refetch()} />
 
   const { date, player, xpToday, cycle, goals, habits } = today.data
   // Hábito já marcado hoje continua na lista principal (ex.: meta semanal recém-batida).

@@ -57,7 +57,7 @@ export function HabitsPage() {
 
       {habits.isPending ? (
         <Spinner />
-      ) : habits.isError ? (
+      ) : habits.isLoadingError ? (
         <ErrorState error={habits.error} onRetry={() => void habits.refetch()} />
       ) : list.length === 0 ? (
         tab === 'active' ? (

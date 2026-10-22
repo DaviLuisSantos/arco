@@ -98,7 +98,7 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
       {step === 'numbers' ? (
         summary.isPending ? (
           <Spinner />
-        ) : summary.isError ? (
+        ) : summary.isLoadingError ? (
           <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />
         ) : (
           <CycleNumbers summary={summary.data} />

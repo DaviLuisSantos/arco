@@ -28,7 +28,7 @@ export function ProfilePage() {
 
       {player.isPending ? (
         <Spinner />
-      ) : player.isError ? (
+      ) : player.isLoadingError ? (
         <ErrorState error={player.error} onRetry={() => void player.refetch()} />
       ) : (
         <>
@@ -99,7 +99,7 @@ function NotificationsSection() {
       </h2>
       {settings.isPending ? (
         <Spinner />
-      ) : settings.isError ? (
+      ) : settings.isLoadingError ? (
         <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
       ) : (
         <NotificationsCard settings={settings.data} />
@@ -130,7 +130,7 @@ function SettingsCard() {
       <Card className="flex flex-col gap-3">
         {settings.isPending ? (
           <Spinner />
-        ) : settings.isError ? (
+        ) : settings.isLoadingError ? (
           <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
         ) : (
           <>

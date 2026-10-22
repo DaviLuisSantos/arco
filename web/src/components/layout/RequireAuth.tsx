@@ -14,7 +14,7 @@ export function RequireAuth() {
       </div>
     )
   }
-  if (auth.isError) {
+  if (auth.isLoadingError) {
     return (
       <div className="grid min-h-dvh place-items-center px-4">
         <ErrorState error={auth.error} onRetry={() => void auth.refetch()} />

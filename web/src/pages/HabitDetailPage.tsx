@@ -49,7 +49,7 @@ export function HabitDetailPage() {
       </div>
     )
   }
-  if (habit.isError) return <ErrorState error={habit.error} onRetry={() => void habit.refetch()} />
+  if (habit.isLoadingError) return <ErrorState error={habit.error} onRetry={() => void habit.refetch()} />
   if (!habit.data) return null
 
   const h = habit.data

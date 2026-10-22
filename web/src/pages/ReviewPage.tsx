@@ -35,7 +35,7 @@ export function ReviewPage() {
   )
 
   if (current.isPending) return <Spinner />
-  if (current.isError) return <ErrorState error={current.error} onRetry={() => void current.refetch()} />
+  if (current.isLoadingError) return <ErrorState error={current.error} onRetry={() => void current.refetch()} />
 
   const s = current.data
   const older = (past.data ?? []).filter((r) => r.weekStart !== s.weekStart)

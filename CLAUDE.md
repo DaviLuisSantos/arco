@@ -27,5 +27,6 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
 - **XP:** é um livro-razão (`XpEvent`). Toda ação que dá ou tira XP grava o evento na mesma transação, e as respostas devolvem `{ xpDelta, player }`.
 - **Erros:** o formato é `{ error, code }`, com mensagens em pt-BR. `/api/*` nunca redireciona: devolve 401 em JSON.
 - **Frontend:** nunca use `new Date("YYYY-MM-DD")`; use `web/src/lib/dates.ts`. O service worker (`web/src/sw.ts`, injectManifest) nunca cacheia `/api`; ele não é registrado em `npm run dev`, então push só funciona no build.
+- **Offline:** os dados offline vêm do cache do TanStack Query persistido no IndexedDB (`app/queryClient.ts`), nunca do service worker. Só o check-in funciona sem rede (`features/checkins/checkInMutation.ts`: pausa, fila ordenada via `scope`, retomada ao reabrir); as outras mutações usam `networkMode: 'always'` e falham na hora. Nas telas, use `isLoadingError` (e não `isError`) para não trocar dados em cache por um erro de refetch. Mudou o formato de uma resposta de forma incompatível? Troque o `buster`.
 - **Testes de integração com tempo:** `new ApiFactory(now)` usa um relógio controlável (`MutableTime`) e um `FakePushSender`; use datas futuras para o cookie de login não expirar.
 - **UI:** todo o texto é em pt-BR.

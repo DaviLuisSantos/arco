@@ -1,9 +1,21 @@
-import { CircleAlert, LoaderCircle } from 'lucide-react'
+import { CircleAlert, CloudOff, LoaderCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { errorMessage } from '../../lib/errors'
+import { useOnline } from '../../lib/useOnline'
 import { Button } from './Button'
 
 export function Spinner({ label = 'Carregando…' }: { label?: string }) {
+  // Offline, uma tela sem dados salvos no aparelho fica esperando a conexão.
+  if (!useOnline()) {
+    return (
+      <div role="status" className="flex flex-col items-center gap-3 py-16 text-center">
+        <CloudOff className="size-8 text-muted" aria-hidden />
+        <p className="max-w-xs text-sm text-muted">
+          Sem internet, e esta tela ainda não tem dados salvos neste aparelho. Ela carrega quando a conexão voltar.
+        </p>
+      </div>
+    )
+  }
   return (
     <div role="status" className="flex items-center justify-center gap-2 py-16 text-muted">
       <LoaderCircle className="size-5 animate-spin" aria-hidden />

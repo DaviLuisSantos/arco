@@ -4,6 +4,7 @@ import { NavLink, Outlet } from 'react-router'
 import { cn } from '../../lib/cn'
 import { syncPushSubscription } from '../../lib/push'
 import { ArcoLogo } from './ArcoLogo'
+import { ConnectionBanner } from './ConnectionBanner'
 
 const NAV = [
   { to: '/', label: 'Hoje', icon: Sun, end: true },
@@ -48,6 +49,7 @@ export function AppLayout() {
 
       <main className="w-full px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] md:pt-8 md:pr-8 md:pb-12 md:pl-68">
         <div className="mx-auto max-w-2xl">
+          <ConnectionBanner />
           <Outlet />
         </div>
       </main>

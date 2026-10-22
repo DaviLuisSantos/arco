@@ -76,16 +76,15 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
 3. **Polimento** — streaks com tolerância (1 falha por semana), conquistas, histórico e estatísticas.
 
-## Pendências
-
-### Uso offline (nível 2: ler e marcar check-in sem internet)
-Hoje o service worker pré-cacheia só o app shell: o app abre offline, mas as telas falham por falta de dados.
-- **Ler offline:** persistir o cache do TanStack Query no aparelho (IndexedDB) e mostrar a última resposta de
-  cada tela com o aviso "Offline — dados de HH:mm". O service worker continua sem cachear `/api`.
-- **Check-in offline:** check-ins feitos sem rede entram numa fila persistida, aparecem na hora (atualização
-  otimista, XP estimado) e são enviados em ordem quando a conexão volta; o servidor recalcula o XP oficial.
-  Cada check-in já leva a própria data e a API aceita até 7 dias para trás, então o envio atrasado cai no dia certo.
-- **Demais ações** (criar/editar hábito, subir de nível, objetivos, revisões) continuam exigindo internet:
-  ficam desabilitadas offline, com aviso.
-- Indicador global de "Offline" / "Sincronizando…".
-- Ao implementar, atualizar a regra do CLAUDE.md: dados podem vir de cache local do app, nunca do service worker.
+## Uso offline
+O app abre e funciona sem internet para **ler** e **marcar check-in**:
+- O cache do app (TanStack Query) fica salvo no aparelho (IndexedDB) por até 7 dias. Sem rede, cada tela mostra a
+  última resposta, com o aviso "Offline — dados de HH:mm" (a hora da resposta mais antiga entre as que estão na tela).
+  O service worker continua sem cachear `/api`.
+- Uma tela que nunca foi aberta com internet neste aparelho avisa que carrega quando a conexão voltar.
+- Check-ins feitos sem rede entram numa fila salva no aparelho (sobrevive a fechar o app), aparecem na hora e são
+  enviados um de cada vez, na ordem, quando a conexão volta; o servidor recalcula o XP oficial. Cada check-in leva a
+  própria data e a API aceita até 7 dias para trás, então o envio atrasado cai no dia certo.
+- As demais ações (criar/editar hábito, subir de nível, objetivos, revisões) precisam de internet: offline, elas
+  falham na hora com o aviso "Você está offline. Sem internet, só o check-in funciona."
+- Indicador global: "Offline" (com quantos check-ins estão na fila) e "Sincronizando…" enquanto a fila é enviada.

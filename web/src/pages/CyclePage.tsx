@@ -26,7 +26,7 @@ export function CyclePage() {
   const todayDate = today.data ?? localToday()
 
   if (current.isPending) return <Spinner />
-  if (current.isError) return <ErrorState error={current.error} onRetry={() => void current.refetch()} />
+  if (current.isLoadingError) return <ErrorState error={current.error} onRetry={() => void current.refetch()} />
 
   return (
     <div className="flex flex-col gap-5">
@@ -99,7 +99,7 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
 
         {goals.isPending ? (
           <Spinner />
-        ) : goals.isError ? (
+        ) : goals.isLoadingError ? (
           <ErrorState error={goals.error} onRetry={() => void goals.refetch()} />
         ) : goalCount === 0 ? (
           <EmptyState

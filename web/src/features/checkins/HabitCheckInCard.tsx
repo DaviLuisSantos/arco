@@ -63,7 +63,8 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               key={status}
               type="button"
               aria-pressed={selected}
-              disabled={checkIn.isPending}
+              // Pausado (offline, ou esperando a fila): deixa trocar de novo.
+              disabled={checkIn.isPending && !checkIn.isPaused}
               onClick={() => handleTap(status)}
               className={cn(
                 'flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-1 text-sm font-semibold transition active:scale-95',
