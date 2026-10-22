@@ -1,0 +1,28 @@
+import { ApiError } from '../api/client'
+
+const MESSAGES: Record<string, string> = {
+  invalid_password: 'Senha incorreta.',
+  unauthorized: 'Sua sessão expirou. Entre novamente.',
+  rate_limited: 'Muitas tentativas. Aguarde um minuto e tente de novo.',
+  not_found: 'Não encontrado. Talvez já tenha sido removido.',
+  active_cycle_exists: 'Já existe um ciclo ativo. Encerre-o antes de começar outro.',
+  conflict: 'Essa ação já foi feita.',
+  internal_error: 'Erro no servidor. Tente novamente em instantes.',
+  network: 'Sem conexão com o servidor. Verifique sua internet.',
+  unavailable: 'Servidor indisponível no momento. Tente de novo em instantes.',
+}
+
+/** Converte qualquer erro em uma mensagem pt-BR para o usuário. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    // validation/conflict: o backend já devolve uma mensagem pt-BR específica.
+    if ((error.code === 'validation' || error.code === 'conflict') && error.message) {
+      return error.message
+    }
+    const known = MESSAGES[error.code]
+    if (known) return known
+    if (error.status >= 500) return MESSAGES.internal_error
+    return error.message || 'Algo deu errado.'
+  }
+  return 'Algo deu errado. Tente novamente.'
+}

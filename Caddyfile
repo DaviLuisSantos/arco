@@ -1,0 +1,4 @@
+{$ARCO_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy arco:8080
+}

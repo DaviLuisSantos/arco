@@ -1,0 +1,26 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+
+# Local data (SQLite + data protection keys)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Web build output copied into the API at build time
+src/Arco.Api/wwwroot/*
+!src/Arco.Api/wwwroot/.gitkeep
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db

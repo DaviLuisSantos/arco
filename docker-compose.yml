@@ -1,0 +1,33 @@
+# Servidor único: Arco (API + SPA) atrás do Caddy (HTTPS automático).
+# Uso: copie .env.example para .env, preencha e rode `docker compose up -d --build`.
+services:
+  arco:
+    build: .
+    restart: unless-stopped
+    environment:
+      Auth__PasswordHash: ${ARCO_PASSWORD_HASH:?defina ARCO_PASSWORD_HASH no .env}
+    volumes:
+      - arco-data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - arco
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ARCO_DOMAIN: ${ARCO_DOMAIN:?defina ARCO_DOMAIN no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  arco-data:
+  caddy-data:
+  caddy-config:
