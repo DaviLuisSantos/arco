@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Archive, ArchiveRestore, ArrowLeft, Bell, ChevronsUp, Flag, Pencil } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowLeft, Bell, ChevronsDown, ChevronsUp, Flag, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
@@ -17,7 +17,7 @@ import { formatPercent, frequencyText, streakText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
 import { useAppMutation } from '../lib/useAppMutation'
 
-type Modal = 'edit' | 'levelUp' | 'archive' | null
+type Modal = 'edit' | 'levelUp' | 'levelDown' | 'archive' | null
 
 export function HabitDetailPage() {
   const id = Number(useParams().id)
@@ -32,6 +32,13 @@ export function HabitDetailPage() {
     successMessage: 'Sugestão adiada por 7 dias.',
   })
   const restore = useAppMutation(() => habitsApi.restore(id), { successMessage: 'Hábito restaurado.' })
+  const levelDown = useAppMutation(() => habitsApi.levelDown(id), {
+    successMessage: 'Voltou um nível. O degrau continua na escada.',
+    onSuccess: close,
+  })
+  const dismissDown = useAppMutation(() => habitsApi.dismissLevelDownSuggestion(id), {
+    successMessage: 'Sugestão adiada por 7 dias.',
+  })
 
   const back = (
     <Link to="/habits" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-text">
@@ -115,6 +122,29 @@ export function HabitDetailPage() {
         </Card>
       )}
 
+      {h.levelDownSuggested && (
+        <Card className="flex flex-col gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 font-semibold">
+              <ChevronsDown className="size-4 text-muted" aria-hidden />
+              Que tal voltar ao nível {h.level - 1}?
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Nas duas últimas semanas você ficou abaixo da metade da meta. Voltar um degrau mantém a constância;
+              “{h.levelDescription}” volta para a escada e você sobe de novo quando estiver firme.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" block loading={dismissDown.isPending} onClick={() => dismissDown.mutate()}>
+              Agora não
+            </Button>
+            <Button variant="secondary" block onClick={() => setModal('levelDown')}>
+              Voltar ao nível {h.level - 1}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="flex flex-col gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Dose atual</p>
@@ -186,6 +216,12 @@ export function HabitDetailPage() {
         </h2>
         <Card>
           <LevelTimeline levels={h.levels} planned={h.plannedLevels} current={h.level} />
+          {!archived && h.level > 1 && (
+            <Button variant="ghost" size="sm" className="mt-3" onClick={() => setModal('levelDown')}>
+              <ChevronsDown className="size-4" aria-hidden />
+              Voltar ao nível {h.level - 1}
+            </Button>
+          )}
         </Card>
       </section>
 
@@ -203,6 +239,15 @@ export function HabitDetailPage() {
 
       <HabitFormDialog open={modal === 'edit'} onClose={close} habit={h} />
       <LevelUpDialog open={modal === 'levelUp'} onClose={close} habit={h} />
+      <ConfirmDialog
+        open={modal === 'levelDown'}
+        onClose={close}
+        onConfirm={() => levelDown.mutate()}
+        loading={levelDown.isPending}
+        title={`Voltar ao nível ${h.level - 1}?`}
+        description={`“${h.levelDescription}” sai do nível atual e volta para o topo da escada planejada. O XP que você ganhou continua.`}
+        confirmLabel={`Voltar ao nível ${h.level - 1}`}
+      />
       <ConfirmDialog
         open={modal === 'archive'}
         onClose={close}

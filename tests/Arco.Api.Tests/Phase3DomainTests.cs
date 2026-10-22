@@ -229,3 +229,45 @@ public class DatabaseBackupRulesTests
         Assert.Null(DatabaseBackup.DateOf("arco.db"));
     }
 }
+
+public class LevelDownSuggestionTests
+{
+    // 2026-03-02 is a Monday; "today" is Wednesday of the third week.
+    private static readonly DateOnly Monday = new(2026, 3, 2);
+    private static readonly DateOnly Today = Monday.AddDays(16);
+
+    private static IEnumerable<(DateOnly, CheckInStatus)> Week(DateOnly week, int days) =>
+        Enumerable.Range(0, days).Select(i => (week.AddDays(i), CheckInStatus.Minimum));
+
+    private static bool Suggest(IEnumerable<(DateOnly, CheckInStatus)> checkIns, int level = 2, DateOnly? reachedOn = null,
+        DateOnly? snoozed = null) =>
+        LevelDownSuggestion.ShouldSuggest(checkIns, 5, level, reachedOn ?? Monday, snoozed, Today, archived: false);
+
+    [Fact]
+    public void Target_comes_from_the_weeks_rule_or_the_frequency()
+    {
+        Assert.Equal(5, LevelDownSuggestion.WeeklyTarget(FrequencyType.Daily, [], null, 5));
+        Assert.Equal(7, LevelDownSuggestion.WeeklyTarget(FrequencyType.Daily, [], null, null));
+        Assert.Equal(3, LevelDownSuggestion.WeeklyTarget(FrequencyType.SpecificDays, [1, 3, 5], null, null));
+        Assert.Equal(4, LevelDownSuggestion.WeeklyTarget(FrequencyType.WeeklyTarget, [], 4, null));
+    }
+
+    [Fact]
+    public void Two_finished_weeks_below_half_suggest_going_back()
+    {
+        // Target 5: 2 days is weak, 3 is not.
+        Assert.True(Suggest(Week(Monday, 2).Concat(Week(Monday.AddDays(7), 1))));
+        Assert.False(Suggest(Week(Monday, 2).Concat(Week(Monday.AddDays(7), 3))));
+        // The current (unfinished) week does not count, even if it is empty.
+        Assert.False(Suggest(Week(Monday, 5).Concat(Week(Monday.AddDays(7), 0))));
+    }
+
+    [Fact]
+    public void Needs_level_2_both_weeks_at_the_current_level_and_no_snooze()
+    {
+        Assert.False(Suggest([], level: 1));
+        Assert.False(Suggest([], reachedOn: Monday.AddDays(1)));
+        Assert.False(Suggest([], snoozed: Today.AddDays(1)));
+        Assert.True(Suggest([], snoozed: Today));
+    }
+}

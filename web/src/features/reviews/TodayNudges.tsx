@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronsUp, NotebookPen } from 'lucide-react'
+import { ChevronRight, ChevronsDown, ChevronsUp, NotebookPen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { Today } from '../../api/types'
@@ -9,9 +9,10 @@ import { formatPercent } from '../../lib/format'
 export function TodayNudges({ today }: { today: Today }) {
   const { weeklyReview, cycle, habits, date } = today
   const suggested = habits.filter((h) => h.levelUpSuggested)
+  const goBack = habits.filter((h) => h.levelDownSuggested)
   const cycleOver = cycle !== null && diffDays(cycle.endDate, date) >= 0
 
-  if (!weeklyReview.due && !cycleOver && suggested.length === 0) return null
+  if (!weeklyReview.due && !cycleOver && suggested.length === 0 && goBack.length === 0) return null
 
   return (
     <div className="flex flex-col gap-2">
@@ -42,6 +43,15 @@ export function TodayNudges({ today }: { today: Today }) {
               ? `${h.levelUpWeeksDone} semanas seguidas com ${h.levelUpDaysPerWeek}+ dias.`
               : `${formatPercent(h.consistency.rate)} de consistência nos últimos 14 dias.`
           }
+        />
+      ))}
+      {goBack.map((h) => (
+        <Nudge
+          key={`down-${h.id}`}
+          to={`/habits/${h.id}`}
+          icon={<ChevronsDown className="size-5" aria-hidden />}
+          title={`${h.emoji ? `${h.emoji} ` : ''}${h.name}: voltar ao nível ${h.level - 1}?`}
+          description="Duas semanas abaixo da metade da meta. Um degrau atrás mantém a constância."
         />
       ))}
     </div>

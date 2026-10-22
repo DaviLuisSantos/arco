@@ -257,4 +257,62 @@ public sealed class Phase3ApiTests : IDisposable
         Assert.Equal("2030-03-04", (string?)list.Single()!["date"]);
         Assert.True((long)list.Single()!["sizeBytes"]! > 0);
     }
+
+    [Fact]
+    public async Task Going_back_a_level_returns_it_to_the_ladder()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var res = await client.PostAsJsonAsync("/api/habits", new
+        {
+            name = "Inglês", frequencyType = "Daily", levelDescription = "15 min", minimumDescription = "5 min",
+            plannedLevels = new[]
+            {
+                new { levelDescription = "25 min", minimumDescription = "5 min" },
+                new { levelDescription = "35 min", minimumDescription = "5 min" },
+            },
+            levelUpWeeks = 3, levelUpDaysPerWeek = 5,
+        });
+        var habitId = (int)(await res.JsonAsync())["id"]!;
+
+        // Level 1 cannot go back.
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"/api/habits/{habitId}/level-down", null)).StatusCode);
+
+        // Monday 2030-03-04: level up along the ladder to "25 min" ("35 min" stays planned).
+        var up = await client.PostAsJsonAsync($"/api/habits/{habitId}/level-up", new { });
+        Assert.Equal(HttpStatusCode.OK, up.StatusCode);
+
+        // Two finished weeks with a single day each, then Monday of the third week.
+        for (var day = 0; day < 14; day++)
+        {
+            if (day % 7 == 0)
+            {
+                var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+                await client.PutAsJsonAsync("/api/checkins", new { habitId, date, status = "Minimum" });
+            }
+            Time.AdvanceDays(1);
+        }
+        Assert.True((bool)(await client.GetJsonAsync($"/api/habits/{habitId}"))["levelDownSuggested"]!);
+        Assert.True((bool)(await client.GetJsonAsync("/api/today"))["habits"]!.AsArray().Single()!["levelDownSuggested"]!);
+
+        // "Agora não" hides it.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await client.PostAsync($"/api/habits/{habitId}/level-down-suggestion/dismiss", null)).StatusCode);
+        Assert.False((bool)(await client.GetJsonAsync($"/api/habits/{habitId}"))["levelDownSuggested"]!);
+
+        var xp = (int)(await client.GetJsonAsync("/api/player"))["totalXp"]!;
+        var down = await client.PostAsync($"/api/habits/{habitId}/level-down", null);
+        Assert.Equal(HttpStatusCode.OK, down.StatusCode);
+        var habit = await down.JsonAsync();
+        Assert.Equal(1, (int)habit["level"]!);
+        Assert.Equal("15 min", (string?)habit["levelDescription"]);
+        var planned = habit["plannedLevels"]!.AsArray();
+        Assert.Equal(["25 min", "35 min"], planned.Select(p => (string)p!["description"]!).ToArray());
+        Assert.Equal([2, 3], planned.Select(p => (int)p!["level"]!).ToArray());
+        // XP already earned stays.
+        Assert.Equal(xp, (int)(await client.GetJsonAsync("/api/player"))["totalXp"]!);
+
+        // The next level-up starts from the level that came back.
+        var again = await client.PostAsJsonAsync($"/api/habits/{habitId}/level-up", new { });
+        Assert.Equal("25 min", (string?)(await again.JsonAsync())["habit"]!["levelDescription"]);
+    }
 }

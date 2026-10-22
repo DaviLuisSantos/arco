@@ -209,6 +209,9 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateOnly?>("LevelDownSnoozedUntil")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("LevelUpDaysPerWeek")
                         .HasColumnType("INTEGER");
 

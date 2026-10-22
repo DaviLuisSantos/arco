@@ -90,6 +90,8 @@ public class Habit
     public TimeOnly? ReminderTime { get; set; }
     /// <summary>A dismissed level-up suggestion stays hidden until this date (exclusive).</summary>
     public DateOnly? LevelUpSnoozedUntil { get; set; }
+    /// <summary>A dismissed level-down suggestion stays hidden until this date (exclusive).</summary>
+    public DateOnly? LevelDownSnoozedUntil { get; set; }
     /// <summary>
     /// Level-up rule: suggest after this many weeks in a row with at least <see cref="LevelUpDaysPerWeek"/>
     /// Done/Minimum days. Both null = the default 80%-in-14-days rule.

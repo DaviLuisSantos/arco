@@ -44,6 +44,12 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
   - A janela termina hoje se hoje já tem check-in; senão, ontem (um "hoje" ainda não marcado não derruba a taxa).
   - Esperado: Daily = 14; SpecificDays = dias da lista na janela; WeeklyTarget = N × 2.
   - "Agora não" esconde a sugestão por 7 dias.
+- **Voltar um nível** (sempre manual): na página do hábito, a partir do nível 2. O nível atual sai do histórico e volta
+  para o topo da escada planejada (a próxima subida já vem com ele). O XP já ganho continua; subir de novo dá XP.
+  - **Sugestão de voltar**: quando as 2 últimas semanas terminadas, inteiras no nível atual, ficaram abaixo da metade
+    da meta semanal (Feito e Mínimo contam). Meta = dias da regra de semanas, se houver; senão a frequência (Diário 7,
+    dias específicos = quantidade de dias, X/semana = X). Ex.: inglês com "5+ dias" → 2 dias ou menos em 2 semanas.
+  - Aparece na tela Hoje e na página do hábito; "Agora não" adia por 7 dias. Nunca aparece junto com a de subir.
 - Lembrete opcional por hábito (horário local): push nos dias em que ele é devido e ainda não foi marcado.
 - Arquivar e restaurar.
 

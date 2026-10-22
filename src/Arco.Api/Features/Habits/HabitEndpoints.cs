@@ -32,12 +32,14 @@ public static class HabitEndpoints
         ConsistencyDto consistency,
         bool levelUpSuggested,
         int? levelUpWeeksDone,
+        bool levelDownSuggested,
         StreakDto streak) : HabitDto(habit)
     {
         public IReadOnlyList<CheckInDto> RecentCheckIns { get; } = recentCheckIns;
         public ConsistencyDto Consistency { get; } = consistency;
         public bool LevelUpSuggested { get; } = levelUpSuggested;
         public int? LevelUpWeeksDone { get; } = levelUpWeeksDone;
+        public bool LevelDownSuggested { get; } = levelDownSuggested;
         public StreakDto Streak { get; } = streak;
     }
 
@@ -50,6 +52,8 @@ public static class HabitEndpoints
         group.MapPut("/{id:int}", Update);
         group.MapPost("/{id:int}/level-up", LevelUp);
         group.MapPost("/{id:int}/level-up-suggestion/dismiss", DismissSuggestion);
+        group.MapPost("/{id:int}/level-down", LevelDown);
+        group.MapPost("/{id:int}/level-down-suggestion/dismiss", DismissLevelDownSuggestion);
         group.MapPost("/{id:int}/archive", Archive);
         group.MapPost("/{id:int}/restore", Restore);
         return api;
@@ -83,7 +87,8 @@ public static class HabitEndpoints
         var checkIns = history.Where(c => c.Date >= from).ToList();
         var (consistency, weeksDone, suggested) = Queries.LevelUp(habit, history, today, timezone);
         return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested,
-            weeksDone, Queries.Streak(habit, history, today, timezone)));
+            weeksDone, !suggested && Queries.LevelDown(habit, history, today, timezone),
+            Queries.Streak(habit, history, today, timezone)));
     }
 
     /// <summary>Hides the level-up suggestion for <see cref="LevelUpSuggestion.SnoozeDays"/> days.</summary>
@@ -95,6 +100,43 @@ public static class HabitEndpoints
         habit.LevelUpSnoozedUntil = (await clock.GetTodayAsync(ct)).AddDays(LevelUpSuggestion.SnoozeDays);
         await db.SaveChangesAsync(ct);
         return Results.NoContent();
+    }
+
+    /// <summary>Hides the level-down suggestion for <see cref="LevelDownSuggestion.SnoozeDays"/> days.</summary>
+    private static async Task<IResult> DismissLevelDownSuggestion(int id, AppDbContext db, AppClock clock, CancellationToken ct)
+    {
+        var habit = await db.Habits.FirstOrDefaultAsync(h => h.Id == id, ct);
+        if (habit is null) return ApiResults.NotFound(HabitNotFound);
+
+        habit.LevelDownSnoozedUntil = (await clock.GetTodayAsync(ct)).AddDays(LevelDownSuggestion.SnoozeDays);
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Goes back one level: the current level leaves the history and returns to the top of the planned ladder,
+    /// so the next level-up starts from it. XP already earned stays.
+    /// </summary>
+    private static async Task<IResult> LevelDown(int id, AppDbContext db, CancellationToken ct)
+    {
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        if (habit is null) return ApiResults.NotFound(HabitNotFound);
+        if (habit.ArchivedAt is not null) return ApiResults.Validation("Não é possível mudar o nível de um hábito arquivado.");
+        if (habit.CurrentLevel is not { Level: >= 2 } current) return ApiResults.Validation("O hábito já está no nível 1.");
+
+        foreach (var planned in habit.PlannedLevels) planned.Position++;
+        var first = habit.PlannedLevels.Count == 0 ? 0 : habit.PlannedLevels.Min(p => p.Position) - 1;
+        habit.PlannedLevels.Add(new HabitPlannedLevel
+        {
+            Position = first,
+            Description = current.Description,
+            MinimumDescription = current.MinimumDescription,
+        });
+        habit.Levels.Remove(current);
+        habit.LevelDownSnoozedUntil = null;
+        habit.LevelUpSnoozedUntil = null;
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new HabitDto(habit));
     }
 
     private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -161,6 +203,7 @@ public static class HabitEndpoints
             ReachedAt = now,
         });
         habit.LevelUpSnoozedUntil = null;
+        habit.LevelDownSnoozedUntil = null;
         db.XpEvents.Add(new XpEvent
         {
             Date = await clock.GetTodayAsync(ct),

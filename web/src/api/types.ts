@@ -128,6 +128,8 @@ export interface HabitDetail extends Habit {
   levelUpSuggested: boolean
   /** Semanas seguidas que contam para a regra de semanas (null na regra padrão). */
   levelUpWeeksDone: number | null
+  /** 2 semanas terminadas, no nível atual, abaixo da metade da meta semanal. */
+  levelDownSuggested: boolean
   streak: Streak
 }
 
@@ -140,6 +142,8 @@ export interface TodayHabit extends Habit {
   consistency: Consistency
   levelUpSuggested: boolean
   levelUpWeeksDone: number | null
+  /** 2 semanas terminadas, no nível atual, abaixo da metade da meta semanal. */
+  levelDownSuggested: boolean
   streak: Streak
 }
 

@@ -44,6 +44,19 @@ public static class Queries
     }
 
     /// <summary>
+    /// Whether to suggest going back one level. <paramref name="checkIns"/> must cover the last
+    /// <see cref="LevelDownSuggestion.Weeks"/> finished weeks.
+    /// </summary>
+    public static bool LevelDown(Habit habit, IEnumerable<CheckIn> checkIns, DateOnly today, string timezone)
+    {
+        var reachedOn = habit.CurrentLevel is { } level ? TimeZones.ToLocalDate(level.ReachedAt, timezone) : today;
+        var target = LevelDownSuggestion.WeeklyTarget(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
+            habit.LevelUpDaysPerWeek);
+        return LevelDownSuggestion.ShouldSuggest(checkIns.Select(c => (c.Date, c.Status)), target,
+            habit.CurrentLevelNumber, reachedOn, habit.LevelDownSnoozedUntil, today, habit.ArchivedAt is not null);
+    }
+
+    /// <summary>
     /// 14-day consistency of a habit (Levels loaded), the weeks counted by its weeks rule (null with the default
     /// rule) and whether to suggest leveling up. <paramref name="checkIns"/> must cover at least
     /// <see cref="LevelUpSuggestion.HistoryDays"/> days ending today.

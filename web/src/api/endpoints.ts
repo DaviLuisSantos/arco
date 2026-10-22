@@ -81,6 +81,9 @@ export const habitsApi = {
   update: (id: number, input: HabitInput) => api.put<Habit>(`/habits/${id}`, input),
   levelUp: (id: number, input: LevelUpInput) => api.post<HabitLevelUpResult>(`/habits/${id}/level-up`, input),
   dismissLevelUpSuggestion: (id: number) => api.post<void>(`/habits/${id}/level-up-suggestion/dismiss`),
+  /** Volta um nível: o atual volta para o topo da escada planejada. Não mexe no XP. */
+  levelDown: (id: number) => api.post<Habit>(`/habits/${id}/level-down`),
+  dismissLevelDownSuggestion: (id: number) => api.post<void>(`/habits/${id}/level-down-suggestion/dismiss`),
   archive: (id: number) => api.post<Habit>(`/habits/${id}/archive`),
   restore: (id: number) => api.post<Habit>(`/habits/${id}/restore`),
 }

@@ -11,6 +11,7 @@ public static class TodayEndpoints
         ConsistencyDto consistency,
         bool levelUpSuggested,
         int? levelUpWeeksDone,
+        bool levelDownSuggested,
         StreakDto streak) : HabitDto(habit)
     {
         public bool IsDueToday { get; } = isDueToday;
@@ -21,6 +22,7 @@ public static class TodayEndpoints
         public ConsistencyDto Consistency { get; } = consistency;
         public bool LevelUpSuggested { get; } = levelUpSuggested;
         public int? LevelUpWeeksDone { get; } = levelUpWeeksDone;
+        public bool LevelDownSuggested { get; } = levelDownSuggested;
         public StreakDto Streak { get; } = streak;
     }
 
@@ -78,6 +80,7 @@ public static class TodayEndpoints
             var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone);
             return new TodayHabitDto(h, due, weekCount,
                 todayCheckIn is null ? null : CheckInDto.From(todayCheckIn), h.Goal?.Title, consistency, suggested, weeksDone,
+                !suggested && Queries.LevelDown(h, history, today, timezone),
                 Queries.Streak(h, history, today, timezone));
         })
         .OrderByDescending(h => h.IsDueToday)

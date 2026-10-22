@@ -148,6 +148,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
     consistency: Consistency;
     levelUpSuggested: boolean;        // ver "Sugestão de subir de nível"
     levelUpWeeksDone: number | null;  // semanas seguidas que contam para a regra de semanas (null na regra padrão)
+    levelDownSuggested: boolean;      // ver "Sugestão de voltar um nível"
     streak: Streak;
   }>;                                 // só não arquivados; ordem: devidos hoje primeiro, depois por nome
   weeklyReview: {
@@ -168,7 +169,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 ## Hábitos
 
 - `GET /api/habits?includeArchived=false` → `Habit[]`
-- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, levelUpWeeksDone: number | null, streak: Streak }` (check-ins dos últimos 28 dias)
+- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, levelUpWeeksDone: number | null, levelDownSuggested: boolean, streak: Streak }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 
   ```
@@ -195,6 +196,9 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
   Campo ausente ou vazio usa o do primeiro nível planejado; havendo nível planejado, ele é consumido (sai da escada).
   Sem nível planejado, os dois campos são obrigatórios.
 - `POST /api/habits/{id}/level-up-suggestion/dismiss` → **204**. Esconde a sugestão por 7 dias.
+- `POST /api/habits/{id}/level-down` → `Habit`. Volta um nível: o nível atual sai do histórico e vira o primeiro nível
+  planejado. Não mexe no XP. Nível 1 ou hábito arquivado → 400.
+- `POST /api/habits/{id}/level-down-suggestion/dismiss` → **204**. Esconde a sugestão de voltar por 7 dias.
 - `POST /api/habits/{id}/archive` → `Habit`; `POST /api/habits/{id}/restore` → `Habit`.
 
 Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado e sem adiamento ativo, e:
@@ -204,6 +208,11 @@ Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado e sem 
   atual, com pelo menos `levelUpDaysPerWeek` dias com Feito ou Mínimo. A semana atual entra assim que bate a meta.
 
 Subir de nível limpa o adiamento.
+
+Sugestão de voltar um nível (`levelDownSuggested`): nível ≥ 2, não arquivado, sem adiamento ativo, sem sugestão de
+subir, e as 2 últimas semanas terminadas (segunda a domingo), inteiras no nível atual, com menos da metade da meta
+semanal em dias com Feito ou Mínimo. Meta = `levelUpDaysPerWeek` se houver; senão Daily 7, SpecificDays = quantidade
+de dias, WeeklyTarget = `timesPerWeek`. Subir ou voltar de nível limpa os adiamentos.
 
 Validação dos hábitos:
 - `name` com 1 a 80 caracteres.
