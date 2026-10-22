@@ -19,18 +19,21 @@ Essa pasta é persistente e fica fora do pacote, então sobrevive a deploys e re
 
 ### 1. Criar o Web App
 
-No portal, vá em **Criar recurso → Aplicativo Web** e preencha:
+No portal, vá em **Create a resource → Web App** e preencha:
 
-- **Grupo de recursos:** o mesmo do Habit-System.
-- **Nome:** por exemplo `arco-davi`, que vira `https://arco-davi.azurewebsites.net`.
-- **Publicar:** Código.
-- **Pilha de runtime:** .NET 10. É irrelevante, porque o pacote é auto-contido.
-- **Sistema operacional:** Windows.
-- **Plano:** o plano Free (F1) existente do Habit-System.
+- **Resource Group:** o mesmo do Habit-System.
+- **Name:** por exemplo `arco-davi`. Se o portal acrescentar um sufixo ao endereço (`arco-davi-abc123.westus3-01.azurewebsites.net`), tudo bem: a esteira lê o endereço real do Azure.
+- **Publish:** Code.
+- **Runtime stack:** .NET 10. É irrelevante, porque o pacote é auto-contido.
+- **Operating System:** Windows.
+- **Region:** a mesma do plano do Habit-System.
+- **Windows Plan:** o plano Free (F1) existente do Habit-System. Confira se **Pricing plan** mostra **Free F1**, não Premium.
+- Aba **Deployment:** deixe a implantação contínua desativada; a esteira é a deste repositório.
+- Aba **Monitoring:** **Enable Application Insights = No**.
 
 ### 2. Segredos do app
 
-No Web App, abra **Configurações → Variáveis de ambiente** e adicione:
+No Web App, abra **Settings → Environment variables → App settings → + Add**, adicione as duas e clique em **Apply**:
 
 | Nome | Valor |
 |---|---|
@@ -41,18 +44,21 @@ Sem `Auth__PasswordHash` o app não sobe em produção, e o smoke test falha.
 
 ### 3. Identidade para o GitHub (OIDC)
 
-1. Crie uma **Identidade Gerenciada Atribuída pelo Usuário**, por exemplo `arco-github`, no mesmo grupo de recursos.
-2. Na identidade, abra **Credenciais federadas → Adicionar → GitHub Actions** e preencha:
-   - **Organização:** `DaviLuisSantos`
-   - **Repositório:** `arco`
-   - **Entidade:** Ambiente
-   - **Ambiente:** `production`
-3. No Web App, abra **Controle de acesso (IAM) → Adicionar atribuição de função** e dê a função
-   **Website Contributor** para a identidade `arco-github`.
+1. Na busca do topo, abra **Managed Identities → Create** e crie a identidade (por exemplo `arco-github`) no mesmo grupo de recursos e região.
+2. Na identidade, abra **Settings → Federated credentials → + Add Credential**, escolha o cenário
+   **GitHub Actions deploying Azure resources** e preencha:
+   - **Organization:** `DaviLuisSantos`
+   - **Repository:** `arco`
+   - **Entity:** Environment
+   - **Environment:** `production`
+   - **Name:** `arco-production`
+3. No Web App, abra **Access control (IAM) → + Add → Add role assignment** e dê a função
+   **Website Contributor** para a identidade: em **Members**, escolha **Managed identity** e
+   selecione `arco-github`. Termine em **Review + assign**.
 
 ### 4. GitHub
 
-Os IDs ficam na página **Visão geral** da identidade (Client ID) e da assinatura:
+O **Client ID** fica no **Overview** da identidade. O **Tenant ID** e o **Subscription ID** também aparecem lá:
 
 ```bash
 gh secret set AZURE_CLIENT_ID --body "<client id da identidade>"
@@ -79,7 +85,7 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 
 ## Backup e logs
 
-- **Banco:** baixe `D:\home\data\arco.db` pelo Kudu, em `https://<app>.scm.azurewebsites.net/DebugConsole`.
+- **Banco:** baixe `D:\home\data\arco.db` pelo Kudu (**Development Tools → Advanced Tools → Debug console**).
   Para uma cópia consistente, pare o app antes ou baixe também os arquivos `-wal`/`-shm`.
-- **Logs:** no Web App, **Monitoramento → Fluxo de log**. Para ver erros de inicialização, ative o log
-  do sistema de arquivos em **Logs do Serviço de Aplicativo**.
+- **Logs:** no Web App, **Monitoring → Log stream**. Para ver erros de inicialização, ative
+  **Application logging (Filesystem)** em **Monitoring → App Service logs**.
