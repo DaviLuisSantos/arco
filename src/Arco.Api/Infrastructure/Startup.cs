@@ -1,3 +1,4 @@
+using Arco.Api.Features.Backup;
 using Arco.Api.Features.Stats;
 using Arco.Api.Features.Achievements;
 using System.Reflection;
@@ -63,6 +64,10 @@ public static class Startup
         services.AddScoped<PushNotifier>();
         services.AddScoped<ReminderDispatcher>();
         if (config.GetValue("Push:SchedulerEnabled", true)) services.AddHostedService<ReminderService>();
+
+        // Backups: one automatic copy per day next to the database, plus downloads on demand.
+        services.AddSingleton(new DatabaseBackup(Path.Combine(dataDir, "backups")));
+        if (config.GetValue("Backup:Enabled", true)) services.AddHostedService<DatabaseBackupService>();
 
         // JSON: camelCase (default for web) + enums as strings.
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -191,6 +196,7 @@ public static class Startup
         secured.MapPlayer();
         secured.MapAchievements();
         secured.MapStats();
+        secured.MapBackup();
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();

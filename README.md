@@ -42,7 +42,8 @@ Requisitos: uma VPS com Docker e um domínio apontando para ela. O HTTPS é obri
 
 O Caddy emite o certificado automaticamente. O banco e as chaves dos cookies ficam no volume `arco-data` (`/data`).
 
-**Backup:** basta copiar `/data/arco.db` do volume, por exemplo:
+**Backup:** o app guarda sozinho uma cópia por dia em `/data/backups` (últimos 14 dias), e o Perfil tem o botão
+"Baixar backup". Para copiar o banco do volume à mão:
 
 ```bash
 docker compose cp arco:/data/arco.db ./backup.db

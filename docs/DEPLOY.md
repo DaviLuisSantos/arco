@@ -85,7 +85,12 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 
 ## Backup e logs
 
-- **Banco:** baixe `D:\home\data\arco.db` pelo Kudu (**Development Tools → Advanced Tools → Debug console**).
-  Para uma cópia consistente, pare o app antes ou baixe também os arquivos `-wal`/`-shm`.
+- **Automático:** o próprio app grava uma cópia consistente por dia em `D:\home\data\backups\arco-AAAA-MM-DD.db`
+  e guarda os últimos 14 dias. A cópia sai na primeira hora em que o app está acordado no dia; com o monitor do
+  `/api/health` ligado, sai logo depois da meia-noite. O Perfil mostra a data da última cópia.
+- **No seu aparelho:** Perfil → **Baixar backup** baixa uma cópia na hora (`GET /api/backup`). Faça de vez em
+  quando: é a única cópia fora do Azure.
+- **Restaurar:** pare o Web App; pelo Kudu (**Development Tools → Advanced Tools → Debug console**), substitua
+  `D:\home\data\arco.db` pelo backup e apague `arco.db-wal` e `arco.db-shm` se existirem; inicie o Web App.
 - **Logs:** no Web App, **Monitoring → Log stream**. Para ver erros de inicialização, ative
   **Application logging (Filesystem)** em **Monitoring → App Service logs**.

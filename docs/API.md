@@ -285,6 +285,13 @@ Validação dos hábitos:
   }
   ```
 
+## Backup
+
+- `GET /api/backup` → arquivo SQLite (`application/vnd.sqlite3`, `arco-AAAA-MM-DD.db`): cópia consistente do banco
+  feita na hora (`VACUUM INTO`).
+- `GET /api/backups` → `Array<{ date: string; sizeBytes: number }>`: as cópias automáticas diárias guardadas no
+  servidor (últimos 14 dias), da mais recente à mais antiga.
+
 ## Conquistas
 
 - `GET /api/achievements` → `Achievement[]`, o catálogo inteiro na ordem de exibição:

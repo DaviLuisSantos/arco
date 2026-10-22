@@ -28,6 +28,7 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Arco", $"Data Source={Path.Combine(_dir, "arco.db")}");
         builder.UseSetting("Push:SchedulerEnabled", "false");
+        builder.UseSetting("Backup:Enabled", "false");
         builder.ConfigureTestServices(services =>
         {
             if (Time is not null) services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));

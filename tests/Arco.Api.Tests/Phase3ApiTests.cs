@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using Arco.Api.Infrastructure;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Arco.Api.Tests;
 
@@ -210,5 +213,48 @@ public sealed class Phase3ApiTests : IDisposable
         var onlyLer = (await client.GetJsonAsync($"/api/checkins?from=2030-03-01&to=2030-03-31&habitId={ler}")).AsArray();
         Assert.Equal(4, onlyLer.Count); // includes the backdated one
         Assert.All(onlyLer, c => Assert.Equal(ler, (int)c!["habitId"]!));
+    }
+
+    [Fact]
+    public async Task Backup_downloads_a_consistent_copy_and_keeps_one_automatic_copy_per_day()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        await client.PostAsJsonAsync("/api/habits",
+            new { name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
+
+        var res = await client.GetAsync("/api/backup");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal("arco-2030-03-04.db", res.Content.Headers.ContentDisposition?.FileNameStar ?? res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        var bytes = await res.Content.ReadAsByteArrayAsync();
+        Assert.Equal("SQLite format 3 ", System.Text.Encoding.ASCII.GetString(bytes, 0, 16));
+
+        // The copy is a working database with the data.
+        var copy = Path.Combine(Path.GetTempPath(), $"arco-test-{Guid.NewGuid():N}.db");
+        await File.WriteAllBytesAsync(copy, bytes);
+        try
+        {
+            await using var conn = new SqliteConnection($"Data Source={copy};Pooling=False");
+            await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT Name FROM Habits";
+            Assert.Equal("Ler", (string?)await cmd.ExecuteScalarAsync());
+        }
+        finally
+        {
+            File.Delete(copy);
+        }
+
+        Assert.Empty((await client.GetJsonAsync("/api/backups")).AsArray());
+        var backup = _factory.Services.GetRequiredService<DatabaseBackup>();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var today = new DateOnly(2030, 3, 4);
+            Assert.NotNull(await backup.CreateDailyAsync(db, today, CancellationToken.None));
+            Assert.Null(await backup.CreateDailyAsync(db, today, CancellationToken.None)); // once a day
+        }
+        var list = (await client.GetJsonAsync("/api/backups")).AsArray();
+        Assert.Equal("2030-03-04", (string?)list.Single()!["date"]);
+        Assert.True((long)list.Single()!["sizeBytes"]! > 0);
     }
 }

@@ -1,4 +1,5 @@
 using Arco.Api.Domain;
+using Arco.Api.Infrastructure;
 
 namespace Arco.Api.Tests;
 
@@ -200,5 +201,31 @@ public class AchievementCatalogTests
         Assert.Equal(1, progress["checkins-1"]);
         Assert.Equal(1, progress["habit-level-2"]);
         Assert.Equal(0, progress["goal-1"]);
+    }
+}
+
+public class DatabaseBackupRulesTests
+{
+    [Fact]
+    public void Keeps_the_last_14_days_and_ignores_other_files()
+    {
+        var today = new DateOnly(2026, 10, 22);
+        var files = new[]
+        {
+            DatabaseBackup.FileName(today),
+            DatabaseBackup.FileName(today.AddDays(-13)), // 14th day: kept
+            DatabaseBackup.FileName(today.AddDays(-14)), // expired
+            DatabaseBackup.FileName(today.AddDays(-40)), // expired
+            "arco.db", "arco-2026-10-22.db.tmp", "notes.txt",
+        };
+        Assert.Equal(["arco-2026-10-08.db", "arco-2026-09-12.db"], DatabaseBackup.Expired(files, today));
+    }
+
+    [Fact]
+    public void Reads_the_date_from_the_file_name()
+    {
+        Assert.Equal(new DateOnly(2026, 10, 22), DatabaseBackup.DateOf("arco-2026-10-22.db"));
+        Assert.Null(DatabaseBackup.DateOf("arco-2026-13-40.db"));
+        Assert.Null(DatabaseBackup.DateOf("arco.db"));
     }
 }

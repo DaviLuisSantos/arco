@@ -1,6 +1,7 @@
 import { api, ApiError } from './client'
 import type {
   Achievement,
+  BackupFile,
   CheckIn,
   CheckInInput,
   CheckInResult,
@@ -103,6 +104,10 @@ export const goalsApi = {
   toggleMilestone: (id: number, milestoneId: number) =>
     api.post<GoalResult>(`/goals/${id}/milestones/${milestoneId}/toggle`),
   complete: (id: number) => api.post<GoalResult>(`/goals/${id}/complete`),
+}
+
+export const backupApi = {
+  list: () => api.get<BackupFile[]>('/backups'),
 }
 
 export const statsApi = {

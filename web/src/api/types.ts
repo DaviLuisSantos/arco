@@ -268,6 +268,12 @@ export interface Stats {
   recent: { from: string; to: string; xp: number; checkIns: CheckInTotals; habits: HabitPeriodStats[] }
 }
 
+/** Cópia automática do banco guardada no servidor. */
+export interface BackupFile {
+  date: string
+  sizeBytes: number
+}
+
 export interface CheckInTotals {
   done: number
   minimum: number
