@@ -27,6 +27,11 @@ dotnet tool run dotnet-ef migrations add <Nome> --project src/Arco.Api --output-
 
 As migrations são aplicadas na inicialização. Se uma falhar, o app não sobe.
 
+## Deploy no Azure (App Service Free)
+
+A esteira do GitHub Actions publica a cada push na `main`. A configuração única (Web App,
+identidade OIDC, segredos) e os limites do plano Free estão em [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Deploy (um servidor)
 
 Requisitos: uma VPS com Docker e um domínio apontando para ela. O HTTPS é obrigatório para o PWA e para as notificações push.

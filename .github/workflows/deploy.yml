@@ -1,0 +1,119 @@
+# CI em todo PR; em push na main também publica no Azure App Service (Windows, plano Free).
+# Configuração e passos manuais: docs/DEPLOY.md.
+name: CI / Deploy Azure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+  # Plano Free/Shared do Windows só roda processos 32 bits. Auto-contido: não depende
+  # do runtime .NET instalado no App Service.
+  RUNTIME: win-x86
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Web — install, lint, build
+        working-directory: web
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: API — test
+        run: dotnet test --configuration Release
+
+      - name: API — publish (com o web em wwwroot)
+        run: |
+          cp -r web/dist/. src/Arco.Api/wwwroot/
+          dotnet publish src/Arco.Api/Arco.Api.csproj -c Release -r ${{ env.RUNTIME }} --self-contained true -o publish
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: arco
+          path: publish
+          retention-days: 7
+
+  deploy:
+    needs: build
+    # Pulado até as variáveis do Azure serem configuradas (docs/DEPLOY.md).
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    permissions:
+      id-token: write # login OIDC no Azure
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arco
+          path: publish
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Configuração que não é segredo. Auth__PasswordHash e Push__Subject ficam só no portal.
+      # O banco, as chaves de cookie e o vapid.json ficam em D:\home\data (persistente, fora do pacote).
+      - name: App settings
+        run: |
+          az webapp config appsettings set \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --output none \
+            --settings \
+              ASPNETCORE_ENVIRONMENT=Production \
+              "ConnectionStrings__Arco=Data Source=D:\\home\\data\\arco.db"
+          az webapp config set \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --name "${{ vars.AZURE_WEBAPP_NAME }}" \
+            --output none \
+            --use-32bit-worker-process true \
+            --http20-enabled true \
+            --min-tls-version 1.2 \
+            --ftps-state Disabled
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: publish
+
+      - name: Smoke test
+        run: |
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/api/health"
+          for i in $(seq 1 12); do
+            body=$(curl -fsS --max-time 20 "$url") && { echo "$body"; exit 0; }
+            echo "Tentativa $i falhou; aguardando..."
+            sleep 10
+          done
+          echo "::error::$url não respondeu. Veja o log stream do App Service (Auth__PasswordHash configurado?)."
+          exit 1
