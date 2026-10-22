@@ -59,6 +59,20 @@ public static class AchievementService
         return reached.Select(x => ToDto(x.Definition, x.Progress, now)).ToList();
     }
 
+    /// <summary>
+    /// Takes back achievements that no longer hold. Only called when data is deleted (a cycle or a goal): undoing a
+    /// check-in never revokes an achievement.
+    /// </summary>
+    public static async Task RevokeUnmetAsync(AppDbContext db, AppClock clock, CancellationToken ct)
+    {
+        var stats = await StatsAsync(db, clock, ct);
+        var unmet = AchievementCatalog.Evaluate(stats)
+            .Where(x => x.Progress < x.Definition.Target)
+            .Select(x => x.Definition.Key)
+            .ToList();
+        await db.Achievements.Where(a => unmet.Contains(a.Key)).ExecuteDeleteAsync(ct);
+    }
+
     public static async Task<AchievementStats> StatsAsync(AppDbContext db, AppClock clock, CancellationToken ct)
     {
         var today = await clock.GetTodayAsync(ct);

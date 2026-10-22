@@ -2,6 +2,7 @@ import type { Cycle } from '../../api/types'
 import { Card } from '../../components/ui/Card'
 import { formatFullDate } from '../../lib/dates'
 import { CYCLE_PROMPTS } from '../reviews/review-answers'
+import { DeleteCycleButton } from './DeleteCycleButton'
 import { ReviewAnswersView } from '../reviews/ReviewQuestions'
 
 export function PastCycles({ cycles }: { cycles: Cycle[] }) {
@@ -32,6 +33,9 @@ export function PastCycles({ cycles }: { cycles: Cycle[] }) {
               ) : (
                 <p className="mt-2 text-sm text-muted italic">Sem revisão.</p>
               )}
+              <div className="mt-2 -mb-2 flex justify-end">
+                <DeleteCycleButton cycle={c} />
+              </div>
             </Card>
           </li>
         ))}

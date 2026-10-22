@@ -349,4 +349,77 @@ public sealed class Phase3ApiTests : IDisposable
         Assert.Equal(["5 min", "10 min"], planned.Select(p => (string)p!["minimumDescription"]!).ToArray());
         Assert.Equal([2, 3], planned.Select(p => (int)p!["level"]!).ToArray());
     }
+
+    [Fact]
+    public async Task Deleting_a_cycle_takes_back_its_xp_and_the_achievements_that_depended_on_it()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        async Task<int> XpAsync() => (int)(await client.GetJsonAsync("/api/player"))["totalXp"]!;
+
+        // A habit with one check-in: its XP must survive the deletion.
+        var habitRes = await client.PostAsJsonAsync("/api/habits",
+            new { name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
+        var habitId = (int)(await habitRes.JsonAsync())["id"]!;
+        await client.PutAsJsonAsync("/api/checkins", new { habitId, date = "2030-03-04", status = "Done" });
+        var before = await XpAsync();
+        Assert.Equal(10, before);
+
+        // A cycle with a milestones goal (one milestone done), the habit linked to it, then closed.
+        var cycleId = (int)(await (await client.PostAsJsonAsync("/api/cycles", new { name = "Engano" })).JsonAsync())["id"]!;
+        var goal = await (await client.PostAsJsonAsync("/api/goals",
+            new { cycleId, title = "Projeto", type = "Milestones", milestones = new[] { "A", "B" } })).JsonAsync();
+        var goalId = (int)goal["id"]!;
+        var milestoneId = (int)goal["milestones"]![0]!["id"]!;
+        await client.PostAsync($"/api/goals/{goalId}/milestones/{milestoneId}/toggle", null);
+        await client.PutAsJsonAsync($"/api/habits/{habitId}", new
+        {
+            name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min", goalId,
+        });
+        var complete = await client.PostAsJsonAsync($"/api/cycles/{cycleId}/complete", new { wins = "nada" });
+        Assert.Equal(HttpStatusCode.OK, complete.StatusCode);
+        Assert.Equal(before + 25 + 100, await XpAsync());
+        var achievements = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.NotNull(achievements.Single(a => (string?)a!["key"] == "cycle-1")!["unlockedAt"]);
+
+        // Deleting it takes back the milestone and the cycle XP, and the "Ciclo fechado" achievement.
+        var delete = await client.DeleteAsync($"/api/cycles/{cycleId}");
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = await delete.JsonAsync();
+        Assert.Equal(-125, (int)result["xpDelta"]!);
+        Assert.Equal(before, (int)result["player"]!["totalXp"]!);
+        Assert.Equal(before, await XpAsync());
+
+        achievements = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.Null(achievements.Single(a => (string?)a!["key"] == "cycle-1")!["unlockedAt"]);
+        Assert.NotNull(achievements.Single(a => (string?)a!["key"] == "checkins-1")!["unlockedAt"]);
+
+        // The cycle and its goal are gone; the habit stays, unlinked.
+        Assert.Empty((await client.GetJsonAsync("/api/cycles")).AsArray());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/goals/{goalId}")).StatusCode);
+        var habit = await client.GetJsonAsync($"/api/habits/{habitId}");
+        Assert.Null(habit["goalId"]);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/cycles/{cycleId}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Deleting_a_goal_takes_back_its_xp()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var cycleId = (int)(await (await client.PostAsJsonAsync("/api/cycles", new { name = "Ciclo" })).JsonAsync())["id"]!;
+        var goal = await (await client.PostAsJsonAsync("/api/goals",
+            new { cycleId, title = "Correr 10 km", type = "Numeric", unit = "km", startValue = 3, targetValue = 10 })).JsonAsync();
+        var goalId = (int)goal["id"]!;
+
+        // Reaching the target completes it (+150).
+        var progress = await client.PostAsJsonAsync($"/api/goals/{goalId}/progress", new { value = 10 });
+        Assert.Equal(150, (int)(await progress.JsonAsync())["xpDelta"]!);
+
+        var delete = await client.DeleteAsync($"/api/goals/{goalId}");
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = await delete.JsonAsync();
+        Assert.Equal(-150, (int)result["xpDelta"]!);
+        Assert.Equal(0, (int)result["player"]!["totalXp"]!);
+        Assert.Null((await client.GetJsonAsync("/api/achievements")).AsArray()
+            .Single(a => (string?)a!["key"] == "goal-1")!["unlockedAt"]);
+    }
 }

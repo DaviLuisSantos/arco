@@ -127,11 +127,22 @@ public static class GoalEndpoints
         return Results.Ok(await Queries.ToGoalDtoAsync(db, goal, ct));
     }
 
-    private static async Task<IResult> Delete(int id, AppDbContext db, CancellationToken ct)
+    /// <summary>
+    /// Deletes the goal and takes back the XP it gave (completion and milestones). Habits linked to it stay, unlinked;
+    /// milestones and updates go with it.
+    /// </summary>
+    private static async Task<IResult> Delete(int id, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        // FK actions: habits.GoalId → NULL, milestones/updates cascade, XP events keep their XP.
-        var deleted = await db.Goals.Where(g => g.Id == id).ExecuteDeleteAsync(ct);
-        return deleted == 0 ? ApiResults.NotFound(NotFound) : Results.NoContent();
+        var goal = await db.Goals.FirstOrDefaultAsync(g => g.Id == id, ct);
+        if (goal is null) return ApiResults.NotFound(NotFound);
+
+        var events = await db.XpEvents.Where(e => e.GoalId == id).ToListAsync(ct);
+        db.XpEvents.RemoveRange(events);
+        db.Goals.Remove(goal);
+        await db.SaveChangesAsync(ct);
+        await AchievementService.RevokeUnmetAsync(db, clock, ct);
+
+        return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
     }
 
     private static async Task<IResult> Progress(int id, ProgressRequest? r, AppDbContext db, AppClock clock, CancellationToken ct)

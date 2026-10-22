@@ -98,13 +98,16 @@ export const cyclesApi = {
   update: (id: number, input: CycleUpdateInput) => api.put<Cycle>(`/cycles/${id}`, input),
   summary: (id: number) => api.get<CycleSummary>(`/cycles/${id}/summary`),
   complete: (id: number, input: CycleCompleteInput) => api.post<CycleCompleteResult>(`/cycles/${id}/complete`, input),
+  /** Apaga o ciclo (ativo ou encerrado), seus objetivos e o XP que eles deram. */
+  remove: (id: number) => api.delete<XpResult>(`/cycles/${id}`),
 }
 
 export const goalsApi = {
   list: (cycleId?: number) => api.get<Goal[]>(cycleId ? `/goals?cycleId=${cycleId}` : '/goals'),
   create: (input: GoalInput) => api.post<Goal>('/goals', input),
   update: (id: number, input: GoalUpdateInput) => api.put<Goal>(`/goals/${id}`, input),
-  remove: (id: number) => api.delete<void>(`/goals/${id}`),
+  /** Também tira o XP que o objetivo deu (conclusão e marcos). */
+  remove: (id: number) => api.delete<XpResult>(`/goals/${id}`),
   progress: (id: number, input: GoalProgressInput) => api.post<GoalResult>(`/goals/${id}/progress`, input),
   toggleMilestone: (id: number, milestoneId: number) =>
     api.post<GoalResult>(`/goals/${id}/milestones/${milestoneId}/toggle`),

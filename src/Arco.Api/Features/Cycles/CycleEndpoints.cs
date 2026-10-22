@@ -33,6 +33,7 @@ public static class CycleEndpoints
         group.MapPut("/{id:int}", Update);
         group.MapGet("/{id:int}/summary", Summary);
         group.MapPost("/{id:int}/complete", Complete);
+        group.MapDelete("/{id:int}", Delete);
         return api;
     }
 
@@ -168,4 +169,26 @@ public static class CycleEndpoints
     }
 
     private static string Truncate(string s) => s.Length <= 200 ? s : s[..200];
+
+    /// <summary>
+    /// Deletes a cycle (active or completed) with its goals, milestones and updates, and takes back all the XP they
+    /// gave: the end-of-cycle review, completed goals and milestones. For cycles created or closed by mistake.
+    /// Habits stay (they do not belong to cycles), unlinked from the deleted goals.
+    /// </summary>
+    private static async Task<IResult> Delete(int id, AppDbContext db, AppClock clock, CancellationToken ct)
+    {
+        var cycle = await db.Cycles.Include(c => c.Goals).FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (cycle is null) return ApiResults.NotFound("Ciclo não encontrado.");
+
+        var goalIds = cycle.Goals.Select(g => g.Id).ToList();
+        var events = await db.XpEvents
+            .Where(e => e.CycleId == id || (e.GoalId != null && goalIds.Contains(e.GoalId.Value)))
+            .ToListAsync(ct);
+        db.XpEvents.RemoveRange(events);
+        db.Cycles.Remove(cycle);
+        await db.SaveChangesAsync(ct);
+        await AchievementService.RevokeUnmetAsync(db, clock, ct);
+
+        return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
+    }
 }

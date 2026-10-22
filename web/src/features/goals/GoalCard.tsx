@@ -103,7 +103,7 @@ export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
         onConfirm={() => remove.mutate()}
         loading={remove.isPending}
         title="Excluir objetivo?"
-        description="Os hábitos ligados a ele continuam, só perdem o vínculo. Essa ação não pode ser desfeita."
+        description="O XP que ele deu (conclusão e marcos) sai do seu total. Os hábitos ligados a ele continuam, só perdem o vínculo. Essa ação não pode ser desfeita."
         confirmLabel="Excluir"
         danger
       />

@@ -99,7 +99,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Description).HasMaxLength(200);
             e.HasIndex(x => x.Date);
             e.HasOne(x => x.CheckIn).WithMany().HasForeignKey(x => x.CheckInId).OnDelete(DeleteBehavior.Cascade);
-            // Earned XP survives deletion of the thing that produced it.
+            // Deleting a cycle or a goal removes its XP events explicitly (Features/Cycles, Features/Goals);
+            // SetNull keeps the ledger valid for anything else.
             e.HasOne<Habit>().WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Goal>().WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Milestone>().WithMany().HasForeignKey(x => x.MilestoneId).OnDelete(DeleteBehavior.SetNull);

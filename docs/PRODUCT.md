@@ -15,6 +15,9 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Duração padrão de 6 semanas (42 dias), configurável na criação (1–12 semanas).
 - No máximo **um ciclo ativo** por vez.
 - Tem de 0 a 3 objetivos (o limite é recomendação de UI, não regra rígida do backend).
+- **Excluir um ciclo** (ativo ou encerrado, para os criados ou encerrados por engano) apaga seus objetivos e marcos e
+  tira todo o XP que eles deram, inclusive o do encerramento. Os hábitos continuam. Excluir um objetivo também tira o
+  XP dele (conclusão e marcos).
 - Encerrar o ciclo é uma revisão guiada: primeiro os números do ciclo (objetivos, consistência por hábito, XP, revisões semanais), depois três perguntas (o que funcionou, o que não funcionou, o que levar para o próximo) e notas livres. Dá XP.
 - Quando o ciclo chega ao fim, a tela Hoje e a do ciclo convidam para a revisão (o encerramento continua manual).
 - Hábitos **não** pertencem ao ciclo: atravessam ciclos.
@@ -66,8 +69,9 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Aparece como 🔥 N no card da tela Hoje e com o recorde na página do hábito.
 
 ### Conquistas
-- Medalhas que desbloqueiam sozinhas a partir do que você já faz. **Não dão XP** e nunca são perdidas (desfazer um
-  check-in não tira uma conquista).
+- Medalhas que desbloqueiam sozinhas a partir do que você já faz. **Não dão XP** e não se perdem no uso normal
+  (desfazer um check-in não tira uma conquista). Só a exclusão de dados (ciclo ou objetivo) retira as conquistas que
+  deixaram de valer.
 - Catálogo (16): sequência de 7, 30 e 100 dias; meta semanal 4 e 12 semanas seguidas; 1º, 100 e 500 check-ins
   (Feito ou Mínimo); 10 dias salvos com o Mínimo; hábito no nível 2 e no 5; jogador nível 5 e 10; 1º objetivo
   concluído; 1º ciclo encerrado; 4 revisões semanais. Contam todos os hábitos, inclusive arquivados.

@@ -9,6 +9,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ProgressBar } from '../components/ui/ProgressBar'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { CompleteCycleDialog } from '../features/cycle/CompleteCycleDialog'
+import { DeleteCycleButton } from '../features/cycle/DeleteCycleButton'
 import { CreateCycleForm } from '../features/cycle/CreateCycleForm'
 import { PastCycles } from '../features/cycle/PastCycles'
 import { CreateGoalDialog } from '../features/goals/CreateGoalDialog'
@@ -121,6 +122,9 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
       <Button variant="secondary" size="lg" onClick={() => setModal('complete')}>
         Encerrar ciclo
       </Button>
+      <div className="flex justify-center">
+        <DeleteCycleButton cycle={cycle} />
+      </div>
 
       <CreateGoalDialog cycle={cycle} open={modal === 'goal'} onClose={close} />
       <CompleteCycleDialog cycle={cycle} open={modal === 'complete'} onClose={close} />

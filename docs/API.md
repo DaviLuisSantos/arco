@@ -281,6 +281,10 @@ Validação dos hábitos:
 - `POST /api/cycles/{id}/complete` `{ reviewNotes?, wins?, obstacles?, next? }` → `{ cycle, xpDelta: 100, player }`.
   - `reviewNotes` até 4000 caracteres; `wins`, `obstacles` e `next` até 2000 cada. Todos opcionais.
   - Ciclo já concluído → 409 `conflict`.
+- `DELETE /api/cycles/{id}` → `{ xpDelta, player, achievements: [] }` (xpDelta ≤ 0). Exclui o ciclo, ativo ou
+  encerrado, com seus objetivos, marcos e atualizações, e remove todo o XP que eles deram (encerramento, objetivos
+  concluídos e marcos). Os hábitos continuam, com `goalId = null` nos que estavam ligados. Conquistas que deixam de
+  valer são retiradas. Inexistente → 404.
 
 ## Objetivos
 
@@ -295,7 +299,9 @@ Validação dos hábitos:
   - `Numeric` exige `startValue` e `targetValue`, que devem ser diferentes.
   - `Milestones` exige de 1 a 20 marcos.
 - `PUT /api/goals/{id}` → `Goal`. Corpo: `{ title, description?, unit?, targetValue?, deadline? }`.
-- `DELETE /api/goals/{id}` → **204**. Hábitos ligados a ele ficam com `goalId = null`.
+- `DELETE /api/goals/{id}` → `{ xpDelta, player, achievements: [] }` (xpDelta ≤ 0). Remove o XP que o objetivo deu
+  (conclusão e marcos); hábitos ligados a ele ficam com `goalId = null`; conquistas que deixam de valer são retiradas.
+  Inexistente → 404.
 - `POST /api/goals/{id}/progress` `{ value, note? }`, só para Numeric → `{ goal, xpDelta, player }`.
   - Atingir a meta conclui o objetivo automaticamente e dá +150 XP.
   - Meta crescente: concluído quando `value ≥ target`. Meta decrescente: concluído quando `value ≤ target`.
@@ -350,7 +356,8 @@ Validação dos hábitos:
   ```
 
   Desbloqueio: depois de cada ação que dá XP (a resposta traz as novas em `achievements`) e na subida da API (em
-  silêncio, para dados antigos). Nunca é revogada e não dá XP. Catálogo em `Domain/AchievementCatalog.cs`.
+  silêncio, para dados antigos). Não dá XP. Desfazer um check-in nunca a revoga; só excluir dados (um ciclo ou um
+  objetivo) retira as conquistas que deixaram de valer. Catálogo em `Domain/AchievementCatalog.cs`.
 
 ## Revisão semanal
 
