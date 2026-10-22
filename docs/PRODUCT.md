@@ -69,6 +69,16 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
   bloqueadas em cinza com o progresso.
 - O que já tinha sido conquistado antes de as conquistas existirem desbloqueia em silêncio.
 
+### Histórico e estatísticas
+- **Histórico do hábito** (página do hábito): calendário mês a mês (‹ ›), da semana de segunda a domingo, com o resumo
+  do mês (Feito, Mínimo, Não fiz). Vai do mês de início do hábito até o mês atual.
+- **Estatísticas** (link no Perfil):
+  - gráfico das últimas 12 semanas, uma medida por vez: **Consistência** (dias com Feito ou Mínimo ÷ dias esperados,
+    somando os hábitos) ou **XP**. Tocar numa barra mostra os números da semana; a semana atual vem hachurada e conta
+    só até hoje;
+  - últimos 30 dias: XP, totais de check-in e consistência por hábito (mesma visão das revisões).
+- Os esperados usam a frequência atual e começam na criação do hábito ou num check-in retroativo anterior a ela.
+
 ### Check-in
 - Um por hábito por dia: `Done` (Feito), `Minimum` (Mínimo) ou `Missed` (Não fiz).
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.

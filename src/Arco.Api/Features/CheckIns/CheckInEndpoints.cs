@@ -92,7 +92,7 @@ public static class CheckInEndpoints
         return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
     }
 
-    private static async Task<IResult> List(DateOnly? from, DateOnly? to, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> List(DateOnly? from, DateOnly? to, int? habitId, AppDbContext db, CancellationToken ct)
     {
         if (from is not { } start || to is not { } end)
             return ApiResults.Validation("Informe o intervalo de datas (from e to, no formato AAAA-MM-DD).");
@@ -101,7 +101,7 @@ public static class CheckInEndpoints
             return ApiResults.Validation($"O intervalo máximo é de {MaxRangeDays} dias.");
 
         var checkIns = await db.CheckIns.AsNoTracking()
-            .Where(c => c.Date >= start && c.Date <= end)
+            .Where(c => c.Date >= start && c.Date <= end && (habitId == null || c.HabitId == habitId))
             .OrderBy(c => c.Date).ThenBy(c => c.HabitId)
             .Select(c => new CheckInDto(c.HabitId, c.Date, c.Status, c.Xp))
             .ToListAsync(ct);

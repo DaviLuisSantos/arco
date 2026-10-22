@@ -25,6 +25,7 @@ import type {
   PushConfig,
   Settings,
   SettingsInput,
+  Stats,
   Today,
   WeeklyReview,
   WeeklyReviewInput,
@@ -66,8 +67,10 @@ export const todayApi = {
 export const checkInsApi = {
   upsert: (input: CheckInInput) => api.put<CheckInResult>('/checkins', input),
   remove: (habitId: number, date: string) => api.delete<XpResult>(`/checkins/${habitId}/${date}`),
-  list: (from: string, to: string) =>
-    api.get<CheckIn[]>(`/checkins?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  list: (from: string, to: string, habitId?: number) =>
+    api.get<CheckIn[]>(
+      `/checkins?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${habitId ? `&habitId=${habitId}` : ''}`,
+    ),
 }
 
 export const habitsApi = {
@@ -100,6 +103,10 @@ export const goalsApi = {
   toggleMilestone: (id: number, milestoneId: number) =>
     api.post<GoalResult>(`/goals/${id}/milestones/${milestoneId}/toggle`),
   complete: (id: number) => api.post<GoalResult>(`/goals/${id}/complete`),
+}
+
+export const statsApi = {
+  get: () => api.get<Stats>('/stats'),
 }
 
 export const achievementsApi = {

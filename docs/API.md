@@ -110,7 +110,7 @@ interface HabitPeriodStats {
   level: number;                       // nível atual
   levelsGained: number;                // níveis alcançados no período
   done: number; minimum: number; missed: number;
-  expected: number;                    // pela frequência atual, a partir da criação do hábito
+  expected: number;                    // pela frequência atual, a partir da criação do hábito (ou de um check-in anterior a ela)
   rate: number;                        // (done + minimum) / expected, 0..1
   levelUpSuggested: boolean;           // sugestão de subir de nível hoje
 }
@@ -163,7 +163,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
   - Data futura ou mais de 7 dias atrás → 400 `validation`.
   - Hábito arquivado → 400 `validation`.
 - `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404.
-- `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD` → `CheckIn[]` (intervalo máximo de 366 dias).
+- `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `CheckIn[]` (intervalo máximo de 366 dias; `habitId` opcional filtra um hábito).
 
 ## Hábitos
 
@@ -264,6 +264,26 @@ Validação dos hábitos:
 ## Player
 
 - `GET /api/player` → `Player & { recentEvents: Array<{ date, amount, source: XpSource, description }> }` (últimos 20).
+
+## Estatísticas
+
+- `GET /api/stats` →
+
+  ```ts
+  {
+    weeks: Array<{                     // 12 semanas (segunda a domingo), da mais antiga à atual
+      weekStart: string; weekEnd: string;
+      xp: number;                      // soma dos XpEvents da semana
+      done: number; minimum: number; missed: number;
+      expected: number;                // soma dos esperados por hábito (mesma regra das revisões)
+      rate: number;                    // (done + minimum) / expected, 0..1; 0 quando expected = 0
+    }>;                                // a semana atual conta só até hoje
+    recent: {                          // últimos 30 dias, terminando hoje
+      from: string; to: string; xp: number;
+      checkIns: CheckInTotals; habits: HabitPeriodStats[];
+    };
+  }
+  ```
 
 ## Conquistas
 

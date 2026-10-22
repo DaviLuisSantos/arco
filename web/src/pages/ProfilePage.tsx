@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, LogOut, NotebookPen, Sparkles } from 'lucide-react'
+import { ChartColumn, ChevronRight, LogOut, NotebookPen, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { authApi, playerApi, settingsApi } from '../api/endpoints'
@@ -45,6 +45,14 @@ export function ProfilePage() {
       <AchievementsSection />
       {player.data && <RecentEvents events={player.data.recentEvents} />}
 
+      <Link
+        to="/stats"
+        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
+      >
+        <ChartColumn className="size-5 text-accent" aria-hidden />
+        <span className="flex-1 font-semibold">Estatísticas</span>
+        <ChevronRight className="size-5 text-muted" aria-hidden />
+      </Link>
       <Link
         to="/review"
         className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"

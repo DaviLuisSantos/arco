@@ -250,6 +250,24 @@ export interface HabitPeriodStats {
   levelUpSuggested: boolean
 }
 
+/** Uma semana (segunda a domingo) das estatísticas; a semana atual conta só até hoje. */
+export interface WeekStats {
+  weekStart: string
+  weekEnd: string
+  xp: number
+  done: number
+  minimum: number
+  missed: number
+  expected: number
+  /** (done + minimum) / expected, 0..1 */
+  rate: number
+}
+
+export interface Stats {
+  weeks: WeekStats[]
+  recent: { from: string; to: string; xp: number; checkIns: CheckInTotals; habits: HabitPeriodStats[] }
+}
+
 export interface CheckInTotals {
   done: number
   minimum: number

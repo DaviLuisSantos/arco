@@ -161,4 +161,54 @@ public sealed class Phase3ApiTests : IDisposable
         list = (await client.GetJsonAsync("/api/achievements")).AsArray();
         Assert.NotNull(list.Single(a => (string?)a!["key"] == "streak-7")!["unlockedAt"]);
     }
+
+    [Fact]
+    public async Task Stats_cover_12_weeks_and_the_last_30_days()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        async Task<int> CreateAsync(string name)
+        {
+            var res = await client.PostAsJsonAsync("/api/habits",
+                new { name, frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
+            return (int)(await res.JsonAsync())["id"]!;
+        }
+        var ler = await CreateAsync("Ler");
+        var correr = await CreateAsync("Correr");
+
+        // Monday 2030-03-04 to Wednesday 2030-03-06: Ler Done, Minimum, Missed; Correr Done on Monday only.
+        foreach (var (status, day) in new[] { ("Done", 0), ("Minimum", 1), ("Missed", 2) })
+        {
+            var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+            await client.PutAsJsonAsync("/api/checkins", new { habitId = ler, date, status });
+            if (day == 0) await client.PutAsJsonAsync("/api/checkins", new { habitId = correr, date, status = "Done" });
+            if (day < 2) Time.AdvanceDays(1);
+        }
+
+        var stats = await client.GetJsonAsync("/api/stats");
+        var weeks = stats["weeks"]!.AsArray();
+        Assert.Equal(12, weeks.Count);
+        var current = weeks[^1]!;
+        Assert.Equal("2030-03-04", (string?)current["weekStart"]);
+        Assert.Equal(2, (int)current["done"]!);
+        Assert.Equal(1, (int)current["minimum"]!);
+        Assert.Equal(1, (int)current["missed"]!);
+        Assert.Equal(6, (int)current["expected"]!);   // 2 daily habits × 3 days so far
+        Assert.Equal(0.5, (double)current["rate"]!);
+        Assert.Equal(25, (int)current["xp"]!);        // 10 + 5 + 0 + 10
+        Assert.Equal(0, (int)weeks[0]!["expected"]!); // before the habits existed
+
+        // A check-in backdated before the habit existed starts its expected days there.
+        await client.PutAsJsonAsync("/api/checkins", new { habitId = ler, date = "2030-03-02", status = "Done" });
+        var previous = (await client.GetJsonAsync("/api/stats"))["weeks"]!.AsArray()[^2]!;
+        Assert.Equal(2, (int)previous["expected"]!);  // Saturday and Sunday, Ler only
+        Assert.Equal(0.5, (double)previous["rate"]!);
+
+        var recent = stats["recent"]!;
+        Assert.Equal("2030-02-05", (string?)recent["from"]);
+        Assert.Equal(2, recent["habits"]!.AsArray().Count);
+
+        var onlyLer = (await client.GetJsonAsync($"/api/checkins?from=2030-03-01&to=2030-03-31&habitId={ler}")).AsArray();
+        Assert.Equal(4, onlyLer.Count); // includes the backdated one
+        Assert.All(onlyLer, c => Assert.Equal(ler, (int)c!["habitId"]!));
+    }
 }

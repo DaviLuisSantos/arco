@@ -66,3 +66,32 @@ export function formatInstant(
 export const WEEKDAY_INITIALS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 export const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 export const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+
+/** Primeiro dia do mês de uma data ("YYYY-MM-01"). */
+export function monthStart(date: string): string {
+  return `${date.slice(0, 7)}-01`
+}
+
+/** Primeiro dia do mês, `months` meses depois (ou antes, se negativo). */
+export function addMonths(date: string, months: number): string {
+  const d = toUtc(monthStart(date))
+  d.setUTCMonth(d.getUTCMonth() + months)
+  return fromUtc(d)
+}
+
+/** Último dia do mês de uma data. */
+export function monthEnd(date: string): string {
+  return addDays(addMonths(date, 1), -1)
+}
+
+/** "outubro de 2026". */
+export function formatMonth(date: string): string {
+  return formatDate(monthStart(date), { month: 'long', year: 'numeric' })
+}
+
+/** Data local (fuso do navegador) de um instante ISO, como "YYYY-MM-DD". */
+export function localDateOf(instant: string): string {
+  const d = new Date(instant)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

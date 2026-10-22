@@ -1,3 +1,4 @@
+using Arco.Api.Features.Stats;
 using Arco.Api.Features.Achievements;
 using System.Reflection;
 using System.Text.Json.Serialization;
@@ -189,6 +190,7 @@ public static class Startup
         secured.MapGoals();
         secured.MapPlayer();
         secured.MapAchievements();
+        secured.MapStats();
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();

@@ -8,11 +8,11 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
-import { CheckInGrid } from '../features/habits/CheckInGrid'
+import { HabitHistory } from '../features/habits/HabitHistory'
 import { HabitFormDialog } from '../features/habits/HabitFormDialog'
 import { LevelTimeline } from '../features/habits/LevelTimeline'
 import { LevelUpDialog } from '../features/habits/LevelUpDialog'
-import { localToday } from '../lib/dates'
+import { addDays, localDateOf, localToday } from '../lib/dates'
 import { formatPercent, frequencyText, streakText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
 import { useAppMutation } from '../lib/useAppMutation'
@@ -168,10 +168,15 @@ export function HabitDetailPage() {
 
       <section aria-labelledby="grid-title">
         <h2 id="grid-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          Últimos 28 dias
+          Histórico
         </h2>
         <Card>
-          <CheckInGrid checkIns={h.recentCheckIns} today={today.data ?? localToday()} />
+          <HabitHistory
+            habitId={h.id}
+            today={today.data ?? localToday()}
+            // Check-ins podem ser marcados até 7 dias antes da criação do hábito.
+            firstDay={addDays(localDateOf(h.createdAt), -7)}
+          />
         </Card>
       </section>
 

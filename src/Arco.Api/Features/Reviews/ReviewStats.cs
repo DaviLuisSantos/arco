@@ -21,7 +21,8 @@ public static class ReviewStats
     /// <summary>
     /// Habits that existed in [from, to] and are either active or have check-ins in the range.
     /// Rate = (Done + Minimum) / expected, limited to 0..1; expected uses the current frequency,
-    /// counted from the later of <paramref name="from"/> and the habit's creation date.
+    /// counted from the later of <paramref name="from"/> and the habit's start (its creation date, or an earlier
+    /// backdated check-in).
     /// </summary>
     public static async Task<List<HabitPeriodStatsDto>> ForRangeAsync(
         AppDbContext db, DateOnly from, DateOnly to, DateOnly today, string timezone, CancellationToken ct)
@@ -37,12 +38,14 @@ public static class ReviewStats
 
         return habits
             .Select(h => (Habit: h, InRange: checkIns[h.Id].Where(c => c.Date >= from && c.Date <= to).ToList()))
-            .Where(x => TimeZones.ToLocalDate(x.Habit.CreatedAt, timezone) <= to
+            .Where(x => (TimeZones.ToLocalDate(x.Habit.CreatedAt, timezone) <= to || x.InRange.Count > 0)
                         && (x.Habit.ArchivedAt is null || x.InRange.Count > 0))
             .Select(x =>
             {
                 var h = x.Habit;
+                // Check-ins may be backdated before the habit was created: count from the earliest of both.
                 var created = TimeZones.ToLocalDate(h.CreatedAt, timezone);
+                if (x.InRange.Count > 0 && x.InRange.Min(c => c.Date) is var first && first < created) created = first;
                 var start = created > from ? created : from;
                 var expected = LevelUpSuggestion.ExpectedCount(h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, start, to);
                 var done = x.InRange.Count(c => c.Status == CheckInStatus.Done);
