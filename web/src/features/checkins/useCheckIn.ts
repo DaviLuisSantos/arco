@@ -10,9 +10,13 @@ import { CHECK_IN_KEY, type CheckInVars } from './checkInMutation'
 const counts = (status: CheckInStatus | null | undefined) => (status && status !== 'Missed' ? 1 : 0)
 
 function optimistic(habit: TodayHabit, { date, status }: CheckInVars): TodayHabit {
+  const delta = counts(status) - counts(habit.checkIn?.status)
+  // Estimativa até o servidor responder: marcar hoje soma 1 dia na sequência, desfazer tira.
+  const current = habit.streak.unit === 'Days' ? Math.max(0, habit.streak.current + delta) : habit.streak.current
   return {
     ...habit,
-    weekCount: habit.weekCount - counts(habit.checkIn?.status) + counts(status),
+    weekCount: habit.weekCount + delta,
+    streak: { ...habit.streak, current, best: Math.max(habit.streak.best, current) },
     checkIn: status ? { habitId: habit.id, date, status, xp: expectedCheckInXp(status, habit.level) } : null,
   }
 }

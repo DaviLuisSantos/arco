@@ -85,6 +85,10 @@ interface Habit {
 // na janela; WeeklyTarget = ceil(timesPerWeek × 14 / 7).
 interface Consistency { from: string; to: string; done: number; expected: number; rate: number; } // rate 0..1
 
+// Sequência (streak) do hábito, calculada sobre todo o histórico (nunca gravada); ver PRODUCT.md.
+// unit: "Days" (Daily/SpecificDays: dias devidos) ou "Weeks" (WeeklyTarget: semanas com a meta batida).
+interface Streak { current: number; best: number; unit: "Days" | "Weeks"; }
+
 interface WeeklyReview {
   id: number;
   weekStart: string; weekEnd: string;  // segunda a domingo
@@ -135,6 +139,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
     goalTitle: string | null;
     consistency: Consistency;
     levelUpSuggested: boolean;        // ver "Sugestão de subir de nível"
+    streak: Streak;
   }>;                                 // só não arquivados; ordem: devidos hoje primeiro, depois por nome
   weeklyReview: {
     weekStart: string; weekEnd: string; // semana revisável (ver "Revisão semanal")
@@ -154,7 +159,7 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 ## Hábitos
 
 - `GET /api/habits?includeArchived=false` → `Habit[]`
-- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean }` (check-ins dos últimos 28 dias)
+- `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, streak: Streak }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 
   ```

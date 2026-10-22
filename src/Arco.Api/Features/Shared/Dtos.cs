@@ -126,6 +126,11 @@ public sealed record ConsistencyDto(DateOnly From, DateOnly To, int Done, int Ex
         new(c.From, c.To, c.Done, c.Expected, Math.Round(c.Rate, 4));
 }
 
+public sealed record StreakDto(int Current, int Best, StreakUnit Unit)
+{
+    public static StreakDto Of(StreakRules.Streak s) => new(s.Current, s.Best, s.Unit);
+}
+
 /// <summary>Response shape for XP-changing actions: <c>{ &lt;name&gt;, xpDelta, player }</c>.</summary>
 public sealed record CheckInResult(CheckInDto CheckIn, int XpDelta, PlayerDto Player);
 public sealed record XpResult(int XpDelta, PlayerDto Player);

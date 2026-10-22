@@ -13,7 +13,7 @@ import { HabitFormDialog } from '../features/habits/HabitFormDialog'
 import { LevelTimeline } from '../features/habits/LevelTimeline'
 import { LevelUpDialog } from '../features/habits/LevelUpDialog'
 import { localToday } from '../lib/dates'
-import { formatPercent, frequencyText } from '../lib/format'
+import { formatPercent, frequencyText, streakText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
 import { useAppMutation } from '../lib/useAppMutation'
 
@@ -113,6 +113,14 @@ export function HabitDetailPage() {
           <p className="text-sm text-muted">Mínimo: {h.minimumDescription}</p>
           {!archived && (
             <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+              <span
+                className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
+                title="Feito e Mínimo contam. Uma falha isolada por semana é perdoada; duas seguidas, ou duas na mesma semana, zeram."
+              >
+                <span aria-hidden>🔥 </span>
+                Sequência: <span className="font-semibold text-text">{streakText(h.streak)}</span>
+                {h.streak.best > h.streak.current && ` · recorde ${streakText({ ...h.streak, current: h.streak.best })}`}
+              </span>
               <span
                 className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
                 title="Só “Feito” conta para a sugestão de subir de nível."

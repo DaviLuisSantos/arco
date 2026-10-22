@@ -34,6 +34,15 @@ public static class Queries
         return await ToGoalDtosAsync(db, goals, ct);
     }
 
+    /// <summary>Streak of a habit; <paramref name="checkIns"/> must be its whole history.</summary>
+    public static StreakDto Streak(Habit habit, IReadOnlyCollection<CheckIn> checkIns, DateOnly today, string timezone)
+    {
+        var created = TimeZones.ToLocalDate(habit.CreatedAt, timezone);
+        var start = checkIns.Count == 0 ? created : DateOnly.FromDayNumber(Math.Min(created.DayNumber, checkIns.Min(c => c.Date).DayNumber));
+        return StreakDto.Of(StreakRules.Compute(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
+            checkIns.Select(c => (c.Date, c.Status)), start, today));
+    }
+
     /// <summary>
     /// 14-day consistency of a habit (Levels loaded) and whether to suggest leveling up.
     /// <paramref name="checkIns"/> must cover at least the 15 days ending today.

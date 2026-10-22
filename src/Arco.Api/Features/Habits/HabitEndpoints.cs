@@ -21,11 +21,13 @@ public static class HabitEndpoints
         Habit habit,
         IReadOnlyList<CheckInDto> recentCheckIns,
         ConsistencyDto consistency,
-        bool levelUpSuggested) : HabitDto(habit)
+        bool levelUpSuggested,
+        StreakDto streak) : HabitDto(habit)
     {
         public IReadOnlyList<CheckInDto> RecentCheckIns { get; } = recentCheckIns;
         public ConsistencyDto Consistency { get; } = consistency;
         public bool LevelUpSuggested { get; } = levelUpSuggested;
+        public StreakDto Streak { get; } = streak;
     }
 
     public static IEndpointRouteBuilder MapHabits(this IEndpointRouteBuilder api)
@@ -60,13 +62,16 @@ public static class HabitEndpoints
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
         var today = await clock.GetTodayAsync(ct);
-        var from = today.AddDays(-27);
-        var checkIns = await db.CheckIns.AsNoTracking()
-            .Where(c => c.HabitId == id && c.Date >= from && c.Date <= today)
+        var timezone = await clock.GetTimezoneAsync(ct);
+        var history = await db.CheckIns.AsNoTracking()
+            .Where(c => c.HabitId == id && c.Date <= today)
             .OrderBy(c => c.Date)
             .ToListAsync(ct);
-        var (consistency, suggested) = Queries.LevelUp(habit, checkIns, today, await clock.GetTimezoneAsync(ct));
-        return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested));
+        var from = today.AddDays(-27);
+        var checkIns = history.Where(c => c.Date >= from).ToList();
+        var (consistency, suggested) = Queries.LevelUp(habit, checkIns, today, timezone);
+        return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested,
+            Queries.Streak(habit, history, today, timezone)));
     }
 
     /// <summary>Hides the level-up suggestion for <see cref="LevelUpSuggestion.SnoozeDays"/> days.</summary>

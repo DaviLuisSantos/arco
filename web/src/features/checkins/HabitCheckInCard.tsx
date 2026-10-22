@@ -2,7 +2,7 @@ import { Check, Flag, Minus, X } from 'lucide-react'
 import { Link } from 'react-router'
 import type { CheckInStatus, TodayHabit } from '../../api/types'
 import { cn } from '../../lib/cn'
-import { STATUS_LABELS } from '../../lib/format'
+import { STATUS_LABELS, streakText } from '../../lib/format'
 import { useCheckIn } from './useCheckIn'
 
 const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string }> = [
@@ -35,6 +35,16 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           </p>
           <p className="truncate text-xs text-muted/90">Mínimo: {habit.minimumDescription}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {habit.streak.current > 0 && (
+              <span
+                className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-text"
+                title={`Sequência de ${streakText(habit.streak)} (recorde: ${streakText({ ...habit.streak, current: habit.streak.best })})`}
+              >
+                <span aria-hidden>🔥 </span>
+                {habit.streak.current}
+                <span className="sr-only"> de sequência</span>
+              </span>
+            )}
             {habit.weekTarget !== null && (
               <span
                 className={cn(

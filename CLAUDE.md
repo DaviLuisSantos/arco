@@ -5,7 +5,7 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
 ## Layout
 - `src/Arco.Api`: .NET 10 Minimal APIs, organizado em fatias.
   - `Features/<Feature>/` contém o endpoint e a lógica de cada funcionalidade.
-  - `Domain/` tem entidades e regras puras e testáveis: `XpRules`, `PlayerLevel`, `HabitSchedule`, `GoalProgress`, `CycleMath`, `LevelUpSuggestion`, `WeeklyReviewRules`.
+  - `Domain/` tem entidades e regras puras e testáveis: `XpRules`, `PlayerLevel`, `HabitSchedule`, `GoalProgress`, `CycleMath`, `LevelUpSuggestion`, `WeeklyReviewRules`, `StreakRules`.
   - `Infrastructure/` tem DbContext, migrations, clock, auth e `ApiResults`. `Infrastructure/Push` faz o Web Push (VAPID + aes128gcm, sem pacote externo); os lembretes rodam em `Features/Push/ReminderDispatcher` (hosted service, 1×/min).
   - Não há MediatR nem repositórios.
 - `tests/Arco.Api.Tests`: xUnit, com testes unitários de domínio e de integração (WebApplicationFactory + SQLite temporário).

@@ -98,10 +98,23 @@ export interface Consistency {
   rate: number
 }
 
+export type StreakUnit = 'Days' | 'Weeks'
+
+/**
+ * Sequência do hábito: dias devidos com Feito/Mínimo (ou semanas com a meta batida).
+ * Uma falha isolada por semana é perdoada; duas seguidas, ou duas na mesma semana, zeram.
+ */
+export interface Streak {
+  current: number
+  best: number
+  unit: StreakUnit
+}
+
 export interface HabitDetail extends Habit {
   recentCheckIns: CheckIn[]
   consistency: Consistency
   levelUpSuggested: boolean
+  streak: Streak
 }
 
 export interface TodayHabit extends Habit {
@@ -112,6 +125,7 @@ export interface TodayHabit extends Habit {
   goalTitle: string | null
   consistency: Consistency
   levelUpSuggested: boolean
+  streak: Streak
 }
 
 export interface WeeklyReviewStatus {

@@ -39,6 +39,18 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Lembrete opcional por hábito (horário local): push nos dias em que ele é devido e ainda não foi marcado.
 - Arquivar e restaurar.
 
+### Sequência (streak)
+- Cada hábito tem uma sequência atual e um recorde, calculados a partir do histórico (não dão XP).
+- Diário e dias específicos: conta os **dias devidos** com Feito ou Mínimo. Meta semanal: conta as **semanas** com a meta batida.
+- Tolerância: **uma falha isolada por semana é perdoada** (mantém a sequência, mas não soma). Duas falhas seguidas,
+  ou duas na mesma semana (segunda a domingo), zeram a sequência.
+  - Falha = dia devido com "Não fiz" ou sem check-in. Na meta semanal, uma semana com 1 a menos que a meta é a falha
+    perdoável (meta de 1×/semana não tem tolerância); mais que isso zera.
+  - Hoje ainda sem check-in (ou a semana atual sem a meta batida) fica pendente, não é falha. A primeira semana
+    incompleta da meta semanal também não conta como falha.
+  - A frequência atual vale para todo o histórico; o início é a criação do hábito (ou o check-in mais antigo).
+- Aparece como 🔥 N no card da tela Hoje e com o recorde na página do hábito.
+
 ### Check-in
 - Um por hábito por dia: `Done` (Feito), `Minimum` (Mínimo) ou `Missed` (Não fiz).
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.
