@@ -1,4 +1,4 @@
-import type { CheckInStatus, FrequencyType, Goal, Habit, Streak, XpSource } from '../api/types'
+import type { CheckInStatus, Goal, Habit, Streak, XpSource } from '../api/types'
 import { WEEKDAY_SHORT } from './dates'
 
 const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
@@ -16,12 +16,6 @@ export function formatXp(amount: number): string {
 export function streakText({ current, unit }: Pick<Streak, 'current' | 'unit'>): string {
   if (unit === 'Weeks') return `${current} semana${current === 1 ? '' : 's'}`
   return `${current} dia${current === 1 ? '' : 's'}`
-}
-
-export const FREQUENCY_LABELS: Record<FrequencyType, string> = {
-  Daily: 'Diário',
-  SpecificDays: 'Dias específicos',
-  WeeklyTarget: 'X vezes por semana',
 }
 
 export function frequencyText(habit: Pick<Habit, 'frequencyType' | 'frequencyDays' | 'timesPerWeek'>): string {
