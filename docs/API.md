@@ -143,6 +143,19 @@ Só com o cookie do app: com uma chave, estas rotas devolvem **403** `forbidden`
 
 Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 
+## Servidor MCP
+
+- `POST /api/mcp`: servidor [MCP](https://modelcontextprotocol.io) (Streamable HTTP, sem estado), autenticado como o
+  resto de `/api` (na prática, com chave de API). Para assistentes de IA operarem o Arco.
+- As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
+  Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
+- Ferramentas: `ver_hoje`, `fazer_checkin`, `desfazer_checkin`, `listar_habitos`, `ver_habito`, `criar_habito`,
+  `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
+  `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ler_documentacao_api` (este arquivo) e
+  `chamar_api` (qualquer rota; exceto `/api/backup`, `/api/api-keys`, `/api/auth/*` e o próprio `/api/mcp`).
+- Conectar no Claude Code:
+  `claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_…"`
+
 ## Health
 
 - `GET /api/health` → `{ status: "healthy", version: "x.y.z" }` (faz ping no banco).

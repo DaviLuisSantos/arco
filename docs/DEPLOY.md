@@ -94,3 +94,9 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
   `D:\home\data\arco.db` pelo backup e apague `arco.db-wal` e `arco.db-shm` se existirem; inicie o Web App.
 - **Logs:** no Web App, **Monitoring → Log stream**. Para ver erros de inicialização, ative
   **Application logging (Filesystem)** em **Monitoring → App Service logs**.
+
+## Servidor MCP
+
+As ferramentas do MCP (`/api/mcp`) chamam a própria API pelo endereço público da requisição. Se algum dia isso
+falhar no ambiente (ex.: o app não alcança o próprio domínio), defina `Mcp__SelfBaseUrl` nas configurações do Web App
+com a URL base da API (ex.: `https://<app>.azurewebsites.net`).

@@ -34,6 +34,9 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
             if (Time is not null) services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));
             services.RemoveAll<IPushSender>();
             services.AddSingleton<IPushSender>(Push);
+            // The MCP tools call the API over HTTP: route those calls into the test server.
+            services.AddHttpClient(Arco.Api.Features.Mcp.ArcoApiClient.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler());
         });
     }
 

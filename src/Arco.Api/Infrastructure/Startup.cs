@@ -1,3 +1,4 @@
+using Arco.Api.Features.Mcp;
 using Arco.Api.Features.ApiKeys;
 using Microsoft.AspNetCore.Authentication;
 using Arco.Api.Features.Backup;
@@ -73,6 +74,19 @@ public static class Startup
         // Backups: one automatic copy per day next to the database, plus downloads on demand.
         services.AddSingleton(new DatabaseBackup(Path.Combine(dataDir, "backups")));
         if (config.GetValue("Backup:Enabled", true)) services.AddHostedService<DatabaseBackupService>();
+
+        // MCP server at /api/mcp (Streamable HTTP, stateless), authenticated like the rest of /api. Its tools call the
+        // REST API itself with the caller's key, so both always behave the same.
+        services.AddHttpContextAccessor();
+        services.AddHttpClient(ArcoApiClient.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<ArcoApiClient>();
+        services.AddMcpServer(o =>
+            {
+                o.ServerInfo = new() { Name = "arco", Title = "Arco", Version = AppInfo.Version };
+                o.ServerInstructions = McpInstructions.Text;
+            })
+            .WithHttpTransport(o => o.Stateless = true)
+            .WithTools<ArcoTools>();
 
         // JSON: camelCase (default for web) + enums as strings.
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -208,6 +222,7 @@ public static class Startup
         secured.MapStats();
         secured.MapBackup();
         secured.MapApiKeys();
+        secured.MapMcp("/mcp");
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();

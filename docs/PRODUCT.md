@@ -128,6 +128,9 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 - As chaves são criadas e revogadas no Perfil (Acesso pela API). A chave aparece uma única vez; o servidor guarda só
   o hash. Cada chave dá acesso total, menos gerenciar chaves (uma chave vazada não cria outras).
 - O Perfil mostra o nome, o começo e o último uso de cada chave.
+- **Servidor MCP** em `/api/mcp`: assistentes de IA (Claude etc.) operam o Arco direto na conversa com uma chave de
+  API. Há ferramentas para o dia a dia (ver o dia, check-in, criar hábito, subir ou voltar nível, objetivos, revisão
+  semanal, estatísticas, conquistas) e `chamar_api` + `ler_documentacao_api` para todo o resto.
 
 ## Uso offline
 O app abre e funciona sem internet para **ler** e **marcar check-in**:
@@ -143,16 +146,12 @@ O app abre e funciona sem internet para **ler** e **marcar check-in**:
 - Indicador global: "Offline" (com quantos check-ins estão na fila) e "Sincronizando…" enquanto a fila é enviada.
 
 ## Próximos passos (rumo a SaaS)
-Em ordem de impacto. Nada disso foi começado.
+Em ordem de impacto. O servidor MCP (o primeiro da lista original) já está feito (veja "API e chaves de API").
 
-1. **Servidor MCP.** Expor as operações do Arco como ferramentas MCP (ex.: `ver_hoje`, `fazer_checkin`,
-   `criar_habito`, `subir_nivel`, `fazer_revisao_semanal`), autenticadas por chave de API. Assistentes de IA passam a
-   operar o sistema direto na conversa, sem `curl` nem leitura do API.md. É o maior diferencial: "o assistente cuida
-   dos seus hábitos com você".
-2. **Especificação OpenAPI.** Documento legível por máquina (ex.: `/api/openapi.json`) gerado a partir dos
+1. **Especificação OpenAPI.** Documento legível por máquina (ex.: `/api/openapi.json`) gerado a partir dos
    endpoints, com os tipos de resposta. Serve para gerar clientes, validar o contrato em teste e publicar a documentação
    para quem integra. Hoje os handlers devolvem `IResult` sem tipo declarado: será preciso anotar os tipos.
-3. **Chaves só de leitura.** Escopo por chave (`leitura` ou `leitura e escrita`), para integrações que só consultam
+2. **Chaves só de leitura.** Escopo por chave (`leitura` ou `leitura e escrita`), para integrações que só consultam
    (dashboards, relatórios) não poderem alterar nada.
 
 Fora desta lista, e bem maior: **multiusuário** (contas, isolamento dos dados por usuário, cobrança). É uma fase

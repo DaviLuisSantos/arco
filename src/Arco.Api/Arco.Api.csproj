@@ -15,6 +15,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Contrato da API, servido pelo MCP (ferramenta ler_documentacao_api). -->
+    <EmbeddedResource Include="..\..\docs\API.md" LogicalName="Arco.Api.docs.API.md" />
   </ItemGroup>
 
   <ItemGroup>

@@ -14,6 +14,8 @@ WORKDIR /src
 COPY src/Arco.Api/Arco.Api.csproj src/Arco.Api/
 RUN dotnet restore src/Arco.Api/Arco.Api.csproj
 COPY src/ src/
+# docs/API.md vai embutido na API (documentação do servidor MCP).
+COPY docs/API.md docs/API.md
 COPY --from=web /web/dist/ src/Arco.Api/wwwroot/
 RUN dotnet publish src/Arco.Api/Arco.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
