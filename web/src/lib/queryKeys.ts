@@ -8,6 +8,7 @@ export const queryKeys = {
   goals: (cycleId: number) => ['goals', cycleId] as const,
   currentGoals: ['goals', 'current'] as const,
   player: ['player'] as const,
+  achievements: ['achievements'] as const,
   settings: ['settings'] as const,
   weeklyReview: ['reviews', 'weekly', 'current'] as const,
   weeklyReviews: ['reviews', 'weekly'] as const,

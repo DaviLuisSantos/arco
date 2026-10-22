@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, Info, Sparkles } from 'lucide-react'
+import { CircleAlert, CircleCheck, Info, Sparkles, Trophy } from 'lucide-react'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 import { formatXp } from '../../lib/format'
@@ -10,9 +10,9 @@ interface ToastItem {
   variant: ToastVariant
 }
 
-const DURATION: Record<ToastVariant, number> = { info: 3500, success: 3000, error: 5000, xp: 1600 }
+const DURATION: Record<ToastVariant, number> = { info: 3500, success: 3000, error: 5000, xp: 1600, achievement: 5000 }
 
-const ICONS = { info: Info, success: CircleCheck, error: CircleAlert, xp: Sparkles }
+const ICONS = { info: Info, success: CircleCheck, error: CircleAlert, xp: Sparkles, achievement: Trophy }
 
 let nextId = 1
 
@@ -68,6 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       error: (message) => show({ message, variant: 'error' }),
       success: (message) => show({ message, variant: 'success' }),
       xp: (amount) => show({ message: formatXp(amount), variant: 'xp' }),
+      achievement: (emoji, title) => show({ message: `Conquista desbloqueada: ${emoji} ${title}`, variant: 'achievement' }),
     }),
     [show],
   )
@@ -122,12 +123,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 'pointer-events-auto flex w-full max-w-sm animate-pop items-start gap-2 rounded-2xl border px-4 py-3 text-sm shadow-xl',
                 'bg-surface border-border text-text',
                 t.variant === 'error' && 'border-danger/50',
+                t.variant === 'achievement' && 'border-xp/60 font-semibold',
               )}
             >
               <Icon
                 className={cn(
                   'mt-0.5 size-4 shrink-0',
-                  t.variant === 'error' ? 'text-danger' : t.variant === 'success' ? 'text-done' : 'text-accent',
+                  t.variant === 'error'
+                    ? 'text-danger'
+                    : t.variant === 'success'
+                      ? 'text-done'
+                      : t.variant === 'achievement'
+                        ? 'text-xp'
+                        : 'text-accent',
                 )}
                 aria-hidden
               />

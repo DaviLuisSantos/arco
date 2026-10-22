@@ -1,5 +1,6 @@
 import { api, ApiError } from './client'
 import type {
+  Achievement,
   CheckIn,
   CheckInInput,
   CheckInResult,
@@ -99,6 +100,10 @@ export const goalsApi = {
   toggleMilestone: (id: number, milestoneId: number) =>
     api.post<GoalResult>(`/goals/${id}/milestones/${milestoneId}/toggle`),
   complete: (id: number) => api.post<GoalResult>(`/goals/${id}/complete`),
+}
+
+export const achievementsApi = {
+  list: () => api.get<Achievement[]>('/achievements'),
 }
 
 export const playerApi = {

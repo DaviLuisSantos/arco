@@ -10,6 +10,7 @@ import { Select } from '../components/ui/Input'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
+import { AchievementsSection } from '../features/achievements/AchievementsSection'
 import { PlayerProgress } from '../features/player/PlayerProgress'
 import { NotificationsCard } from '../features/push/NotificationsCard'
 import { formatInstant } from '../lib/dates'
@@ -38,9 +39,11 @@ export function ProfilePage() {
               Total acumulado: <span className="font-semibold text-text">{formatNumber(player.data.totalXp)} XP</span>
             </p>
           </Card>
-          <RecentEvents events={player.data.recentEvents} />
         </>
       )}
+
+      <AchievementsSection />
+      {player.data && <RecentEvents events={player.data.recentEvents} />}
 
       <Link
         to="/review"

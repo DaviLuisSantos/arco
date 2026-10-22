@@ -18,6 +18,8 @@
 | 500 | `internal_error` |
 
 - O "hoje" é calculado no fuso de `Settings.Timezone` (padrão `America/Sao_Paulo`).
+- Toda resposta de ação que dá ou tira XP (`{ …, xpDelta, player }`) traz também `achievements: Achievement[]`: as
+  conquistas que essa ação desbloqueou (normalmente vazio). Abaixo, `{ xpDelta, player }` subentende esse campo.
 
 ## Tipos compartilhados
 
@@ -262,6 +264,23 @@ Validação dos hábitos:
 ## Player
 
 - `GET /api/player` → `Player & { recentEvents: Array<{ date, amount, source: XpSource, description }> }` (últimos 20).
+
+## Conquistas
+
+- `GET /api/achievements` → `Achievement[]`, o catálogo inteiro na ordem de exibição:
+
+  ```ts
+  interface Achievement {
+    key: string;                       // ex.: "streak-7"
+    emoji: string; title: string; description: string;
+    target: number;
+    progress: number;                  // 0..target (= target quando desbloqueada)
+    unlockedAt: string | null;         // null enquanto bloqueada
+  }
+  ```
+
+  Desbloqueio: depois de cada ação que dá XP (a resposta traz as novas em `achievements`) e na subida da API (em
+  silêncio, para dados antigos). Nunca é revogada e não dá XP. Catálogo em `Domain/AchievementCatalog.cs`.
 
 ## Revisão semanal
 

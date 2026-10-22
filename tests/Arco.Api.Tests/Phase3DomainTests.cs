@@ -178,3 +178,27 @@ public class LevelUpWeeksRuleTests
         Assert.False(LevelUpSuggestion.ShouldSuggestWeeks(3, 3, null, today, archived: true));
     }
 }
+
+public class AchievementCatalogTests
+{
+    private static readonly AchievementStats Empty = new(0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    [Fact]
+    public void Keys_are_unique_and_targets_positive()
+    {
+        Assert.Equal(AchievementCatalog.All.Count, AchievementCatalog.All.Select(a => a.Key).Distinct().Count());
+        Assert.All(AchievementCatalog.All, a => Assert.True(a.Target > 0));
+    }
+
+    [Fact]
+    public void Progress_is_capped_at_the_target()
+    {
+        var stats = Empty with { BestDayStreak = 12, CheckIns = 1, MaxHabitLevel = 1 };
+        var progress = AchievementCatalog.Evaluate(stats).ToDictionary(x => x.Definition.Key, x => x.Progress);
+        Assert.Equal(7, progress["streak-7"]);
+        Assert.Equal(12, progress["streak-30"]);
+        Assert.Equal(1, progress["checkins-1"]);
+        Assert.Equal(1, progress["habit-level-2"]);
+        Assert.Equal(0, progress["goal-1"]);
+    }
+}

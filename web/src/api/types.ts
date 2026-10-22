@@ -163,6 +163,21 @@ export interface Today {
 export interface XpResult {
   xpDelta: number
   player: Player
+  /** Conquistas que esta ação desbloqueou. */
+  achievements: Achievement[]
+}
+
+/** Conquista do catálogo: desbloqueia sozinha, não dá XP e nunca é perdida. */
+export interface Achievement {
+  key: string
+  emoji: string
+  title: string
+  description: string
+  target: number
+  /** 0..target */
+  progress: number
+  /** null enquanto bloqueada. */
+  unlockedAt: string | null
 }
 
 export interface CheckInResult extends XpResult {

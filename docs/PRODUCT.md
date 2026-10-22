@@ -59,6 +59,16 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
   - A frequência atual vale para todo o histórico; o início é a criação do hábito (ou o check-in mais antigo).
 - Aparece como 🔥 N no card da tela Hoje e com o recorde na página do hábito.
 
+### Conquistas
+- Medalhas que desbloqueiam sozinhas a partir do que você já faz. **Não dão XP** e nunca são perdidas (desfazer um
+  check-in não tira uma conquista).
+- Catálogo (16): sequência de 7, 30 e 100 dias; meta semanal 4 e 12 semanas seguidas; 1º, 100 e 500 check-ins
+  (Feito ou Mínimo); 10 dias salvos com o Mínimo; hábito no nível 2 e no 5; jogador nível 5 e 10; 1º objetivo
+  concluído; 1º ciclo encerrado; 4 revisões semanais. Contam todos os hábitos, inclusive arquivados.
+- Ao desbloquear, aparece o aviso "Conquista desbloqueada". O Perfil mostra todas: as desbloqueadas com a data, as
+  bloqueadas em cinza com o progresso.
+- O que já tinha sido conquistado antes de as conquistas existirem desbloqueia em silêncio.
+
 ### Check-in
 - Um por hábito por dia: `Done` (Feito), `Minimum` (Mínimo) ou `Missed` (Não fiz).
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.
@@ -94,7 +104,7 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
-3. **Polimento** — streaks com tolerância (1 falha por semana), conquistas, histórico e estatísticas.
+3. **Polimento** — streaks com tolerância (1 falha por semana), escada planejada e regra de subida por hábito, conquistas, histórico e estatísticas.
 
 ## Uso offline
 O app abre e funciona sem internet para **ler** e **marcar check-in**:

@@ -1,3 +1,5 @@
+using Arco.Api.Features.Achievements;
+
 namespace Arco.Api.Features.Shared;
 
 public class PlayerDto
@@ -142,9 +144,12 @@ public sealed record StreakDto(int Current, int Best, StreakUnit Unit)
     public static StreakDto Of(StreakRules.Streak s) => new(s.Current, s.Best, s.Unit);
 }
 
-/// <summary>Response shape for XP-changing actions: <c>{ &lt;name&gt;, xpDelta, player }</c>.</summary>
-public sealed record CheckInResult(CheckInDto CheckIn, int XpDelta, PlayerDto Player);
-public sealed record XpResult(int XpDelta, PlayerDto Player);
-public sealed record HabitXpResult(HabitDto Habit, int XpDelta, PlayerDto Player);
-public sealed record CycleXpResult(CycleDto Cycle, int XpDelta, PlayerDto Player);
-public sealed record GoalXpResult(GoalDto Goal, int XpDelta, PlayerDto Player);
+/// <summary>
+/// Response shape for XP-changing actions: <c>{ &lt;name&gt;, xpDelta, player, achievements }</c>, where
+/// achievements are the ones this action unlocked.
+/// </summary>
+public sealed record CheckInResult(CheckInDto CheckIn, int XpDelta, PlayerDto Player, IReadOnlyList<AchievementDto> Achievements);
+public sealed record XpResult(int XpDelta, PlayerDto Player, IReadOnlyList<AchievementDto> Achievements);
+public sealed record HabitXpResult(HabitDto Habit, int XpDelta, PlayerDto Player, IReadOnlyList<AchievementDto> Achievements);
+public sealed record CycleXpResult(CycleDto Cycle, int XpDelta, PlayerDto Player, IReadOnlyList<AchievementDto> Achievements);
+public sealed record GoalXpResult(GoalDto Goal, int XpDelta, PlayerDto Player, IReadOnlyList<AchievementDto> Achievements);

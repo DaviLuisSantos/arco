@@ -116,4 +116,49 @@ public sealed class Phase3ApiTests : IDisposable
         });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
     }
+
+    [Fact]
+    public async Task Achievements_unlock_once_and_come_back_in_the_xp_response()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var res = await client.PostAsJsonAsync("/api/habits",
+            new { name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
+        var habitId = (int)(await res.JsonAsync())["id"]!;
+
+        var list = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.All(list, a => Assert.Null(a!["unlockedAt"]));
+        Assert.Equal(0, (int)list.Single(a => (string?)a!["key"] == "checkins-1")!["progress"]!);
+
+        async Task<string[]> CheckInAsync(string status)
+        {
+            var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+            var put = await client.PutAsJsonAsync("/api/checkins", new { habitId, date, status });
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            return (await put.JsonAsync())["achievements"]!.AsArray().Select(a => (string)a!["key"]!).ToArray();
+        }
+
+        Assert.Equal(["checkins-1"], await CheckInAsync("Done"));
+        // Changing the same check-in unlocks nothing new.
+        Assert.Empty(await CheckInAsync("Minimum"));
+
+        for (var day = 1; day < 7; day++)
+        {
+            Time.AdvanceDays(1);
+            var unlocked = await CheckInAsync("Done");
+            Assert.Equal(day == 6 ? ["streak-7"] : [], unlocked);
+        }
+
+        list = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        var streak7 = list.Single(a => (string?)a!["key"] == "streak-7")!;
+        Assert.NotNull(streak7["unlockedAt"]);
+        Assert.Equal(7, (int)streak7["progress"]!);
+        Assert.Equal(7, (int)list.Single(a => (string?)a!["key"] == "streak-30")!["progress"]!);
+
+        // Undoing a check-in never revokes an achievement.
+        var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+        var delete = await client.DeleteAsync($"/api/checkins/{habitId}/{date}");
+        Assert.Empty((await delete.JsonAsync())["achievements"]!.AsArray());
+        list = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.NotNull(list.Single(a => (string?)a!["key"] == "streak-7")!["unlockedAt"]);
+    }
 }

@@ -185,6 +185,14 @@ public class PushSubscription
     public int FailureCount { get; set; }
 }
 
+/// <summary>An achievement of <see cref="AchievementCatalog"/> already unlocked (never revoked).</summary>
+public class UnlockedAchievement
+{
+    public int Id { get; set; }
+    public string Key { get; set; } = "";
+    public DateTime UnlockedAt { get; set; }
+}
+
 /// <summary>Records a reminder that was already sent, so it is sent at most once (e.g. "habit:5:2026-10-21").</summary>
 public class PushDispatch
 {

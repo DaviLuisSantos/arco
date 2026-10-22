@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-export type ToastVariant = 'info' | 'success' | 'error' | 'xp'
+export type ToastVariant = 'info' | 'success' | 'error' | 'xp' | 'achievement'
 
 export interface ToastOptions {
   message: string
@@ -12,6 +12,7 @@ export interface ToastApi {
   error: (message: string) => void
   success: (message: string) => void
   xp: (amount: number) => void
+  achievement: (emoji: string, title: string) => void
 }
 
 export const ToastContext = createContext<ToastApi | null>(null)

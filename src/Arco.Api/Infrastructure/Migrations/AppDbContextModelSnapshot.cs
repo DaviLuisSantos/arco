@@ -423,6 +423,28 @@ namespace Arco.Api.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.UnlockedAchievement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("Achievements");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.WeeklyReview", b =>
                 {
                     b.Property<int>("Id")

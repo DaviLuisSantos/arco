@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 namespace Arco.Api.Features.CheckIns;
 
 public static class CheckInEndpoints
@@ -74,7 +75,8 @@ public static class CheckInEndpoints
             return ApiResults.Conflict("Este check-in foi registrado ao mesmo tempo por outra requisição. Tente novamente.");
         }
 
-        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn), xp - previousXp, await Queries.GetPlayerAsync(db, ct)));
+        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn), xp - previousXp, await Queries.GetPlayerAsync(db, ct),
+            await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
     private static async Task<IResult> Delete(int habitId, DateOnly date, AppDbContext db, CancellationToken ct)
@@ -87,7 +89,7 @@ public static class CheckInEndpoints
         db.CheckIns.Remove(checkIn);
         await db.SaveChangesAsync(ct);
 
-        return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct)));
+        return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
     }
 
     private static async Task<IResult> List(DateOnly? from, DateOnly? to, AppDbContext db, CancellationToken ct)

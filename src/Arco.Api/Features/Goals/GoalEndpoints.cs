@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 namespace Arco.Api.Features.Goals;
 
 public static class GoalEndpoints
@@ -155,7 +156,7 @@ public static class GoalEndpoints
         }
 
         await db.SaveChangesAsync(ct);
-        return Results.Ok(await ResultAsync(db, goal, xpDelta, ct));
+        return Results.Ok(await ResultAsync(db, clock, goal, xpDelta, ct));
     }
 
     private static async Task<IResult> ToggleMilestone(int id, int milestoneId, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -208,7 +209,7 @@ public static class GoalEndpoints
         }
 
         await db.SaveChangesAsync(ct);
-        return Results.Ok(await ResultAsync(db, goal, xpDelta, ct));
+        return Results.Ok(await ResultAsync(db, clock, goal, xpDelta, ct));
     }
 
     private static async Task<IResult> Complete(int id, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -219,7 +220,7 @@ public static class GoalEndpoints
 
         var xpDelta = CompleteGoal(db, goal, clock.UtcNow, await clock.GetTodayAsync(ct));
         await db.SaveChangesAsync(ct);
-        return Results.Ok(await ResultAsync(db, goal, xpDelta, ct));
+        return Results.Ok(await ResultAsync(db, clock, goal, xpDelta, ct));
     }
 
     /// <summary>Marks the goal completed and queues its +150 XP event (saved by the caller).</summary>
@@ -238,8 +239,10 @@ public static class GoalEndpoints
         return XpRules.GoalCompleted;
     }
 
-    private static async Task<GoalXpResult> ResultAsync(AppDbContext db, Goal goal, int xpDelta, CancellationToken ct) =>
-        new(await Queries.ToGoalDtoAsync(db, goal, ct), xpDelta, await Queries.GetPlayerAsync(db, ct));
+    private static async Task<GoalXpResult> ResultAsync(AppDbContext db, AppClock clock, Goal goal, int xpDelta,
+        CancellationToken ct) =>
+        new(await Queries.ToGoalDtoAsync(db, goal, ct), xpDelta, await Queries.GetPlayerAsync(db, ct),
+            xpDelta > 0 ? await AchievementService.UnlockAsync(db, clock, ct) : []);
 
     private static string Truncate(string s) => s.Length <= 200 ? s : s[..200];
 }

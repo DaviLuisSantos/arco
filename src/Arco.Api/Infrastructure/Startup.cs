@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -136,7 +137,11 @@ public static class Startup
     public static void ApplyMigrations(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+        // Achievements already earned (e.g. before they existed) unlock silently.
+        AchievementService.UnlockAsync(db, scope.ServiceProvider.GetRequiredService<AppClock>(), CancellationToken.None)
+            .GetAwaiter().GetResult();
 
         if (app.Services.GetRequiredService<PasswordVerifier>().UsingDevelopmentDefault)
         {
@@ -183,6 +188,7 @@ public static class Startup
         secured.MapCycles();
         secured.MapGoals();
         secured.MapPlayer();
+        secured.MapAchievements();
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();

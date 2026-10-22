@@ -15,7 +15,7 @@ export function useApplyXpResult() {
   const { celebrateLevel } = useXpFeedback()
 
   return useCallback(
-    ({ xpDelta, player }: XpResult) => {
+    ({ xpDelta, player, achievements }: XpResult) => {
       const previous: Player | undefined =
         qc.getQueryData<Today>(queryKeys.today)?.player ?? qc.getQueryData<PlayerDetail>(queryKeys.player)
 
@@ -23,6 +23,9 @@ export function useApplyXpResult() {
       qc.setQueryData<PlayerDetail>(queryKeys.player, (d) => (d ? { ...d, ...player } : d))
 
       if (xpDelta !== 0) toast.xp(xpDelta)
+      // Resposta de uma versão antiga da API pode vir sem o campo.
+      for (const a of achievements ?? []) toast.achievement(a.emoji, a.title)
+      if (achievements?.length) void qc.invalidateQueries({ queryKey: queryKeys.achievements })
       // Sem jogador em cache: subiu de nível se o XP ganho é maior que o acumulado no nível atual.
       const leveledUp = previous ? player.level > previous.level : xpDelta > player.xpIntoLevel
       if (leveledUp) celebrateLevel(player.level)

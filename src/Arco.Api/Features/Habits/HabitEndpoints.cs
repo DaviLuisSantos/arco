@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 using System.Globalization;
 
 namespace Arco.Api.Features.Habits;
@@ -179,7 +180,8 @@ public static class HabitEndpoints
             return ApiResults.Conflict("O hábito foi alterado ao mesmo tempo. Tente novamente.");
         }
 
-        return Results.Ok(new HabitXpResult(new HabitDto(habit), XpRules.HabitLevelUp, await Queries.GetPlayerAsync(db, ct)));
+        return Results.Ok(new HabitXpResult(new HabitDto(habit), XpRules.HabitLevelUp, await Queries.GetPlayerAsync(db, ct),
+            await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
     private static Task<IResult> Archive(int id, AppDbContext db, AppClock clock, CancellationToken ct) =>

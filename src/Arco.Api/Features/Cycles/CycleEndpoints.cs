@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 using Arco.Api.Features.Reviews;
 
 namespace Arco.Api.Features.Cycles;
@@ -163,7 +164,7 @@ public static class CycleEndpoints
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(new CycleXpResult(CycleDto.From(cycle, today), XpRules.CycleCompleted,
-            await Queries.GetPlayerAsync(db, ct)));
+            await Queries.GetPlayerAsync(db, ct), await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
     private static string Truncate(string s) => s.Length <= 200 ? s : s[..200];

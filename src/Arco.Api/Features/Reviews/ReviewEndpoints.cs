@@ -1,3 +1,4 @@
+using Arco.Api.Features.Achievements;
 namespace Arco.Api.Features.Reviews;
 
 public static class ReviewEndpoints
@@ -21,7 +22,8 @@ public static class ReviewEndpoints
         CycleDto? Cycle,
         IReadOnlyList<GoalDto> Goals);
 
-    public sealed record WeeklyReviewXpResult(WeeklyReviewDto Review, int XpDelta, PlayerDto Player);
+    public sealed record WeeklyReviewXpResult(WeeklyReviewDto Review, int XpDelta, PlayerDto Player,
+        IReadOnlyList<AchievementDto> Achievements);
 
     public static IEndpointRouteBuilder MapReviews(this IEndpointRouteBuilder api)
     {
@@ -99,6 +101,7 @@ public static class ReviewEndpoints
         }
 
         return Results.Created("/api/reviews/weekly",
-            new WeeklyReviewXpResult(WeeklyReviewDto.From(review), XpRules.WeeklyReview, await Queries.GetPlayerAsync(db, ct)));
+            new WeeklyReviewXpResult(WeeklyReviewDto.From(review), XpRules.WeeklyReview, await Queries.GetPlayerAsync(db, ct),
+                await AchievementService.UnlockAsync(db, clock, ct)));
     }
 }
