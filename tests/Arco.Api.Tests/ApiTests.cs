@@ -179,6 +179,32 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task Deleting_a_cycle_removes_its_goals_and_unlinks_habits()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var cycleId = (int)(await (await client.PostAsJsonAsync("/api/cycles", new { name = "Teste" })).JsonAsync())["id"]!;
+        var goalId = (int)(await (await client.PostAsJsonAsync("/api/goals", new
+        {
+            cycleId, title = "Meta", type = "Milestones", milestones = new[] { "A" },
+        })).JsonAsync())["id"]!;
+        var habitId = (int)(await (await client.PostAsJsonAsync("/api/habits", new
+        {
+            name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min", goalId,
+        })).JsonAsync())["id"]!;
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/cycles/{cycleId}")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync("/api/cycles/current")).StatusCode);
+        Assert.Empty((await client.GetJsonAsync("/api/cycles")).AsArray());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/api/goals/{goalId}/complete", null)).StatusCode);
+        Assert.Null((int?)(await client.GetJsonAsync($"/api/habits/{habitId}"))["goalId"]);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/cycles/{cycleId}")).StatusCode);
+
+        // A new cycle can be created right away.
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/cycles", new { name = "Novo" })).StatusCode);
+    }
+
+    [Fact]
     public async Task Milestone_toggles_award_and_revert_xp()
     {
         var client = await _factory.LoggedInClientAsync();

@@ -33,6 +33,7 @@ public static class CycleEndpoints
         group.MapPut("/{id:int}", Update);
         group.MapGet("/{id:int}/summary", Summary);
         group.MapPost("/{id:int}/complete", Complete);
+        group.MapDelete("/{id:int}", Delete);
         return api;
     }
 
@@ -165,6 +166,13 @@ public static class CycleEndpoints
 
         return Results.Ok(new CycleXpResult(CycleDto.From(cycle, today), XpRules.CycleCompleted,
             await Queries.GetPlayerAsync(db, ct), await AchievementService.UnlockAsync(db, clock, ct)));
+    }
+
+    private static async Task<IResult> Delete(int id, AppDbContext db, CancellationToken ct)
+    {
+        // FK actions: goals (and their milestones/updates) cascade, habits.GoalId → NULL, XP events keep their XP.
+        var deleted = await db.Cycles.Where(c => c.Id == id).ExecuteDeleteAsync(ct);
+        return deleted == 0 ? ApiResults.NotFound(NotFound) : Results.NoContent();
     }
 
     private static string Truncate(string s) => s.Length <= 200 ? s : s[..200];

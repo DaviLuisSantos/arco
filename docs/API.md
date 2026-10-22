@@ -281,6 +281,9 @@ Validação dos hábitos:
 - `POST /api/cycles/{id}/complete` `{ reviewNotes?, wins?, obstacles?, next? }` → `{ cycle, xpDelta: 100, player }`.
   - `reviewNotes` até 4000 caracteres; `wins`, `obstacles` e `next` até 2000 cada. Todos opcionais.
   - Ciclo já concluído → 409 `conflict`.
+- `DELETE /api/cycles/{id}` → **204**. Exclui o ciclo (ativo ou concluído) e os objetivos dele, com marcos e
+  progresso. Hábitos ligados a esses objetivos ficam com `goalId = null`; o XP já ganho fica no livro-razão.
+  Inexistente → 404.
 
 ## Objetivos
 
