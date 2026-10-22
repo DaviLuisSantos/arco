@@ -75,3 +75,17 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
 3. **Polimento** — streaks com tolerância (1 falha por semana), conquistas, histórico e estatísticas.
+
+## Pendências
+
+### Uso offline (nível 2: ler e marcar check-in sem internet)
+Hoje o service worker pré-cacheia só o app shell: o app abre offline, mas as telas falham por falta de dados.
+- **Ler offline:** persistir o cache do TanStack Query no aparelho (IndexedDB) e mostrar a última resposta de
+  cada tela com o aviso "Offline — dados de HH:mm". O service worker continua sem cachear `/api`.
+- **Check-in offline:** check-ins feitos sem rede entram numa fila persistida, aparecem na hora (atualização
+  otimista, XP estimado) e são enviados em ordem quando a conexão volta; o servidor recalcula o XP oficial.
+  Cada check-in já leva a própria data e a API aceita até 7 dias para trás, então o envio atrasado cai no dia certo.
+- **Demais ações** (criar/editar hábito, subir de nível, objetivos, revisões) continuam exigindo internet:
+  ficam desabilitadas offline, com aviso.
+- Indicador global de "Offline" / "Sincronizando…".
+- Ao implementar, atualizar a regra do CLAUDE.md: dados podem vir de cache local do app, nunca do service worker.
