@@ -11,6 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { AchievementsSection } from '../features/achievements/AchievementsSection'
+import { ApiKeysCard } from '../features/apikeys/ApiKeysCard'
 import { BackupCard } from '../features/backup/BackupCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
 import { NotificationsCard } from '../features/push/NotificationsCard'
@@ -65,6 +66,7 @@ export function ProfilePage() {
       <NotificationsSection />
       <SettingsCard />
       <BackupCard />
+      <ApiKeysCard />
       <LogoutButton />
     </div>
   )

@@ -272,6 +272,20 @@ export interface Stats {
   recent: { from: string; to: string; xp: number; checkIns: CheckInTotals; habits: HabitPeriodStats[] }
 }
 
+/** Chave de API (o segredo inteiro só aparece em CreatedApiKey, na criação). */
+export interface ApiKey {
+  id: number
+  name: string
+  /** Primeiros caracteres da chave, para reconhecer. */
+  prefix: string
+  createdAt: string
+  lastUsedAt: string | null
+}
+
+export interface CreatedApiKey extends Omit<ApiKey, 'lastUsedAt'> {
+  key: string
+}
+
 /** Cópia automática do banco guardada no servidor. */
 export interface BackupFile {
   date: string

@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<PushDispatch> PushDispatches => Set<PushDispatch>();
     public DbSet<UnlockedAchievement> Achievements => Set<UnlockedAchievement>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -127,6 +128,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Key).HasMaxLength(100);
             e.HasIndex(x => x.Key).IsUnique();
+        });
+
+        b.Entity<ApiKey>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(60);
+            e.Property(x => x.Prefix).HasMaxLength(20);
+            e.Property(x => x.KeyHash).HasMaxLength(64);
+            e.HasIndex(x => x.KeyHash).IsUnique();
         });
 
         b.Entity<UnlockedAchievement>(e =>

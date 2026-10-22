@@ -5,7 +5,13 @@
 - Todas as rotas ficam sob `/api`. JSON em camelCase e enums como string.
 - Datas de calendário são `"YYYY-MM-DD"` (DateOnly). Instantes são ISO-8601 UTC com `Z`.
 - Ids são `int` (autoincremento).
-- Autenticação por cookie HttpOnly `arco_auth` (SameSite=Lax, Secure fora de Development, sliding de 30 dias). Sem cookie válido, toda rota `/api/*`, exceto `/api/auth/login`, `/api/auth/me` e `/api/health`, devolve **401** (nunca redirect).
+- Autenticação, de um destes jeitos (toda rota `/api/*` aceita os dois):
+  - **Cookie** HttpOnly `arco_auth` (o app): SameSite=Lax, Secure fora de Development, sliding de 30 dias.
+  - **Chave de API**: cabeçalho `Authorization: Bearer arco_…`. Criada e revogada no app (Perfil → Acesso pela API);
+    dá acesso total, exceto gerenciar chaves. Ver "Chaves de API".
+
+  Sem credencial válida, toda rota `/api/*`, exceto `/api/auth/login`, `/api/auth/me` e `/api/health`, devolve
+  **401** (nunca redirect). Chave inválida ou revogada → 401 `unauthorized`.
 - Erros: `{ "error": "mensagem pt-BR", "code": "snake_case" }`.
 
 | Status | Codes |
@@ -123,6 +129,19 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 - `POST /api/auth/login` `{ password }` → **204** e define o cookie. Senha errada → 401 `invalid_password`. Rate limit de 5/min por IP → 429.
 - `POST /api/auth/logout` → **204**.
 - `GET /api/auth/me` → **200** `{ authenticated: true }` ou **401**.
+
+## Chaves de API
+
+Só com o cookie do app: com uma chave, estas rotas devolvem **403** `forbidden`.
+
+- `GET /api/api-keys` → `Array<{ id, name, prefix, createdAt, lastUsedAt: string | null }>` (mais recentes primeiro).
+  `prefix` = os 12 primeiros caracteres da chave; `lastUsedAt` é atualizado no máximo 1×/min.
+- `POST /api/api-keys` `{ name }` (1 a 60 caracteres; no máximo 20 chaves) → **201**
+  `{ id, name, prefix, createdAt, key }`. `key` (`arco_` + 43 caracteres) aparece **só nesta resposta**; o servidor
+  guarda apenas o SHA-256.
+- `DELETE /api/api-keys/{id}` → **204** (revoga na hora). Inexistente → 404.
+
+Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 
 ## Health
 

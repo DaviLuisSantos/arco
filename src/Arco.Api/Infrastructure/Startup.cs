@@ -1,3 +1,5 @@
+using Arco.Api.Features.ApiKeys;
+using Microsoft.AspNetCore.Authentication;
 using Arco.Api.Features.Backup;
 using Arco.Api.Features.Stats;
 using Arco.Api.Features.Achievements;
@@ -35,7 +37,10 @@ public static class AppInfo
 
 public static class Startup
 {
+    /// <summary>The app's cookie scheme.</summary>
     public const string AuthScheme = "arco";
+    /// <summary>Picks the cookie or an API key per request.</summary>
+    public const string DefaultScheme = "arco-or-api-key";
     public const string AuthCookieName = "arco_auth";
     public const string LoginRateLimitPolicy = "login";
 
@@ -76,7 +81,12 @@ public static class Startup
 
         // Auth
         services.AddSingleton(PasswordVerifier.FromConfiguration(config, env));
-        services.AddAuthentication(AuthScheme).AddCookie(AuthScheme, o =>
+        // Requests with "Authorization: Bearer …" use an API key; everything else, the app's cookie.
+        services.AddAuthentication(DefaultScheme)
+            .AddPolicyScheme(DefaultScheme, "Cookie ou chave de API", o =>
+                o.ForwardDefaultSelector = ctx => ApiKeys.IsApiKeyRequest(ctx.Request) ? ApiKeys.Scheme : AuthScheme)
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeys.Scheme, null)
+            .AddCookie(AuthScheme, o =>
         {
             o.Cookie.Name = AuthCookieName;
             o.Cookie.HttpOnly = true;
@@ -197,6 +207,7 @@ public static class Startup
         secured.MapAchievements();
         secured.MapStats();
         secured.MapBackup();
+        secured.MapApiKeys();
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();

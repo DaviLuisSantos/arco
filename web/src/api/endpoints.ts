@@ -1,10 +1,12 @@
 import { api, ApiError } from './client'
 import type {
   Achievement,
+  ApiKey,
   BackupFile,
   CheckIn,
   CheckInInput,
   CheckInResult,
+  CreatedApiKey,
   Cycle,
   CycleCompleteInput,
   CycleCompleteResult,
@@ -107,6 +109,12 @@ export const goalsApi = {
   toggleMilestone: (id: number, milestoneId: number) =>
     api.post<GoalResult>(`/goals/${id}/milestones/${milestoneId}/toggle`),
   complete: (id: number) => api.post<GoalResult>(`/goals/${id}/complete`),
+}
+
+export const apiKeysApi = {
+  list: () => api.get<ApiKey[]>('/api-keys'),
+  create: (name: string) => api.post<CreatedApiKey>('/api-keys', { name }),
+  revoke: (id: number) => api.delete<void>(`/api-keys/${id}`),
 }
 
 export const backupApi = {

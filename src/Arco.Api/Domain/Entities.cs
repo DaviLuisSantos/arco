@@ -187,6 +187,18 @@ public class PushSubscription
     public int FailureCount { get; set; }
 }
 
+/// <summary>A key for the API (<c>Authorization: Bearer arco_…</c>). Only its SHA-256 is stored.</summary>
+public class ApiKey
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    /// <summary>First characters of the key, shown so the owner can recognize it.</summary>
+    public string Prefix { get; set; } = "";
+    public string KeyHash { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastUsedAt { get; set; }
+}
+
 /// <summary>An achievement of <see cref="AchievementCatalog"/> already unlocked (never revoked).</summary>
 public class UnlockedAchievement
 {
