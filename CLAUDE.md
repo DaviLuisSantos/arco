@@ -2,6 +2,8 @@
 
 Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.md` (conceito, regras de XP) e `docs/API.md` (contrato da API) antes de mudar comportamento. **Mantenha o API.md atualizado** a cada mudança de contrato.
 
+**Antes de explorar o código, leia `docs/repo_map.md`.**
+
 ## Layout
 - `src/Arco.Api`: .NET 10 Minimal APIs, organizado em fatias.
   - `Features/<Feature>/` contém o endpoint e a lógica de cada funcionalidade.
@@ -13,7 +15,7 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
   - `src/api` é o cliente tipado, espelho do API.md.
   - `src/features` concentra a lógica por domínio.
   - `src/components/ui` tem as primitivas visuais.
-- Produção: um único container (`Dockerfile`) em que o ASP.NET serve a API e `wwwroot` (o build do web). O Caddy faz o HTTPS (`docker-compose.yml`).
+- Produção: Azure App Service via `.github/workflows/deploy.yml` (win-x86 auto-contido; ver `docs/DEPLOY.md`). Alternativa: um container (`Dockerfile` + Caddy no `docker-compose.yml`). Nos dois casos o ASP.NET serve a API e `wwwroot` (o build do web).
 
 ## Comandos
 - API: `dotnet run --project src/Arco.Api`, em :5080. Em Development, a senha é "arco".
