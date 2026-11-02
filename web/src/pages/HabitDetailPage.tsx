@@ -206,6 +206,7 @@ export function HabitDetailPage() {
             today={today.data ?? localToday()}
             // Check-ins podem ser marcados até 7 dias antes da criação do hábito.
             firstDay={addDays(localDateOf(h.createdAt), -7)}
+            editable={!archived}
           />
         </Card>
       </section>

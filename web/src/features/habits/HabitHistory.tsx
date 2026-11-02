@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { checkInsApi } from '../../api/endpoints'
 import type { CheckInStatus } from '../../api/types'
 import { Button } from '../../components/ui/Button'
+import { Dialog } from '../../components/ui/Dialog'
 import { cn } from '../../lib/cn'
 import {
   addDays,
@@ -17,6 +18,10 @@ import {
 } from '../../lib/dates'
 import { STATUS_LABELS } from '../../lib/format'
 import { queryKeys } from '../../lib/queryKeys'
+import { useAppMutation } from '../../lib/useAppMutation'
+
+/** Mesmo limite do servidor (CheckInEndpoints.MaxDaysInPast). */
+const MAX_DAYS_IN_PAST = 7
 
 const CELL = {
   Done: 'bg-done text-bg',
@@ -32,8 +37,26 @@ const STATUSES: CheckInStatus[] = ['Done', 'Minimum', 'Missed']
 const WEEK_HEADER = [1, 2, 3, 4, 5, 6, 0].map((d) => WEEKDAY_INITIALS[d])
 
 /** Calendário de check-ins de um hábito, mês a mês, com o resumo do mês. */
-export function HabitHistory({ habitId, today, firstDay }: { habitId: number; today: string; firstDay: string }) {
+export function HabitHistory({
+  habitId,
+  today,
+  firstDay,
+  editable = true,
+}: {
+  habitId: number
+  today: string
+  firstDay: string
+  /** false para hábitos arquivados (o servidor recusa check-in). */
+  editable?: boolean
+}) {
   const [month, setMonth] = useState(() => monthStart(today))
+  const [editing, setEditing] = useState<string | null>(null)
+  const earliestEditable = addDays(today, -MAX_DAYS_IN_PAST)
+  const save = useAppMutation(
+    ({ date, status }: { date: string; status: CheckInStatus | null }) =>
+      status ? checkInsApi.upsert({ habitId, date, status }) : checkInsApi.remove(habitId, date),
+    { onSuccess: () => setEditing(null) },
+  )
   const from = month
   const to = monthEnd(month)
   const checkIns = useQuery({
@@ -87,18 +110,22 @@ export function HabitHistory({ habitId, today, firstDay }: { habitId: number; to
             const status = byDate.get(d)
             const future = d > today
             const label = `${formatDate(d, { day: 'numeric', month: 'long' })}: ${status ? STATUS_LABELS[status] : 'sem check-in'}`
+            const canEdit = editable && !future && d >= earliestEditable && d >= firstDay
+            const cls = cn(
+              'grid aspect-square w-full place-items-center rounded-lg text-xs font-semibold',
+              future ? CELL.future : CELL[status ?? 'none'],
+              d === today && 'ring-2 ring-accent ring-offset-2 ring-offset-surface',
+              canEdit && 'cursor-pointer hover:brightness-110 focus-visible:outline-2 focus-visible:outline-accent',
+            )
             return (
-              <li
-                key={d}
-                title={future ? undefined : label}
-                aria-label={future ? undefined : label}
-                className={cn(
-                  'grid aspect-square place-items-center rounded-lg text-xs font-semibold',
-                  future ? CELL.future : CELL[status ?? 'none'],
-                  d === today && 'ring-2 ring-accent ring-offset-2 ring-offset-surface',
+              <li key={d} title={future ? undefined : label} aria-label={canEdit ? undefined : future ? undefined : label}>
+                {canEdit ? (
+                  <button type="button" className={cls} aria-label={`${label}. Editar`} onClick={() => setEditing(d)}>
+                    {Number(d.slice(8))}
+                  </button>
+                ) : (
+                  <span className={cls}>{Number(d.slice(8))}</span>
                 )}
-              >
-                {Number(d.slice(8))}
               </li>
             )
           })}
@@ -116,6 +143,45 @@ export function HabitHistory({ habitId, today, firstDay }: { habitId: number; to
           </span>
         ))}
       </div>
+
+      {editable && (
+        <p className="text-xs text-muted">Toque em um dos últimos {MAX_DAYS_IN_PAST} dias para marcar o que ficou de fora.</p>
+      )}
+
+      <Dialog
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={editing ? formatDate(editing, { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
+        description="O XP e a sequência são recalculados."
+      >
+        {editing && (
+          <div className="flex flex-col gap-2 pt-1">
+            {STATUSES.map((s) => (
+              <Button
+                key={s}
+                variant={byDate.get(editing) === s ? 'primary' : 'secondary'}
+                block
+                loading={save.isPending && save.variables?.status === s}
+                disabled={save.isPending}
+                onClick={() => save.mutate({ date: editing, status: s })}
+              >
+                {STATUS_LABELS[s]}
+              </Button>
+            ))}
+            {byDate.has(editing) && (
+              <Button
+                variant="ghost"
+                block
+                loading={save.isPending && save.variables?.status === null}
+                disabled={save.isPending}
+                onClick={() => save.mutate({ date: editing, status: null })}
+              >
+                Remover check-in
+              </Button>
+            )}
+          </div>
+        )}
+      </Dialog>
     </div>
   )
 }
