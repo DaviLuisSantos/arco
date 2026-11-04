@@ -55,7 +55,8 @@ respondeu `{"status":"healthy","version":"0.1.0"}` na segunda tentativa, enquant
 - A interface (`/`) e o service worker (`/sw.js`) respondem 200.
 - A API (`/api/today`) devolve 401 sem login, como esperado.
 
-Endereço: `https://arco-dwhfa7btethphcef.brazilsouth-01.azurewebsites.net`.
+Endereço do Azure: `https://arco-dwhfa7btethphcef.brazilsouth-01.azurewebsites.net`. Endereço público atual:
+`https://arco.daviluis.dev` (proxy do anterior).
 
 ## Decisões técnicas
 

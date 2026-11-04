@@ -77,11 +77,12 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 
 - **Sem Always On:** o app hiberna após cerca de 20 min sem requisições, e com ele o loop que envia
   os lembretes push. Para os lembretes chegarem na hora, cadastre um monitor externo gratuito
-  (UptimeRobot, Better Stack etc.) chamando `https://<app>.azurewebsites.net/api/health` a cada 5 min.
+  (UptimeRobot, Better Stack etc.) chamando `https://arco.daviluis.dev/api/health` a cada 5 min.
   O GitHub Actions não serve para isso: o repositório é privado, e um cron a cada 5 min estoura os minutos gratuitos.
 - **60 min de CPU por dia e 1 GB de disco:** sobra para um usuário só.
-- **Sem domínio próprio com HTTPS:** use o `*.azurewebsites.net`, que já tem HTTPS. HTTPS é obrigatório
-  para o PWA e para o push.
+- **Domínio:** o endereço público é `https://arco.daviluis.dev`, um proxy na frente do `*.azurewebsites.net`
+  (que continua funcionando e já tem HTTPS). HTTPS é obrigatório para o PWA e para o push. Use sempre o domínio
+  próprio no app instalado, nas chaves de API e no MCP: as inscrições de push e o PWA ficam presos à origem.
 
 ## Backup e logs
 
@@ -99,4 +100,4 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 
 As ferramentas do MCP (`/api/mcp`) chamam a própria API pelo endereço público da requisição. Se algum dia isso
 falhar no ambiente (ex.: o app não alcança o próprio domínio), defina `Mcp__SelfBaseUrl` nas configurações do Web App
-com a URL base da API (ex.: `https://<app>.azurewebsites.net`).
+com a URL base da API (ex.: `https://arco.daviluis.dev`).

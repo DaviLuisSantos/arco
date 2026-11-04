@@ -77,18 +77,18 @@ Tudo o que o app faz passa pela API REST documentada em [docs/API.md](docs/API.m
 uma chave de API, criada em **Perfil → Acesso pela API** (ela aparece uma única vez):
 
 ```bash
-curl -H "Authorization: Bearer arco_..." https://<host>/api/today
+curl -H "Authorization: Bearer arco_..." https://arco.daviluis.dev/api/today
 ```
 
 O servidor MCP fica em `/api/mcp`, com a mesma chave. Para conectar no Claude Code:
 
 ```bash
-claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_..."
+claude mcp add --transport http arco https://arco.daviluis.dev/api/mcp --header "Authorization: Bearer arco_..."
 ```
 
 ## Deploy
 
-**Azure App Service (plano Free):** a esteira do GitHub Actions testa e publica a cada push na `main`. A configuração
+**Azure App Service (plano Free):** publicado em `https://arco.daviluis.dev` (proxy do domínio do Azure). A esteira do GitHub Actions testa e publica a cada push na `main`. A configuração
 única (Web App, identidade OIDC, segredos), os limites do plano, o backup e o monitor de disponibilidade estão em
 [docs/DEPLOY.md](docs/DEPLOY.md).
 
