@@ -94,6 +94,13 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.
 - "Hoje" é calculado no fuso configurado (padrão `America/Sao_Paulo`).
 
+### Foco
+- Sessões de foco registram minutos dedicados a um hábito; **não dão XP** nem afetam streak.
+- Dois jeitos de registrar: o **timer** na página do hábito (cada sessão é um registro) e os **minutos no check-in**.
+- Minutos manuais no check-in são **únicos por hábito e dia** (informar de novo substitui; 0 remove). Sessões do timer se somam a eles, o que é intencional.
+- O timer não pune: parar antes ou não usar não tira nada.
+- As Estatísticas mostram as horas por semana e por hábito.
+
 ### Revisão semanal
 - Revisa a semana de segunda a domingo. No domingo a semana revisável é a atual; de segunda a sábado, a anterior.
 - Mostra os números da semana (XP, check-ins, consistência por hábito, objetivos do ciclo) e pergunta: o que funcionou, o que atrapalhou e qual o foco da próxima semana. Ao menos uma resposta.

@@ -1,8 +1,9 @@
 import { Check, Flag, Minus, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import type { CheckInStatus, TodayHabit } from '../../api/types'
 import { cn } from '../../lib/cn'
-import { STATUS_LABELS, streakText } from '../../lib/format'
+import { STATUS_LABELS, formatDuration, streakText } from '../../lib/format'
 import { useCheckIn } from './useCheckIn'
 
 const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string }> = [
@@ -14,10 +15,24 @@ const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string
 export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: string }) {
   const checkIn = useCheckIn()
   const current = habit.checkIn?.status ?? null
+  const savedMinutes = habit.checkIn?.minutes ?? null
+  // null = acompanha o valor salvo; string = rascunho em edição
+  const [draft, setDraft] = useState<string | null>(null)
+  const text = draft ?? (savedMinutes ? String(savedMinutes) : '')
+  const parsed = text.trim() === '' ? 0 : Number(text)
+  const validMinutes = Number.isInteger(parsed) && parsed >= 0 && parsed <= 480
+  const changed = validMinutes && parsed !== (savedMinutes ?? 0)
 
   function handleTap(status: CheckInStatus) {
     // tocar no status atual desfaz
+    setDraft(null)
     checkIn.mutate({ habit, date, status: current === status ? null : status })
+  }
+
+  function saveMinutes(e: React.FormEvent) {
+    e.preventDefault()
+    if (!current || !changed) return
+    checkIn.mutate({ habit, date, status: current, minutes: parsed }, { onSuccess: () => setDraft(null) })
   }
 
   return (
@@ -88,6 +103,39 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           )
         })}
       </div>
+
+      {(current === 'Done' || current === 'Minimum') && (
+        <form onSubmit={saveMinutes} className="mt-2 flex items-center gap-2">
+          <label htmlFor={`minutes-${habit.id}`} className="shrink-0 text-sm text-muted">
+            Quantos minutos?
+          </label>
+          <input
+            id={`minutes-${habit.id}`}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={480}
+            step={1}
+            placeholder="opcional"
+            value={text}
+            onChange={(e) => setDraft(e.target.value)}
+            aria-invalid={!validMinutes}
+            className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 text-sm"
+          />
+          {changed && (
+            <button
+              type="submit"
+              disabled={checkIn.isPending && !checkIn.isPaused}
+              className="h-10 shrink-0 rounded-xl border border-border bg-surface-2 px-3 text-sm font-semibold hover:text-text"
+            >
+              Salvar
+            </button>
+          )}
+          {!changed && savedMinutes ? (
+            <span className="shrink-0 text-xs text-muted">{formatDuration(savedMinutes)}</span>
+          ) : null}
+        </form>
+      )}
     </article>
   )
 }

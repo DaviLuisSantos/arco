@@ -11,6 +11,7 @@ export const queryKeys = {
   achievements: ['achievements'] as const,
   stats: ['stats'] as const,
   habitMonth: (habitId: number, month: string) => ['checkins', habitId, month] as const,
+  focus: (from: string, to: string) => ['focus', from, to] as const,
   settings: ['settings'] as const,
   weeklyReview: ['reviews', 'weekly', 'current'] as const,
   weeklyReviews: ['reviews', 'weekly'] as const,

@@ -6,7 +6,7 @@ public static class CheckInEndpoints
     public const int MaxDaysInPast = 7;
     public const int MaxRangeDays = 366;
 
-    public sealed record UpsertCheckInRequest(int? HabitId, DateOnly? Date, CheckInStatus? Status);
+    public sealed record UpsertCheckInRequest(int? HabitId, DateOnly? Date, CheckInStatus? Status, int? Minutes = null);
 
     public static IEndpointRouteBuilder MapCheckIns(this IEndpointRouteBuilder api)
     {
@@ -22,6 +22,12 @@ public static class CheckInEndpoints
         if (request?.HabitId is not { } habitId) return ApiResults.Validation("Informe o hábito.");
         if (request.Date is not { } date) return ApiResults.Validation("Informe a data do check-in.");
         if (request.Status is not { } status) return ApiResults.Validation("Informe o status do check-in.");
+
+        var minutes = request.Minutes;
+        if (minutes is < 0 or > FocusRules.MaxMinutes)
+            return ApiResults.Validation($"Os minutos devem estar entre 0 e {FocusRules.MaxMinutes}.");
+        if (minutes > 0 && status == CheckInStatus.Missed)
+            return ApiResults.Validation("Não é possível registrar minutos em um dia marcado como não feito.");
 
         var today = await clock.GetTodayAsync(ct);
         if (date > today) return ApiResults.Validation("Não é possível registrar check-in em uma data futura.");
@@ -66,6 +72,34 @@ public static class CheckInEndpoints
             });
         }
 
+        // Manual minutes live in the same transaction (single SaveChanges). There is one Manual session per
+        // (habit, day), updated in place, so resending the same PUT (offline queue) is idempotent.
+        var manual = await db.FocusSessions
+            .Where(s => s.HabitId == habitId && s.Date == date && s.Source == FocusSource.Manual)
+            .OrderBy(s => s.Id).ToListAsync(ct);
+        if (minutes is { } m)
+        {
+            if (m == 0)
+            {
+                db.FocusSessions.RemoveRange(manual);
+                manual.Clear();
+            }
+            else if (manual.Count == 0)
+            {
+                var session = new FocusSession
+                {
+                    HabitId = habitId, Date = date, Minutes = m, Source = FocusSource.Manual, CreatedAt = now,
+                };
+                db.FocusSessions.Add(session);
+                manual.Add(session);
+            }
+            else
+            {
+                manual[0].Minutes = m;
+                if (manual.Count > 1) db.FocusSessions.RemoveRange(manual.Skip(1));
+            }
+        }
+
         try
         {
             await db.SaveChangesAsync(ct);
@@ -75,7 +109,7 @@ public static class CheckInEndpoints
             return ApiResults.Conflict("Este check-in foi registrado ao mesmo tempo por outra requisição. Tente novamente.");
         }
 
-        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn), xp - previousXp, await Queries.GetPlayerAsync(db, ct),
+        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn) with { Minutes = manual.Count > 0 ? manual[0].Minutes : null }, xp - previousXp, await Queries.GetPlayerAsync(db, ct),
             await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
@@ -87,6 +121,9 @@ public static class CheckInEndpoints
         var events = await db.XpEvents.Where(e => e.CheckInId == checkIn.Id).ToListAsync(ct);
         db.XpEvents.RemoveRange(events);
         db.CheckIns.Remove(checkIn);
+        // The manual minutes go with the check-in; Timer sessions stay.
+        db.FocusSessions.RemoveRange(await db.FocusSessions
+            .Where(s => s.HabitId == habitId && s.Date == date && s.Source == FocusSource.Manual).ToListAsync(ct));
         await db.SaveChangesAsync(ct);
 
         return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
@@ -103,7 +140,10 @@ public static class CheckInEndpoints
         var checkIns = await db.CheckIns.AsNoTracking()
             .Where(c => c.Date >= start && c.Date <= end && (habitId == null || c.HabitId == habitId))
             .OrderBy(c => c.Date).ThenBy(c => c.HabitId)
-            .Select(c => new CheckInDto(c.HabitId, c.Date, c.Status, c.Xp))
+            .Select(c => new CheckInDto(c.HabitId, c.Date, c.Status, c.Xp,
+                db.FocusSessions
+                    .Where(s => s.HabitId == c.HabitId && s.Date == c.Date && s.Source == FocusSource.Manual)
+                    .OrderBy(s => s.Id).Select(s => (int?)s.Minutes).FirstOrDefault()))
             .ToListAsync(ct);
         return Results.Ok(checkIns);
     }

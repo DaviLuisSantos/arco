@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<HabitLevel> HabitLevels => Set<HabitLevel>();
     public DbSet<HabitPlannedLevel> HabitPlannedLevels => Set<HabitPlannedLevel>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
+    public DbSet<FocusSession> FocusSessions => Set<FocusSession>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
     public DbSet<WeeklyReview> WeeklyReviews => Set<WeeklyReview>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
@@ -91,6 +92,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Habit).WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
             e.HasIndex(x => x.Date);
+        });
+
+        b.Entity<FocusSession>(e =>
+        {
+            e.Property(x => x.Source).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(x => x.Habit).WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.HabitId, x.Date });
         });
 
         b.Entity<XpEvent>(e =>

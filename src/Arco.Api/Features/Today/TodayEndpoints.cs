@@ -69,6 +69,11 @@ public static class TodayEndpoints
                 .ToListAsync(ct))
             .ToLookup(c => c.HabitId);
 
+        var manualMinutes = (await db.FocusSessions.AsNoTracking()
+                .Where(s => s.Date == today && s.Source == FocusSource.Manual)
+                .OrderBy(s => s.Id).Select(s => new { s.HabitId, s.Minutes }).ToListAsync(ct))
+            .GroupBy(s => s.HabitId).ToDictionary(g => g.Key, g => g.First().Minutes);
+
         var items = habits.Select(h =>
         {
             var history = allCheckIns[h.Id].ToList();
@@ -79,7 +84,8 @@ public static class TodayEndpoints
                 todayCheckIn?.Status);
             var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone);
             return new TodayHabitDto(h, due, weekCount,
-                todayCheckIn is null ? null : CheckInDto.From(todayCheckIn), h.Goal?.Title, consistency, suggested, weeksDone,
+                todayCheckIn is null ? null
+                    : CheckInDto.From(todayCheckIn) with { Minutes = manualMinutes.TryGetValue(h.Id, out var m) ? m : null }, h.Goal?.Title, consistency, suggested, weeksDone,
                 !suggested && Queries.LevelDown(h, history, today, timezone),
                 Queries.Streak(h, history, today, timezone));
         })

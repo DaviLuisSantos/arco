@@ -11,6 +11,8 @@ import type {
   CycleCompleteInput,
   CycleCompleteResult,
   CycleSummary,
+  FocusList,
+  FocusSession,
   CycleInput,
   CycleUpdateInput,
   Goal,
@@ -152,4 +154,14 @@ export const pushApi = {
   subscribe: (subscription: PushSubscriptionJSON) => api.post<void>('/push/subscriptions', subscription),
   unsubscribe: (endpoint: string) => api.post<void>('/push/subscriptions/remove', { endpoint }),
   test: () => api.post<{ sent: number }>('/push/test'),
+}
+
+export const focusApi = {
+  list: (from: string, to: string, habitId?: number) =>
+    api.get<FocusList>(
+      `/focus-sessions?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${habitId ? `&habitId=${habitId}` : ''}`,
+    ),
+  create: (input: { habitId: number; minutes: number; date?: string; startedAt?: string }) =>
+    api.post<{ session: FocusSession }>('/focus-sessions', input),
+  remove: (id: number) => api.delete<void>(`/focus-sessions/${id}`),
 }

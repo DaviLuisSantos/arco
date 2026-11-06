@@ -28,9 +28,34 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description("Id do hábito (veja ver_hoje ou listar_habitos).")] int habitId,
         [Description(StatusDescription)] string status,
         [Description(DateDescription)] string? data = null,
+        [Description("Minutos dedicados (0 a 480, opcional). Omitido = não mexe; 0 = remove os minutos manuais do dia.")] int? minutos = null,
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Put, "/api/checkins",
-            new { habitId, date = data ?? await TodayAsync(ct), status }, ct);
+            new { habitId, date = data ?? await TodayAsync(ct), status, minutes = minutos }, ct);
+
+    [McpServerTool(Name = "registrar_foco", Title = "Registrar foco")]
+    [Description("Registra uma sessão de foco (minutos) em um hábito. Não dá XP; vira uma árvore na floresta.")]
+    public async Task<string> RegistrarFoco(
+        [Description("Id do hábito.")] int habitId,
+        [Description("Minutos de foco (1 a 480).")] int minutos,
+        [Description(DateDescription)] string? data = null,
+        CancellationToken ct = default) =>
+        await api.SendAsync(HttpMethod.Post, "/api/focus-sessions",
+            new { habitId, minutes = minutos, date = data ?? await TodayAsync(ct) }, ct);
+
+    [McpServerTool(Name = "ver_floresta", Title = "Ver floresta", ReadOnly = true)]
+    [Description("Sessões de foco de um período, com total de minutos e minutos por hábito.")]
+    public async Task<string> VerFloresta(
+        [Description("Início, YYYY-MM-DD. Omitido = 30 dias antes de 'ate'.")] string? de = null,
+        [Description("Fim, YYYY-MM-DD. Omitido = hoje.")] string? ate = null,
+        [Description("Filtrar por hábito (opcional).")] int? habitId = null,
+        CancellationToken ct = default)
+    {
+        var to = ate ?? await TodayAsync(ct);
+        var from = de ?? DateOnly.Parse(to).AddDays(-30).ToString("yyyy-MM-dd");
+        var q = $"/api/focus-sessions?from={from}&to={to}" + (habitId is null ? "" : $"&habitId={habitId}");
+        return await api.GetAsync(q, ct);
+    }
 
     [McpServerTool(Name = "desfazer_checkin", Title = "Desfazer check-in", Destructive = true)]
     [Description("Remove o check-in de um hábito em um dia (e o XP que ele deu).")]

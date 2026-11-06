@@ -11,7 +11,8 @@ public sealed record HabitPeriodStatsDto(
     int Missed,
     int Expected,
     double Rate,
-    bool LevelUpSuggested);
+    bool LevelUpSuggested,
+    int Minutes = 0);
 
 public sealed record CheckInTotalsDto(int Done, int Minimum, int Missed);
 
@@ -34,12 +35,19 @@ public static class ReviewStats
                 .ToListAsync(ct))
             .ToLookup(c => c.HabitId);
 
+        var minutesByHabit = (await db.FocusSessions.AsNoTracking()
+                .Where(f => f.Date >= from && f.Date <= to)
+                .Select(f => new { f.HabitId, f.Minutes })
+                .ToListAsync(ct))
+            .GroupBy(f => f.HabitId)
+            .ToDictionary(g => g.Key, g => g.Sum(f => f.Minutes));
+
         var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).ToListAsync(ct);
 
         return habits
             .Select(h => (Habit: h, InRange: checkIns[h.Id].Where(c => c.Date >= from && c.Date <= to).ToList()))
             .Where(x => (TimeZones.ToLocalDate(x.Habit.CreatedAt, timezone) <= to || x.InRange.Count > 0)
-                        && (x.Habit.ArchivedAt is null || x.InRange.Count > 0))
+                        && (x.Habit.ArchivedAt is null || x.InRange.Count > 0 || minutesByHabit.ContainsKey(x.Habit.Id)))
             .Select(x =>
             {
                 var h = x.Habit;
@@ -56,7 +64,8 @@ public static class ReviewStats
                     && TimeZones.ToLocalDate(l.ReachedAt, timezone) is var d && d >= from && d <= to);
                 var (_, _, suggested) = Queries.LevelUp(h, checkIns[h.Id], today, timezone);
                 return new HabitPeriodStatsDto(h.Id, h.Name, h.Emoji, h.CurrentLevelNumber, levelsGained,
-                    done, minimum, missed, expected, Math.Round(rate, 4), suggested);
+                    done, minimum, missed, expected, Math.Round(rate, 4), suggested,
+                    minutesByHabit.GetValueOrDefault(h.Id));
             })
             .OrderByDescending(s => s.Rate)
             .ThenBy(s => s.Name, StringComparer.InvariantCultureIgnoreCase)
@@ -71,4 +80,8 @@ public static class ReviewStats
 
     public static Task<int> XpInRangeAsync(AppDbContext db, DateOnly from, DateOnly to, CancellationToken ct) =>
         db.XpEvents.Where(e => e.Date >= from && e.Date <= to).SumAsync(e => e.Amount, ct);
+
+    /// <summary>All focus minutes in the range, independent of which habits the per-habit list includes.</summary>
+    public static Task<int> MinutesInRangeAsync(AppDbContext db, DateOnly from, DateOnly to, CancellationToken ct) =>
+        db.FocusSessions.Where(f => f.Date >= from && f.Date <= to).SumAsync(f => f.Minutes, ct);
 }

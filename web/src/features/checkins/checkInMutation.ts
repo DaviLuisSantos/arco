@@ -10,6 +10,8 @@ export interface CheckInVars {
   date: string
   /** null desfaz o check-in (DELETE). */
   status: CheckInStatus | null
+  /** Minutos manuais do dia. Ausente = não mexe; 0 = remove. Serializável na fila offline. */
+  minutes?: number
 }
 
 /**
@@ -21,8 +23,10 @@ export interface CheckInVars {
  */
 export function registerCheckInDefaults(qc: QueryClient) {
   qc.setMutationDefaults(CHECK_IN_KEY, {
-    mutationFn: ({ habit, date, status }: CheckInVars): Promise<XpResult> =>
-      status ? checkInsApi.upsert({ habitId: habit.id, date, status }) : checkInsApi.remove(habit.id, date),
+    mutationFn: ({ habit, date, status, minutes }: CheckInVars): Promise<XpResult> =>
+      status
+        ? checkInsApi.upsert({ habitId: habit.id, date, status, ...(minutes !== undefined && { minutes }) })
+        : checkInsApi.remove(habit.id, date),
     networkMode: 'online',
     scope: { id: 'checkin' },
     // Rede instável com o aparelho "online": tenta mais algumas vezes antes de desistir.

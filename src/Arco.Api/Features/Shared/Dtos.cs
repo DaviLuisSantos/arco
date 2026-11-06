@@ -80,7 +80,8 @@ public sealed record HabitLevelDto(int Level, string Description, string Minimum
 /// <summary>A planned (not yet reached) level; <c>Level</c> is the number it will get.</summary>
 public sealed record HabitPlannedLevelDto(int Level, string Description, string MinimumDescription);
 
-public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp)
+/// <param name="Minutes">Manual focus minutes logged for that habit and day (null when none).</param>
+public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp, int? Minutes = null)
 {
     public static CheckInDto From(CheckIn c) => new(c.HabitId, c.Date, c.Status, c.Xp);
 }

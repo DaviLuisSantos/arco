@@ -140,6 +140,39 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.ToTable("Cycles");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.FocusSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HabitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HabitId", "Date");
+
+                    b.ToTable("FocusSessions");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.Goal", b =>
                 {
                     b.Property<int>("Id")
@@ -578,6 +611,17 @@ namespace Arco.Api.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.CheckIn", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.Habit", "Habit")
+                        .WithMany()
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Habit");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.FocusSession", b =>
                 {
                     b.HasOne("Arco.Api.Domain.Habit", "Habit")
                         .WithMany()

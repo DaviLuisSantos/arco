@@ -92,8 +92,14 @@ public static class HabitEndpoints
             .ToListAsync(ct);
         var from = today.AddDays(-27);
         var checkIns = history.Where(c => c.Date >= from).ToList();
+        var manualMinutes = (await db.FocusSessions.AsNoTracking()
+                .Where(s => s.HabitId == id && s.Date >= from && s.Date <= today && s.Source == FocusSource.Manual)
+                .OrderBy(s => s.Id).Select(s => new { s.Date, s.Minutes }).ToListAsync(ct))
+            .GroupBy(s => s.Date).ToDictionary(g => g.Key, g => g.First().Minutes);
         var (consistency, weeksDone, suggested) = Queries.LevelUp(habit, history, today, timezone);
-        return Results.Ok(new HabitDetailDto(habit, checkIns.Select(CheckInDto.From).ToList(), consistency, suggested,
+        return Results.Ok(new HabitDetailDto(habit,
+            checkIns.Select(c => CheckInDto.From(c) with { Minutes = manualMinutes.TryGetValue(c.Date, out var m) ? m : null }).ToList(),
+            consistency, suggested,
             weeksDone, !suggested && Queries.LevelDown(habit, history, today, timezone),
             Queries.Streak(habit, history, today, timezone)));
     }

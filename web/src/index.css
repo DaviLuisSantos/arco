@@ -17,6 +17,8 @@
   --minimum: #fbbf24;
   --missed: #f87171;
   --danger: #f87171;
+  --habit-s: 60%;
+  --habit-l: 62%;
 }
 
 @media (prefers-color-scheme: light) {
@@ -36,6 +38,8 @@
     --minimum: #a16207;
     --missed: #c02626;
     --danger: #c02626;
+    --habit-s: 55%;
+    --habit-l: 42%;
   }
 }
 

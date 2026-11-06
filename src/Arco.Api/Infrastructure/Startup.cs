@@ -1,3 +1,4 @@
+using Arco.Api.Features.Focus;
 using Arco.Api.Features.Mcp;
 using Arco.Api.Features.ApiKeys;
 using Microsoft.AspNetCore.Authentication;
@@ -214,6 +215,7 @@ public static class Startup
         var secured = api.MapGroup("").RequireAuthorization();
         secured.MapToday();
         secured.MapCheckIns();
+        secured.MapFocus();
         secured.MapHabits();
         secured.MapCycles();
         secured.MapGoals();

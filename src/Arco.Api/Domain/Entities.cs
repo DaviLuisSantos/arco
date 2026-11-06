@@ -140,6 +140,19 @@ public class CheckIn
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>Time spent on a habit on a given local day (timer or manual minutes). No XP.</summary>
+public class FocusSession
+{
+    public int Id { get; set; }
+    public int HabitId { get; set; }
+    public Habit? Habit { get; set; }
+    public DateOnly Date { get; set; }
+    public int Minutes { get; set; }
+    public FocusSource Source { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 /// <summary>XP ledger entry. The player's total XP is the sum of all events.</summary>
 public class XpEvent
 {

@@ -69,6 +69,8 @@ export interface CheckIn {
   date: string
   status: CheckInStatus
   xp: number
+  /** Minutos manuais do dia. */
+  minutes?: number | null
 }
 
 export interface Habit {
@@ -252,6 +254,8 @@ export interface HabitPeriodStats {
   /** (Feito + Mínimo) / esperado, de 0 a 1. */
   rate: number
   levelUpSuggested: boolean
+  /** Minutos de foco no período (opcional: respostas em cache antigas não têm). */
+  minutes?: number
 }
 
 /** Uma semana (segunda a domingo) das estatísticas; a semana atual conta só até hoje. */
@@ -265,11 +269,21 @@ export interface WeekStats {
   expected: number
   /** (done + minimum) / expected, 0..1 */
   rate: number
+  /** Minutos de foco na semana. */
+  minutes?: number
 }
 
 export interface Stats {
   weeks: WeekStats[]
-  recent: { from: string; to: string; xp: number; checkIns: CheckInTotals; habits: HabitPeriodStats[] }
+  recent: {
+    from: string
+    to: string
+    xp: number
+    checkIns: CheckInTotals
+    habits: HabitPeriodStats[]
+    /** Minutos de foco nos últimos 30 dias. */
+    minutes?: number
+  }
 }
 
 /** Chave de API (o segredo inteiro só aparece em CreatedApiKey, na criação). */
@@ -362,6 +376,8 @@ export interface CheckInInput {
   habitId: number
   date: string
   status: CheckInStatus
+  /** Ausente = não mexe; 0 = remove a sessão manual do dia. */
+  minutes?: number
 }
 
 export interface CycleInput {
@@ -413,4 +429,19 @@ export interface GoalUpdateInput {
 export interface GoalProgressInput {
   value: number
   note?: string | null
+}
+
+export interface FocusSession {
+  id: number
+  habitId: number
+  date: string
+  minutes: number
+  source: 'Timer' | 'Manual'
+  startedAt: string | null
+}
+
+export interface FocusList {
+  sessions: FocusSession[]
+  totalMinutes: number
+  byHabit: { habitId: number; name: string; emoji: string | null; minutes: number; sessions: number }[]
 }

@@ -3,13 +3,14 @@ import type { WeekStats } from '../../api/types'
 import { Segmented } from '../../components/ui/Segmented'
 import { cn } from '../../lib/cn'
 import { formatDate } from '../../lib/dates'
-import { formatPercent, formatXp } from '../../lib/format'
+import { formatDuration, formatPercent, formatXp } from '../../lib/format'
 
-type Metric = 'rate' | 'xp'
+type Metric = 'rate' | 'xp' | 'hours'
 
 const METRICS = {
   rate: { bar: 'bg-accent', label: 'Consistência' },
   xp: { bar: 'bg-xp', label: 'XP' },
+  hours: { bar: 'bg-done', label: 'Horas' },
 }
 
 /**
@@ -19,7 +20,7 @@ const METRICS = {
 export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: string }) {
   const [metric, setMetric] = useState<Metric>('rate')
   const [selected, setSelected] = useState(weeks.length - 1)
-  const values = weeks.map((w) => (metric === 'rate' ? w.rate : w.xp))
+  const values = weeks.map((w) => (metric === 'rate' ? w.rate : metric === 'xp' ? w.xp : (w.minutes ?? 0)))
   const max = metric === 'rate' ? 1 : Math.max(1, ...values)
   const week = weeks[selected]
   const partial = week && week.weekEnd > today
@@ -33,12 +34,13 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
         options={[
           { value: 'rate', label: 'Consistência' },
           { value: 'xp', label: 'XP' },
+          { value: 'hours', label: 'Horas' },
         ]}
       />
 
       <div className="relative pt-5">
         <span className="absolute top-0 right-0 text-[11px] leading-4 text-muted">
-          {metric === 'rate' ? '100%' : formatXp(max)}
+          {metric === 'rate' ? '100%' : metric === 'xp' ? formatXp(max) : formatDuration(max)}
         </span>
         <div className="absolute inset-x-0 top-5 border-t border-dashed border-border" aria-hidden />
         <div
@@ -49,7 +51,7 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
           {weeks.map((w, i) => {
             const value = values[i]
             const empty = metric === 'rate' && w.expected === 0
-            const label = `Semana de ${formatDate(w.weekStart)}: ${empty ? 'sem hábitos' : metric === 'rate' ? formatPercent(value) : formatXp(value)}`
+            const label = `Semana de ${formatDate(w.weekStart)}: ${empty ? 'sem hábitos' : metric === 'rate' ? formatPercent(value) : metric === 'xp' ? formatXp(value) : formatDuration(value)}`
             return (
               <button
                 key={w.weekStart}
@@ -102,6 +104,8 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
           )}
           {' · '}
           <span className="font-semibold">{formatXp(week.xp)}</span>
+          {' · '}
+          <span className="font-semibold">{formatDuration(week.minutes ?? 0)}</span>
         </p>
       )}
     </div>

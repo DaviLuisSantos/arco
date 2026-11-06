@@ -44,7 +44,13 @@ export function StatsPage() {
             <h2 id="recent-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
               Últimos 30 dias
             </h2>
-            <PeriodStats xp={stats.data.recent.xp} checkIns={stats.data.recent.checkIns} habits={stats.data.recent.habits} />
+            <PeriodStats
+              xp={stats.data.recent.xp}
+              checkIns={stats.data.recent.checkIns}
+              habits={stats.data.recent.habits}
+              minutes={stats.data.recent.minutes}
+              showMinutes
+            />
           </section>
         </>
       )}

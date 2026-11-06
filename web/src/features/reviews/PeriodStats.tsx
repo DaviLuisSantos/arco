@@ -3,16 +3,19 @@ import { Link } from 'react-router'
 import type { CheckInTotals, HabitPeriodStats } from '../../api/types'
 import { Card } from '../../components/ui/Card'
 import { ProgressBar } from '../../components/ui/ProgressBar'
-import { formatPercent, formatXp } from '../../lib/format'
+import { formatDuration, formatPercent, formatXp } from '../../lib/format'
 
 interface PeriodStatsProps {
   xp: number
   checkIns: CheckInTotals
   habits: HabitPeriodStats[]
+  /** Total de foco no período; quando informado, mostra horas total e por hábito. */
+  minutes?: number
+  showMinutes?: boolean
 }
 
 /** Números de um período (semana ou ciclo): XP, totais de check-in e consistência por hábito. */
-export function PeriodStats({ xp, checkIns, habits }: PeriodStatsProps) {
+export function PeriodStats({ xp, checkIns, habits, minutes, showMinutes }: PeriodStatsProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-4 gap-2 text-center">
@@ -21,6 +24,12 @@ export function PeriodStats({ xp, checkIns, habits }: PeriodStatsProps) {
         <Stat label="Mínimo" value={checkIns.minimum} className="text-minimum" />
         <Stat label="Não fiz" value={checkIns.missed} className="text-missed" />
       </div>
+
+      {showMinutes && (
+        <p className="text-sm text-muted">
+          Foco no período: <span className="font-semibold text-text">{formatDuration(minutes ?? 0)}</span>
+        </p>
+      )}
 
       {habits.length === 0 ? (
         <p className="text-sm text-muted">Nenhum hábito neste período.</p>
@@ -36,6 +45,7 @@ export function PeriodStats({ xp, checkIns, habits }: PeriodStatsProps) {
                   </Link>
                   <span className="shrink-0 text-muted">
                     {h.done + h.minimum}/{h.expected} · {formatPercent(h.rate)}
+                    {showMinutes && ` · ${formatDuration(h.minutes ?? 0)}`}
                   </span>
                 </div>
                 <ProgressBar value={h.rate} size="sm" tone={h.rate >= 0.8 ? 'done' : 'accent'} label={h.name} />

@@ -76,3 +76,12 @@ export function parseDecimal(text: string): number | null {
   const value = Number(normalized)
   return Number.isFinite(value) ? value : null
 }
+
+/** "1 h 25 min", "45 min", "2 h". */
+export function formatDuration(min: number): string {
+  const total = Math.max(0, Math.round(min))
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h === 0) return `${m} min`
+  return m === 0 ? `${h} h` : `${h} h ${m} min`
+}

@@ -149,7 +149,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   resto de `/api` (na prática, com chave de API). Para assistentes de IA operarem o Arco.
 - As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
-- Ferramentas: `ver_hoje`, `fazer_checkin`, `desfazer_checkin`, `listar_habitos`, `ver_habito`, `criar_habito`,
+- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `listar_habitos`, `ver_habito`, `criar_habito`,
   `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
   `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ler_documentacao_api` (este arquivo) e
   `chamar_api` (qualquer rota; exceto `/api/backup`, `/api/api-keys`, `/api/auth/*` e o próprio `/api/mcp`).
@@ -192,10 +192,11 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 
 ## Check-ins
 
-- `PUT /api/checkins` `{ habitId, date, status }`: cria ou atualiza o check-in do dia. Responde **200** `{ checkIn: CheckIn, xpDelta: number, player: Player }`.
+- `PUT /api/checkins` `{ habitId, date, status, minutes? }`: cria ou atualiza o check-in do dia. Responde **200** `{ checkIn: CheckIn, xpDelta: number, player: Player }`.
   - Data futura ou mais de 7 dias atrás → 400 `validation`.
   - Hábito arquivado → 400 `validation`.
-- `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404.
+  - `minutes` (0–480, opcional): ausente = não mexe; `0` = remove a sessão de foco Manual do dia; `>0` = cria/substitui a única sessão Manual de (hábito, data). `minutes > 0` com status `Missed` → 400 `validation`. `checkIn.minutes` (`number | null`) devolve os minutos manuais do dia; aparece também em `GET /api/today` e no `recentCheckIns` de `GET /api/habits/{id}`.
+- `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404. Remove também a sessão de foco Manual do dia (as de Timer permanecem).
 - `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `CheckIn[]` (intervalo máximo de 366 dias; `habitId` opcional filtra um hábito).
 
 ## Hábitos
@@ -333,6 +334,18 @@ Validação dos hábitos:
     };
   }
   ```
+
+## Foco
+
+Sessões de foco (tempo dedicado a um hábito). Não dão XP.
+
+- `POST /api/focus-sessions` `{ habitId, minutes, date?, startedAt? }`: cria sessão `Timer` (minutes 1–480). `date` padrão = hoje; no máximo 7 dias atrás, nunca futura. Hábito inexistente → 404; arquivado → 400 `validation`. Responde **200** `{ session: FocusSession }`.
+- `DELETE /api/focus-sessions/{id}` → **204** sem corpo. Inexistente → 404.
+- `GET /api/focus-sessions?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` (intervalo máximo de 366 dias) →
+  `{ sessions: FocusSession[], totalMinutes: number, byHabit: Array<{ habitId, name, emoji, minutes, sessions }> }`.
+- `FocusSession`: `{ id, habitId, date, minutes, source: "Timer" | "Manual", startedAt: string | null }`.
+- Estatísticas: `minutes` (soma de todas as sessões) em `weeks[]` e `recent` de `/api/stats`, em `HabitPeriodStats`, e também no ciclo e na revisão semanal.
+- Ferramentas MCP: `registrar_foco(habitId, minutos, data?)` e `fazer_checkin` com `minutos?`.
 
 ## Backup
 

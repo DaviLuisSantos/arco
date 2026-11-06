@@ -53,7 +53,7 @@ public sealed class McpTests : IDisposable
             "ver_hoje", "fazer_checkin", "desfazer_checkin", "listar_habitos", "ver_habito", "criar_habito",
             "subir_nivel", "voltar_nivel", "ver_ciclo_atual", "atualizar_objetivo", "marcar_marco",
             "ver_revisao_semanal", "fazer_revisao_semanal", "ver_estatisticas", "ver_conquistas",
-            "ler_documentacao_api", "chamar_api",
+            "ler_documentacao_api", "chamar_api", "registrar_foco", "ver_floresta",
         });
 
         var habit = await CallJsonAsync(mcp, "criar_habito", new()
@@ -67,6 +67,11 @@ public sealed class McpTests : IDisposable
         Assert.Equal("2030-03-04", (string?)checkIn["checkIn"]!["date"]);
         Assert.Equal(10, (int)checkIn["xpDelta"]!);
         Assert.Equal(["checkins-1"], checkIn["achievements"]!.AsArray().Select(a => (string)a!["key"]!).ToArray());
+
+        var focus = await CallJsonAsync(mcp, "registrar_foco", new() { ["habitId"] = habitId, ["minutos"] = 30 });
+        Assert.Equal(30, (int)focus["session"]!["minutes"]!);
+        var forest = await CallJsonAsync(mcp, "ver_floresta");
+        Assert.Equal(30, (int)forest["totalMinutes"]!);
 
         var today = await CallJsonAsync(mcp, "ver_hoje");
         Assert.Equal("Done", (string?)today["habits"]![0]!["checkIn"]!["status"]);

@@ -9,10 +9,10 @@ public static class StatsEndpoints
 
     /// <summary>One Monday–Sunday week; the current week counts only up to today.</summary>
     public sealed record WeekStatsDto(
-        DateOnly WeekStart, DateOnly WeekEnd, int Xp, int Done, int Minimum, int Missed, int Expected, double Rate);
+        DateOnly WeekStart, DateOnly WeekEnd, int Xp, int Done, int Minimum, int Missed, int Expected, double Rate, int Minutes);
 
     public sealed record PeriodDto(
-        DateOnly From, DateOnly To, int Xp, CheckInTotalsDto CheckIns, IReadOnlyList<HabitPeriodStatsDto> Habits);
+        DateOnly From, DateOnly To, int Xp, CheckInTotalsDto CheckIns, IReadOnlyList<HabitPeriodStatsDto> Habits, int Minutes);
 
     public sealed record StatsResponse(IReadOnlyList<WeekStatsDto> Weeks, PeriodDto Recent);
 
@@ -49,13 +49,15 @@ public static class StatsEndpoints
             var expected = stats.Sum(s => s.Expected);
             var rate = expected == 0 ? 0 : Math.Min(1, (double)(totals.Done + totals.Minimum) / expected);
             weeks.Add(new WeekStatsDto(start, end, xpByWeek.GetValueOrDefault(start), totals.Done, totals.Minimum,
-                totals.Missed, expected, Math.Round(rate, 4)));
+                totals.Missed, expected, Math.Round(rate, 4),
+                await ReviewStats.MinutesInRangeAsync(db, start, end < today ? end : today, ct)));
         }
 
         var from = today.AddDays(-(RecentDays - 1));
         var habits = await ReviewStats.ForRangeAsync(db, from, today, today, timezone, ct);
         var recent = new PeriodDto(from, today, await ReviewStats.XpInRangeAsync(db, from, today, ct),
-            ReviewStats.Totals(habits), habits);
+            ReviewStats.Totals(habits), habits,
+            await ReviewStats.MinutesInRangeAsync(db, from, today, ct));
 
         return new StatsResponse(weeks, recent);
     }

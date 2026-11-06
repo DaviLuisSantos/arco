@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
+import { FocusTimer } from '../features/focus/FocusTimer'
 import { HabitHistory } from '../features/habits/HabitHistory'
 import { HabitFormDialog } from '../features/habits/HabitFormDialog'
 import { LevelTimeline } from '../features/habits/LevelTimeline'
@@ -195,6 +196,17 @@ export function HabitDetailPage() {
           </Button>
         )}
       </Card>
+
+      {!archived && (
+        <section aria-labelledby="focus-title">
+          <h2 id="focus-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
+            Foco
+          </h2>
+          <Card>
+            <FocusTimer key={h.id} habitId={h.id} emoji={h.emoji} name={h.name} />
+          </Card>
+        </section>
+      )}
 
       <section aria-labelledby="grid-title">
         <h2 id="grid-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
