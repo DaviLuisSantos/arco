@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { todayApi } from '../api/endpoints'
 import { Card } from '../components/ui/Card'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
+import { DayStone } from '../features/arch/DayStone'
 import { HabitCheckInCard } from '../features/checkins/HabitCheckInCard'
 import { CycleStrip } from '../features/cycle/CycleStrip'
 import { GoalMiniCard } from '../features/goals/GoalMiniCard'
@@ -38,6 +39,8 @@ export function TodayPage() {
       <TodayNudges today={today.data} />
 
       <CycleStrip cycle={cycle} />
+
+      <DayStone date={date} />
 
       {goals.length > 0 && (
         <section aria-labelledby="goals-title">

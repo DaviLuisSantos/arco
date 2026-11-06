@@ -53,7 +53,7 @@ public sealed class McpTests : IDisposable
             "ver_hoje", "fazer_checkin", "desfazer_checkin", "listar_habitos", "ver_habito", "criar_habito",
             "subir_nivel", "voltar_nivel", "ver_ciclo_atual", "atualizar_objetivo", "marcar_marco",
             "ver_revisao_semanal", "fazer_revisao_semanal", "ver_estatisticas", "ver_conquistas",
-            "ler_documentacao_api", "chamar_api", "registrar_foco", "ver_floresta",
+            "ler_documentacao_api", "chamar_api", "registrar_foco", "ver_floresta", "ver_arco",
         });
 
         var habit = await CallJsonAsync(mcp, "criar_habito", new()
@@ -84,6 +84,10 @@ public sealed class McpTests : IDisposable
         Assert.Equal("Inglês: constância", (string?)cycle["name"]);
         var current = await CallJsonAsync(mcp, "ver_ciclo_atual");
         Assert.Equal((int)cycle["id"]!, (int)current["cycle"]!["id"]!);
+
+        var arch = await CallJsonAsync(mcp, "ver_arco");
+        Assert.Equal((int)cycle["id"]!, (int)arch["cycleId"]!);
+        Assert.Equal(30, (int)arch["totalMinutes"]!);
 
         Assert.Contains("## Hábitos", Text(await mcp.CallToolAsync("ler_documentacao_api")));
     }

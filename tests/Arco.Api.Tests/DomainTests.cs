@@ -195,4 +195,36 @@ public class TimeZonesTests
         Assert.False(TimeZones.IsValidIana("Not/AZone"));
         Assert.False(TimeZones.IsValidIana(""));
     }
+
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, true)]
+    [InlineData(5, false)]
+    [InlineData(12, true)]
+    [InlineData(13, false)]
+    [InlineData(14, false)]
+    public void Valid_weeks_are_even_2_to_12(int weeks, bool ok) => Assert.Equal(ok, CycleMath.IsValidWeeks(weeks));
+
+    [Fact]
+    public void Week_of_cycle_edges()
+    {
+        var s = new DateOnly(2026, 10, 1);
+        Assert.Equal(1, CycleMath.WeekOfCycle(s, s));
+        Assert.Equal(1, CycleMath.WeekOfCycle(s, s.AddDays(6)));
+        Assert.Equal(2, CycleMath.WeekOfCycle(s, s.AddDays(7)));
+        Assert.Equal(6, CycleMath.WeekOfCycle(s, s.AddDays(41)));
+        Assert.Equal(0, CycleMath.WeekOfCycle(s, s.AddDays(-1)));
+    }
+
+    [Fact]
+    public void Week_count_and_layout()
+    {
+        var s = new DateOnly(2026, 10, 1);
+        Assert.Equal(6, CycleMath.WeekCount(s, s.AddDays(41)));
+        Assert.Equal(7, CycleMath.WeekCount(s, s.AddDays(42)));
+        Assert.Equal(1, CycleMath.WeekCount(s, s));
+        Assert.Equal("Arch", CycleMath.ArchLayout(6));
+        Assert.Equal("Row", CycleMath.ArchLayout(5));
+        Assert.Equal("Row", CycleMath.ArchLayout(1));
+    }
 }

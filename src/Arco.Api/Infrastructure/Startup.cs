@@ -218,6 +218,7 @@ public static class Startup
         secured.MapFocus();
         secured.MapHabits();
         secured.MapCycles();
+        secured.MapCycleArch();
         secured.MapGoals();
         secured.MapPlayer();
         secured.MapAchievements();

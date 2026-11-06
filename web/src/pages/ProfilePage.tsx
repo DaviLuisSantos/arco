@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChartColumn, ChevronRight, LogOut, NotebookPen, Sparkles } from 'lucide-react'
+import { ChartColumn, ChevronRight, Landmark, LogOut, NotebookPen, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { authApi, playerApi, settingsApi } from '../api/endpoints'
@@ -53,6 +53,14 @@ export function ProfilePage() {
       >
         <ChartColumn className="size-5 text-accent" aria-hidden />
         <span className="flex-1 font-semibold">Estatísticas</span>
+        <ChevronRight className="size-5 text-muted" aria-hidden />
+      </Link>
+      <Link
+        to="/cycle"
+        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
+      >
+        <Landmark className="size-5 text-accent" aria-hidden />
+        <span className="flex-1 font-semibold">Arco do ciclo</span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
       <Link

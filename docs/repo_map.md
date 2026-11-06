@@ -12,7 +12,8 @@
 | `src/Arco.Api/Domain/` | Entidades (`Entities.cs`, `Enums.cs`) e regras puras: XP, nível, agenda, streak, ciclos, conquistas, sugestões de nível, revisão semanal |
 | `src/Arco.Api/Features/<X>/` | Um arquivo de endpoints por funcionalidade (Today, CheckIns, Habits, Cycles, Goals, Player, Stats, Reviews, Achievements, Focus, Settings, Push, Backup, ApiKeys, Auth, Health) |
 | `Features/Focus/` + `Domain/FocusRules.cs` | Sessões de foco (`/api/focus-sessions`) ; minutos manuais vêm do check-in |
-| `web/src/features/focus` | Timer de foco (página do hábito) |
+| `Features/Cycles/CycleArchEndpoints.cs` | `GET /api/cycles/{id}/arch` (pedras por semana) |
+| `web/src/features/focus`, `web/src/features/arch` | Timer de foco e o arco do ciclo (rota `/cycle`) |
 | `Features/Shared/` | DTOs e consultas reaproveitadas |
 | `Features/Mcp/` | Servidor MCP (`ArcoTools` chama a API REST via `ArcoApiClient`) |
 | `Features/Push/ReminderDispatcher.cs` | Lembretes (`ReminderService`, 1×/min) |

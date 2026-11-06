@@ -31,6 +31,8 @@ export interface Cycle {
   reviewObstacles: string | null
   reviewNext: string | null
   completedAt: string | null
+  weeks: number
+  weeklyFocusMinutes: number
 }
 
 export interface Milestone {
@@ -384,6 +386,7 @@ export interface CycleInput {
   name: string
   startDate?: string
   weeks?: number
+  weeklyFocusMinutes?: number
 }
 
 /** Respostas guiadas da revisão (semanal ou de ciclo). */
@@ -404,6 +407,7 @@ export interface CycleCompleteInput extends ReviewAnswers {
 export interface CycleUpdateInput {
   name: string
   endDate: string
+  weeklyFocusMinutes?: number
 }
 
 export interface GoalInput {
@@ -444,4 +448,52 @@ export interface FocusList {
   sessions: FocusSession[]
   totalMinutes: number
   byHabit: { habitId: number; name: string; emoji: string | null; minutes: number; sessions: number }[]
+}
+
+export type FocusSourceKind = 'Timer' | 'Manual'
+
+export interface ArchHabit {
+  habitId: number
+  name: string
+  emoji: string | null
+}
+
+export interface ArchHabitMinutes {
+  habitId: number
+  minutes: number
+}
+
+export interface ArchBrick {
+  sessionId: number
+  habitId: number
+  minutes: number
+  source: FocusSourceKind
+}
+
+export interface ArchDay {
+  date: string
+  minutes: number
+  bricks: ArchBrick[]
+}
+
+export interface ArchStone {
+  week: number
+  from: string
+  to: string
+  minutes: number
+  byHabit: ArchHabitMinutes[]
+  days: ArchDay[]
+}
+
+export interface CycleArch {
+  cycleId: number
+  startDate: string
+  endDate: string
+  closed: boolean
+  weeks: number
+  layout: 'Arch' | 'Row'
+  weeklyTargetMinutes: number
+  totalMinutes: number
+  habits: ArchHabit[]
+  stones: ArchStone[]
 }

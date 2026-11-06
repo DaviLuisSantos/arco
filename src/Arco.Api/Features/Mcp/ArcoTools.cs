@@ -134,6 +134,21 @@ public sealed class ArcoTools(ArcoApiClient api)
         return new JsonObject { ["cycle"] = cycle, ["goals"] = goals }.ToJsonString();
     }
 
+    [McpServerTool(Name = "ver_arco", Title = "Ver arco do ciclo", ReadOnly = true)]
+    [Description("Arco de foco do ciclo: uma pedra por semana, com minutos por hábito e por dia (tijolos). Sem id, usa o ciclo ativo.")]
+    public async Task<string> VerArco(
+        [Description("Id do ciclo (opcional; omitido = ciclo ativo).")] int? cicloId = null,
+        CancellationToken ct = default)
+    {
+        if (cicloId is null)
+        {
+            var cycle = await api.GetJsonOrNullAsync("/api/cycles/current", ct);
+            if (cycle is null) return new JsonObject { ["arch"] = null }.ToJsonString();
+            cicloId = (int)cycle["id"]!;
+        }
+        return await api.GetAsync($"/api/cycles/{cicloId}/arch", ct);
+    }
+
     [McpServerTool(Name = "atualizar_objetivo", Title = "Registrar progresso de objetivo")]
     [Description("Registra o valor atual de um objetivo numérico (ex.: 7 km). Ao atingir a meta, ele é concluído (+150 XP).")]
     public Task<string> AtualizarObjetivo(

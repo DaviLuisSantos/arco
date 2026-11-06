@@ -12,6 +12,7 @@ import { CompleteCycleDialog } from '../features/cycle/CompleteCycleDialog'
 import { DeleteCycleButton } from '../features/cycle/DeleteCycleButton'
 import { CreateCycleForm } from '../features/cycle/CreateCycleForm'
 import { PastCycles } from '../features/cycle/PastCycles'
+import { ArchPanel } from '../features/arch/ArchPanel'
 import { CreateGoalDialog } from '../features/goals/CreateGoalDialog'
 import { GoalCard } from '../features/goals/GoalCard'
 import { diffDays, formatFullDate, localToday } from '../lib/dates'
@@ -66,6 +67,13 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
           <span className="text-muted">{Math.round((cycle.dayNumber / Math.max(1, cycle.totalDays)) * 100)}%</span>
         </div>
         <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label="Progresso do ciclo" />
+      </Card>
+
+      <Card aria-labelledby="cycle-arch-title">
+        <h2 id="cycle-arch-title" className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          Arco do ciclo
+        </h2>
+        <ArchPanel cycleId={cycle.id} cycle={cycle} />
       </Card>
 
       {over && (

@@ -45,6 +45,8 @@ interface Player {
 interface Cycle {
   id: number; name: string;
   startDate: string; endDate: string;  // endDate = start + weeks*7 - 1
+  weeks: number;         // semanas do ciclo (pedras do arco)
+  weeklyFocusMinutes: number; // meta semanal de foco, 60..3360
   status: 'Active' | 'Completed';
   dayNumber: number;     // 1..totalDays (limitado ao intervalo) em relação a hoje
   totalDays: number;
@@ -149,7 +151,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   resto de `/api` (na prática, com chave de API). Para assistentes de IA operarem o Arco.
 - As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
-- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `listar_habitos`, `ver_habito`, `criar_habito`,
+- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
   `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
   `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ler_documentacao_api` (este arquivo) e
   `chamar_api` (qualquer rota; exceto `/api/backup`, `/api/api-keys`, `/api/auth/*` e o próprio `/api/mcp`).
@@ -264,10 +266,23 @@ Validação dos hábitos:
 
 - `GET /api/cycles` → `Cycle[]` (mais recentes primeiro)
 - `GET /api/cycles/current` → `Cycle` ou **204** quando não há ciclo ativo.
-- `POST /api/cycles` `{ name, startDate?, weeks? }` → **201** `Cycle`.
-  - `startDate` padrão = hoje e `weeks` padrão = 6 (aceita 1 a 12).
+- `POST /api/cycles` `{ name, startDate?, weeks?, weeklyFocusMinutes? }` → **201** `Cycle`.
+  - `startDate` padrão = hoje e `weeks` padrão = 6 (só números pares de 2 a 12; senão 400 `validation`). `weeklyFocusMinutes` entre 60 e 3360 ("A meta semanal de foco deve ficar entre 60 e 3360 minutos.").
   - Se já existe ciclo ativo → 409 `active_cycle_exists`.
-- `PUT /api/cycles/{id}` `{ name, endDate }` → `Cycle`. Só para ciclos ativos; `endDate` precisa ser ≥ `startDate`.
+- `PUT /api/cycles/{id}` `{ name, endDate, weeklyFocusMinutes? }` → `Cycle`. Só para ciclos ativos; `endDate` precisa ser ≥ `startDate`.
+- `GET /api/cycles/{id}/arch` → o ciclo como arco de pedras (uma por semana), 404 se inexistente:
+
+  ```ts
+  { cycleId: number; startDate: string; endDate: string; closed: boolean; weeks: number;
+    layout: "Arch" | "Row";            // Arch para semanas pares (>= 2); Row para as demais (ex.: endDate editado)
+    weeklyTargetMinutes: number; totalMinutes: number;
+    habits: Array<{ habitId, name, emoji }>;   // hábitos com foco no ciclo
+    stones: Array<{ week: number; from: string; to: string; minutes: number;
+      byHabit: Array<{ habitId, minutes }>;
+      days: Array<{ date: string; minutes: number;
+        bricks: Array<{ sessionId, habitId, minutes, source: "Timer" | "Manual" }> }> }> }
+  ```
+
 - `GET /api/cycles/{id}/summary` → números para a revisão de encerramento, de `startDate` até min(`endDate`, hoje):
 
   ```ts
@@ -335,9 +350,9 @@ Validação dos hábitos:
   }
   ```
 
-## Foco
+## Foco e arco
 
-Sessões de foco (tempo dedicado a um hábito). Não dão XP.
+Sessões de foco (tempo dedicado a um hábito). Não dão XP. Os minutos enchem as pedras do arco do ciclo (`GET /api/cycles/{id}/arch`).
 
 - `POST /api/focus-sessions` `{ habitId, minutes, date?, startedAt? }`: cria sessão `Timer` (minutes 1–480). `date` padrão = hoje; no máximo 7 dias atrás, nunca futura. Hábito inexistente → 404; arquivado → 400 `validation`. Responde **200** `{ session: FocusSession }`.
 - `DELETE /api/focus-sessions/{id}` → **204** sem corpo. Inexistente → 404.
@@ -345,7 +360,7 @@ Sessões de foco (tempo dedicado a um hábito). Não dão XP.
   `{ sessions: FocusSession[], totalMinutes: number, byHabit: Array<{ habitId, name, emoji, minutes, sessions }> }`.
 - `FocusSession`: `{ id, habitId, date, minutes, source: "Timer" | "Manual", startedAt: string | null }`.
 - Estatísticas: `minutes` (soma de todas as sessões) em `weeks[]` e `recent` de `/api/stats`, em `HabitPeriodStats`, e também no ciclo e na revisão semanal.
-- Ferramentas MCP: `registrar_foco(habitId, minutos, data?)` e `fazer_checkin` com `minutos?`.
+- Ferramentas MCP: `registrar_foco(habitId, minutos, data?)`, `ver_arco(cicloId?)` e `fazer_checkin` com `minutos?`.
 
 ## Backup
 

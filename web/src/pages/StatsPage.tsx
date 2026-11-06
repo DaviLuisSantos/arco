@@ -51,6 +51,9 @@ export function StatsPage() {
               minutes={stats.data.recent.minutes}
               showMinutes
             />
+            <Link to="/cycle" className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:underline">
+              Ver arco do ciclo
+            </Link>
           </section>
         </>
       )}

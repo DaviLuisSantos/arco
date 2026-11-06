@@ -131,6 +131,11 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("WeeklyFocusMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(420);
+
                     b.HasKey("Id");
 
                     b.HasIndex("Status")

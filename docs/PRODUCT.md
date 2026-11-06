@@ -12,7 +12,8 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 ## Conceitos
 
 ### Ciclo
-- Duração padrão de 6 semanas (42 dias), configurável na criação (1–12 semanas).
+- Duração padrão de 6 semanas (42 dias), configurável na criação: número **par** de semanas, de 2 a 12.
+- Tem uma **meta semanal de foco** (60 a 3360 min), definida na criação e editável.
 - No máximo **um ciclo ativo** por vez.
 - Tem de 0 a 3 objetivos (o limite é recomendação de UI, não regra rígida do backend).
 - **Excluir um ciclo** (ativo ou encerrado, para os criados ou encerrados por engano) apaga seus objetivos e marcos e
@@ -94,12 +95,13 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.
 - "Hoje" é calculado no fuso configurado (padrão `America/Sao_Paulo`).
 
-### Foco
+### Foco e arco
 - Sessões de foco registram minutos dedicados a um hábito; **não dão XP** nem afetam streak.
-- Dois jeitos de registrar: o **timer** na página do hábito (cada sessão é um registro) e os **minutos no check-in**.
+- O ciclo é um arco de pedras: **uma pedra por semana**, que se enche com os minutos de foco da semana, em relação à meta semanal do ciclo. Cada dia com foco vira um **tijolo** na pedra, com faixas por hábito. A tela Hoje mostra a **pedra do dia**.
+- Ao encerrar o ciclo, a **pedra-chave** encaixa e o arco fica completo; ele passa a aparecer em "Ciclos anteriores".
+- Semanas pares formam o arco (layout `Arch`); ciclos com número ímpar de semanas (ex.: `endDate` editado) usam o layout `Row`, em fileira.
 - Minutos manuais no check-in são **únicos por hábito e dia** (informar de novo substitui; 0 remove). Sessões do timer se somam a eles, o que é intencional.
 - O timer não pune: parar antes ou não usar não tira nada.
-- As Estatísticas mostram as horas por semana e por hábito.
 
 ### Revisão semanal
 - Revisa a semana de segunda a domingo. No domingo a semana revisável é a atual; de segunda a sábado, a anterior.

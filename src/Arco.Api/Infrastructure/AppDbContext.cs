@@ -41,6 +41,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.Property(x => x.Name).HasMaxLength(80);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.WeeklyFocusMinutes).HasDefaultValue(420);
             e.Property(x => x.ReviewWins).HasMaxLength(2000);
             e.Property(x => x.ReviewObstacles).HasMaxLength(2000);
             e.Property(x => x.ReviewNext).HasMaxLength(2000);

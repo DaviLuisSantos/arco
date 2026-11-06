@@ -34,6 +34,8 @@ public class Cycle
     public string? ReviewNext { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    /// <summary>Focus-minutes goal per cycle week (60..3360).</summary>
+    public int WeeklyFocusMinutes { get; set; } = 420;
     public List<Goal> Goals { get; set; } = [];
 }
 

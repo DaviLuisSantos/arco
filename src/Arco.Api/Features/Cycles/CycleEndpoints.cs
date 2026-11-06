@@ -5,8 +5,8 @@ namespace Arco.Api.Features.Cycles;
 
 public static class CycleEndpoints
 {
-    public sealed record CreateCycleRequest(string? Name, DateOnly? StartDate, int? Weeks);
-    public sealed record UpdateCycleRequest(string? Name, DateOnly? EndDate);
+    public sealed record CreateCycleRequest(string? Name, DateOnly? StartDate, int? Weeks, int? WeeklyFocusMinutes = null);
+    public sealed record UpdateCycleRequest(string? Name, DateOnly? EndDate, int? WeeklyFocusMinutes = null);
     public sealed record CompleteCycleRequest(string? ReviewNotes, string? Wins = null, string? Obstacles = null, string? Next = null);
 
     public sealed record CycleSummaryResponse(
@@ -23,6 +23,9 @@ public static class CycleEndpoints
     private const string NotFound = "Ciclo não encontrado.";
     private const string ActiveExists = "Já existe um ciclo ativo. Encerre-o antes de criar outro.";
     private const int MaxReviewLength = 4000;
+    private const int MinWeeklyFocus = 60;
+    private const int MaxWeeklyFocus = 3360;
+    private const string FocusError = "A meta semanal de foco deve ficar entre 60 e 3360 minutos.";
 
     public static IEndpointRouteBuilder MapCycles(this IEndpointRouteBuilder api)
     {
@@ -84,8 +87,10 @@ public static class CycleEndpoints
         var name = request?.Name?.Trim();
         if (!Text.LengthBetween(name, 1, 80)) return ApiResults.Validation(NameError);
         var weeks = request!.Weeks ?? CycleMath.DefaultWeeks;
-        if (weeks is < CycleMath.MinWeeks or > CycleMath.MaxWeeks)
-            return ApiResults.Validation($"O ciclo deve ter de {CycleMath.MinWeeks} a {CycleMath.MaxWeeks} semanas.");
+        if (!CycleMath.IsValidWeeks(weeks))
+            return ApiResults.Validation("O ciclo precisa ter um número par de semanas (2, 4 … 12).");
+        if (request.WeeklyFocusMinutes is < MinWeeklyFocus or > MaxWeeklyFocus)
+            return ApiResults.Validation(FocusError);
 
         if (await db.Cycles.AnyAsync(c => c.Status == CycleStatus.Active, ct))
             return ApiResults.Conflict(ActiveExists, ErrorCodes.ActiveCycleExists);
@@ -100,6 +105,7 @@ public static class CycleEndpoints
             Status = CycleStatus.Active,
             CreatedAt = clock.UtcNow,
         };
+        if (request.WeeklyFocusMinutes is { } focus) cycle.WeeklyFocusMinutes = focus;
         db.Cycles.Add(cycle);
         try
         {
@@ -124,8 +130,12 @@ public static class CycleEndpoints
         if (endDate < cycle.StartDate)
             return ApiResults.Validation("A data final deve ser igual ou posterior à data inicial.");
 
+        if (request.WeeklyFocusMinutes is < MinWeeklyFocus or > MaxWeeklyFocus)
+            return ApiResults.Validation(FocusError);
+
         cycle.Name = name!;
         cycle.EndDate = endDate;
+        if (request.WeeklyFocusMinutes is { } focus) cycle.WeeklyFocusMinutes = focus;
         await db.SaveChangesAsync(ct);
         return Results.Ok(CycleDto.From(cycle, await clock.GetTodayAsync(ct)));
     }

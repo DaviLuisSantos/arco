@@ -130,7 +130,7 @@ export function FocusTimer({ habitId, emoji, name }: Props) {
               {emoji ? `${emoji} ` : ''}
               {formatDuration(saved.minutes)} de foco salvos
             </p>
-            <p className="text-xs text-muted">Sessão registrada.</p>
+            <p className="text-xs text-muted">Um tijolo novo na pedra do dia.</p>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button size="sm" loading={markDone.isPending} onClick={() => markDone.mutate(saved.date)}>

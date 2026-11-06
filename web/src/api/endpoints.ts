@@ -1,5 +1,6 @@
 import { api, ApiError } from './client'
 import type {
+  CycleArch,
   Achievement,
   ApiKey,
   BackupFile,
@@ -99,6 +100,7 @@ export const cyclesApi = {
   create: (input: CycleInput) => api.post<Cycle>('/cycles', input),
   update: (id: number, input: CycleUpdateInput) => api.put<Cycle>(`/cycles/${id}`, input),
   summary: (id: number) => api.get<CycleSummary>(`/cycles/${id}/summary`),
+  arch: (id: number) => api.get<CycleArch>(`/cycles/${id}/arch`),
   complete: (id: number, input: CycleCompleteInput) => api.post<CycleCompleteResult>(`/cycles/${id}/complete`, input),
   /** Apaga o ciclo (ativo ou encerrado), seus objetivos e o XP que eles deram. */
   remove: (id: number) => api.delete<XpResult>(`/cycles/${id}`),

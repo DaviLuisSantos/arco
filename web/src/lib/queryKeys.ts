@@ -16,5 +16,6 @@ export const queryKeys = {
   weeklyReview: ['reviews', 'weekly', 'current'] as const,
   weeklyReviews: ['reviews', 'weekly'] as const,
   cycleSummary: (id: number) => ['cycles', id, 'summary'] as const,
+  cycleArch: (id: number) => ['cycles', id, 'arch'] as const,
   pushConfig: ['push', 'config'] as const,
 }

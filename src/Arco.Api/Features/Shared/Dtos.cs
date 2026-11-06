@@ -31,13 +31,16 @@ public sealed record CycleDto(
     string? ReviewWins,
     string? ReviewObstacles,
     string? ReviewNext,
-    DateTime? CompletedAt)
+    DateTime? CompletedAt,
+    int Weeks,
+    int WeeklyFocusMinutes)
 {
     public static CycleDto From(Cycle c, DateOnly today) => new(
         c.Id, c.Name, c.StartDate, c.EndDate, c.Status,
         CycleMath.DayNumber(c.StartDate, c.EndDate, today),
         CycleMath.TotalDays(c.StartDate, c.EndDate),
-        c.ReviewNotes, c.ReviewWins, c.ReviewObstacles, c.ReviewNext, c.CompletedAt);
+        c.ReviewNotes, c.ReviewWins, c.ReviewObstacles, c.ReviewNext, c.CompletedAt,
+        CycleMath.WeekCount(c.StartDate, c.EndDate), c.WeeklyFocusMinutes);
 }
 
 public sealed record MilestoneDto(int Id, string Title, int Order, DateTime? DoneAt);

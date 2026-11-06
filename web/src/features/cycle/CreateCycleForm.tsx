@@ -11,6 +11,7 @@ export function CreateCycleForm({ today }: { today: string }) {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(today)
   const [weeks, setWeeks] = useState(6)
+  const [hours, setHours] = useState('7')
   const [error, setError] = useState<string | null>(null)
 
   const create = useAppMutation((input: CycleInput) => cyclesApi.create(input), {
@@ -25,13 +26,23 @@ export function CreateCycleForm({ today }: { today: string }) {
       setError('Dê um nome ao ciclo.')
       return
     }
+    const h = Number(hours.replace(',', '.'))
+    if (!Number.isFinite(h) || h < 1 || h > 56) {
+      setError('Informe uma meta de foco semanal entre 1 e 56 horas.')
+      return
+    }
     setError(null)
-    create.mutate({ name: name.trim(), startDate: validStart ? startDate : undefined, weeks })
+    create.mutate({
+      name: name.trim(),
+      startDate: validStart ? startDate : undefined,
+      weeks,
+      weeklyFocusMinutes: Math.round(h * 60),
+    })
   }
 
   return (
     <Card>
-      <h2 className="text-lg font-bold">Comece um ciclo de 6 semanas</h2>
+      <h2 className="text-lg font-bold">Comece um ciclo de {weeks} semanas</h2>
       <p className="mt-1 mb-4 text-sm text-muted">
         Um ciclo tem começo, meio e fim. Escolha até 3 objetivos e encerre com uma revisão.
       </p>
@@ -47,13 +58,22 @@ export function CreateCycleForm({ today }: { today: string }) {
         <div className="grid grid-cols-2 gap-3">
           <Input label="Início" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <Select label="Semanas" value={weeks} onChange={(e) => setWeeks(Number(e.target.value))}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+            {[2, 4, 6, 8, 10, 12].map((n) => (
               <option key={n} value={n}>
-                {n} {n === 1 ? 'semana' : 'semanas'}
+                {n} semanas
               </option>
             ))}
           </Select>
         </div>
+        <Input
+          label="Meta de foco por semana (h)"
+          type="number"
+          inputMode="decimal"
+          min={0.5}
+          step={0.5}
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+        />
         {validStart && (
           <p className="text-sm text-muted">
             Termina em {formatFullDate(addDays(startDate, weeks * 7 - 1))} · {weeks * 7} dias
