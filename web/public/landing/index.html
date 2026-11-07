@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arco — hábitos com progressão</title>
+  <meta name="description" content="Arco é um app de hábitos em ciclos de 6 semanas: check-ins diários, níveis, objetivos e XP. Cada dia alimenta algo maior.">
+  <meta name="theme-color" content="#0b0f14">
+  <style>
+    :root {
+      --bg: #fafaf7; --fg: #14181f; --muted: #5b6573; --card: #ffffff;
+      --line: #e5e5df; --accent: #4f46e5; --accent-2: #14b8a6; --accent-fg: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f14; --fg: #eef1f5; --muted: #98a2b3; --card: #121821;
+        --line: #1f2733; --accent: #818cf8; --accent-2: #2dd4bf; --accent-fg: #0b0f14;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--fg);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+    a { color: inherit; }
+
+    header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; text-decoration: none; letter-spacing: -.02em; }
+    .logo svg { width: 28px; height: 28px; }
+    nav a { text-decoration: none; color: var(--muted); font-size: .95rem; margin-left: 22px; }
+    nav a:hover { color: var(--fg); }
+
+    .btn {
+      display: inline-block; padding: 13px 24px; border-radius: 999px; font-weight: 600;
+      text-decoration: none; background: var(--accent); color: var(--accent-fg);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px var(--accent); }
+    .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+    .btn.ghost:hover { box-shadow: none; border-color: var(--muted); }
+
+    .hero { text-align: center; padding: 72px 0 56px; position: relative; }
+    .hero::before {
+      content: ""; position: absolute; inset: -80px 0 auto; height: 420px; z-index: -1;
+      background: radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+    }
+    .pill {
+      display: inline-block; font-size: .8rem; padding: 5px 14px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); background: var(--card); margin-bottom: 24px;
+    }
+    h1 { font-size: clamp(2.3rem, 6vw, 4rem); line-height: 1.08; letter-spacing: -.035em; max-width: 780px; margin: 0 auto 20px; }
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lead { color: var(--muted); font-size: 1.15rem; max-width: 560px; margin: 0 auto 32px; }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .arc { width: min(420px, 80%); margin: 56px auto 0; display: block; }
+    .arc .track { stroke: var(--line); }
+    .arc .fill { stroke: url(#g); stroke-dasharray: 330; stroke-dashoffset: 330; animation: draw 2.2s .3s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 105; } }
+    .arc text { fill: var(--fg); font-family: inherit; }
+    @media (prefers-reduced-motion: reduce) { .arc .fill { animation: none; stroke-dashoffset: 105; } html { scroll-behavior: auto; } }
+
+    section { padding: 64px 0; }
+    h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); letter-spacing: -.025em; text-align: center; margin-bottom: 10px; }
+    .sub { text-align: center; color: var(--muted); max-width: 520px; margin: 0 auto 44px; }
+
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; transition: transform .2s, border-color .2s; }
+    .card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+    .card .ic { font-size: 1.6rem; margin-bottom: 12px; }
+    .card h3 { font-size: 1.1rem; margin-bottom: 6px; letter-spacing: -.01em; }
+    .card p { color: var(--muted); font-size: .95rem; }
+
+    .steps { list-style: none; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); counter-reset: s; }
+    .steps li { counter-increment: s; padding: 22px; border-left: 2px solid var(--accent); background: var(--card); border-radius: 0 14px 14px 0; }
+    .steps li::before { content: "0" counter(s); display: block; font-weight: 700; color: var(--accent); font-size: .85rem; margin-bottom: 6px; }
+    .steps b { display: block; margin-bottom: 4px; }
+    .steps span { color: var(--muted); font-size: .92rem; }
+
+    .final {
+      text-align: center; padding: 56px 24px; border-radius: 28px; margin: 24px 0 64px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--card)), color-mix(in srgb, var(--accent-2) 14%, var(--card)));
+      border: 1px solid var(--line);
+    }
+    .final h2 { margin-bottom: 14px; }
+    .final p { color: var(--muted); margin-bottom: 26px; }
+
+    footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted); font-size: .88rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="logo" href="#">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+          <path d="M4 26a12 12 0 0 1 24 0" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        Arco
+      </a>
+      <nav>
+        <a href="#recursos">Recursos</a>
+        <a href="#como-funciona">Como funciona</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="hero">
+        <span class="pill">Hábitos em ciclos de 6 semanas</span>
+        <h1>Cada dia alimenta <em>algo maior</em></h1>
+        <p class="lead">Check-ins diários, níveis que crescem com você e objetivos com prazo. Menos lista de tarefas, mais progresso de verdade.</p>
+        <div class="cta">
+          <a class="btn" href="/">Abrir o Arco</a>
+          <a class="btn ghost" href="#como-funciona">Ver como funciona</a>
+        </div>
+
+        <svg class="arc" viewBox="0 0 240 140" fill="none" role="img" aria-label="Arco de progresso do ciclo em 68%">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>
+          </defs>
+          <path class="track" d="M20 120a100 100 0 0 1 200 0" stroke-width="14" stroke-linecap="round"/>
+          <path class="fill" pathLength="330" d="M20 120a100 100 0 0 1 200 0" stroke-width="14" stroke-linecap="round"/>
+          <text x="120" y="102" text-anchor="middle" font-size="34" font-weight="700">68%</text>
+          <text x="120" y="124" text-anchor="middle" font-size="11" opacity=".6">semana 4 de 6</text>
+        </svg>
+      </div>
+
+      <section id="recursos">
+        <h2>Feito para constância</h2>
+        <p class="sub">Tudo o que você precisa para manter o ritmo, sem ruído.</p>
+        <div class="grid">
+          <div class="card"><div class="ic">✅</div><h3>Feito, Mínimo ou Não fiz</h3><p>Dia ruim não zera o jogo: a versão mínima mantém o hábito vivo.</p></div>
+          <div class="card"><div class="ic">🪜</div><h3>Hábitos com níveis</h3><p>Suba de nível quando a dose ficar fácil. O app sugere, você decide.</p></div>
+          <div class="card"><div class="ic">🎯</div><h3>Objetivos com prazo</h3><p>“Correr 10 km até 30/11”, com barra de progresso até a meta.</p></div>
+          <div class="card"><div class="ic">⚡</div><h3>XP e conquistas</h3><p>Cada ação rende XP em um livro-razão transparente, e medalhas surgem sozinhas.</p></div>
+          <div class="card"><div class="ic">⏱️</div><h3>Sessões de foco</h3><p>Timer integrado e meta semanal de minutos dedicados a cada hábito.</p></div>
+          <div class="card"><div class="ic">📴</div><h3>Funciona offline</h3><p>Instale como app (PWA) e registre check-ins mesmo sem rede.</p></div>
+        </div>
+      </section>
+
+      <section id="como-funciona">
+        <h2>Como funciona</h2>
+        <p class="sub">Da intenção ao resultado, em quatro camadas.</p>
+        <ol class="steps">
+          <li><b>Ciclo</b><span>6 semanas com começo, meio e fim.</span></li>
+          <li><b>Objetivo</b><span>Uma meta com prazo para o ciclo.</span></li>
+          <li><b>Hábito</b><span>Doses claras, com níveis e versão mínima.</span></li>
+          <li><b>Check-in</b><span>Um toque por dia, e o XP acontece.</span></li>
+        </ol>
+      </section>
+
+      <div class="final">
+        <h2>Comece o seu primeiro ciclo</h2>
+        <p>Seis semanas bastam para sentir a diferença.</p>
+        <a class="btn" href="/">Abrir o Arco</a>
+      </div>
+    </main>
+
+    <footer>© <span id="y"></span> Arco · feito com constância</footer>
+  </div>
+  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+</body>
+</html>
