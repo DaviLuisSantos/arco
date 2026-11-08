@@ -48,4 +48,11 @@
     <InternalsVisibleTo Include="Arco.Api.Tests" />
   </ItemGroup>
 
+  <!-- Símbolos nativos do SkiaSharp: 94 MB inúteis em produção, que estouravam o espaço temporário do plano Free no deploy. -->
+  <Target Name="RemoveSkiaSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)%(Extension)' == 'libSkiaSharp.pdb'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
