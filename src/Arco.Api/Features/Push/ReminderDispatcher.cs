@@ -1,3 +1,4 @@
+using Arco.Api.Infrastructure.Observability;
 using Arco.Api.Infrastructure.Push;
 
 namespace Arco.Api.Features.Push;
@@ -23,6 +24,7 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
     /// <returns>Number of reminders sent.</returns>
     public static async Task<int> RunForAllUsersAsync(IServiceScopeFactory scopes, ILogger? log, CancellationToken ct)
     {
+        using var activity = Telemetry.Source.StartActivity("reminders.dispatch");
         List<int> userIds;
         using (var scope = scopes.CreateScope())
         {

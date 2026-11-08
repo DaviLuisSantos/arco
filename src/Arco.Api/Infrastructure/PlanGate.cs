@@ -3,8 +3,11 @@ namespace Arco.Api.Infrastructure;
 /// <summary>Plan limits (403 <c>plan_limit</c>) checked by the endpoints that create things.</summary>
 public static class PlanGate
 {
-    public static IResult Limit(string message) =>
-        ApiResults.Error(StatusCodes.Status403Forbidden, ErrorCodes.PlanLimit, message);
+    public static IResult Limit(string message)
+    {
+        Observability.Telemetry.PlanLimitBlocked.Add(1);
+        return ApiResults.Error(StatusCodes.Status403Forbidden, ErrorCodes.PlanLimit, message);
+    }
 
     public static async Task<UserPlan> PlanOfAsync(AppDbContext db, int userId, CancellationToken ct) =>
         await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Plan).FirstOrDefaultAsync(ct);

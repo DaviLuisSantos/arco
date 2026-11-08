@@ -51,6 +51,7 @@ public static class CheckInEndpoints
         {
             checkIn = new CheckIn { HabitId = habitId, Date = date, CreatedAt = now };
             db.CheckIns.Add(checkIn);
+            Arco.Api.Infrastructure.Observability.Telemetry.CheckIns.Add(1);
         }
         checkIn.Status = status;
         checkIn.Xp = xp;

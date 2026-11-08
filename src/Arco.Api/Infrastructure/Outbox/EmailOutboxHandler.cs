@@ -12,6 +12,7 @@ public sealed class EmailOutboxHandler(IEmailSender email) : IOutboxHandler
     {
         var p = JsonSerializer.Deserialize<EmailOutboxPayload>(m.Payload)
                 ?? throw new InvalidOperationException("Payload de e-mail vazio.");
+        using var activity = Observability.Telemetry.Source.StartActivity("email.send");
         await email.SendAsync(p.To, p.Subject, p.Html, ct, $"outbox-{m.Id}");
     }
 }

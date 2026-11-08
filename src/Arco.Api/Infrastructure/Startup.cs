@@ -1,3 +1,4 @@
+using Arco.Api.Infrastructure.Observability;
 using Arco.Api.Infrastructure.Outbox;
 using Arco.Api.Features.Admin;
 using Arco.Api.Features.Billing;
@@ -145,6 +146,8 @@ public static class Startup
                 });
             });
         }
+
+        services.AddArcoTelemetry(config);
 
         // Auth
         // Requests with "Authorization: Bearer …" use an API key; everything else, the app's cookie.

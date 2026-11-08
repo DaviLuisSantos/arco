@@ -11,12 +11,15 @@ public static class OwnerBootstrap
     public const int OwnerId = 1;
     public const string PlaceholderEmail = "owner@arco.local";
 
+    /// <summary>Categoria própria: os logs citam o e-mail do dono e não vão para o Application Insights.</summary>
+    public const string LogCategory = "Arco.OwnerBootstrap";
+
     public static void Run(WebApplication app)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var time = scope.ServiceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
-        Run(db, app.Configuration, time, app.Logger);
+        Run(db, app.Configuration, time, app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(LogCategory));
     }
 
     public static void Run(AppDbContext db, IConfiguration config, TimeProvider time, ILogger logger)

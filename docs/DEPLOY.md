@@ -46,6 +46,7 @@ No Web App, abra **Settings → Environment variables → App settings → + Add
 | `Admin__Emails` | e-mails (separados por vírgula) que acessam o painel `/admin` e `GET /api/admin/metrics` |
 | `Stripe__SecretKey` / `Stripe__PriceId` / `Stripe__WebhookSecret` | cobrança do plano Pro. Sem elas o app roda sem cobrança (`stripeEnabled=false`) |
 | `Sentry__Dsn` | opcional; liga o Sentry no backend (sem PII, só o id do usuário). Também aceita `Sentry__Environment` e `Sentry__TracesSampleRate` |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | opcional; liga traces (requisição, HttpClient, EF sem SQL) e contadores via OpenTelemetry/Application Insights, sem query string, IP nem user agent. Sem ela nada é registrado |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
 
 Novos usuários se cadastram pelo app; as variáveis do dono só importam enquanto o usuário 1 ainda tem o e-mail provisório.

@@ -45,12 +45,15 @@ public sealed class PushNotifier(AppDbContext db, IPushSender sender, AppClock c
                 transient = true;
             }
 
+            if (outcome != PushOutcome.Sent) Observability.Telemetry.PushFailed.Add(1);
+
             switch (outcome)
             {
                 case PushOutcome.Sent:
                     subscription.LastSuccessAt = clock.UtcNow;
                     subscription.FailureCount = 0;
                     sent++;
+                    Observability.Telemetry.PushSent.Add(1);
                     break;
                 case PushOutcome.Gone:
                     db.PushSubscriptions.Remove(subscription);
