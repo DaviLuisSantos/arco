@@ -1,4 +1,6 @@
 using Arco.Api.Features.Achievements;
+using Arco.Api.Infrastructure.Events;
+using Arco.Api.Infrastructure.Outbox;
 namespace Arco.Api.Features.Reviews;
 
 public static class ReviewEndpoints
@@ -59,7 +61,8 @@ public static class ReviewEndpoints
             cycle is null ? null : CycleDto.From(cycle, today), goals);
     }
 
-    private static async Task<IResult> Create(CreateWeeklyReviewRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
+    private static async Task<IResult> Create(CreateWeeklyReviewRequest? request, AppDbContext db, AppClock clock,
+        CurrentUser me, CancellationToken ct)
     {
         var today = await clock.GetTodayAsync(ct);
         var weekStart = WeeklyReviewRules.ReviewableWeekStart(today);
@@ -91,6 +94,9 @@ public static class ReviewEndpoints
             WeeklyReview = review,
         });
 
+        // Closing the week tells the partners: the event is saved with the review and the outbox worker delivers it,
+        // so a slow push service never holds up this response.
+        Outbox.Enqueue(db, OutboxKinds.WeekClosed, new WeekClosed(me.Id, weekStart), now);
         try
         {
             await db.SaveChangesAsync(ct);

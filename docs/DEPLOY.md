@@ -48,6 +48,7 @@ No Web App, abra **Settings → Environment variables → App settings → + Add
 | `Sentry__Dsn` | opcional; liga o Sentry no backend (sem PII, só o id do usuário). Também aceita `Sentry__Environment` e `Sentry__TracesSampleRate` |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | opcional; liga traces (requisição, HttpClient, EF sem SQL) e contadores via OpenTelemetry/Application Insights, sem query string, IP nem user agent. Sem ela nada é registrado |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
+| `ServiceBus__ConnectionString` | opcional; usa uma fila `week-closed` do Azure Service Bus (que precisa existir) para o aviso de semana fechada ao parceiro. Sem ela o evento é tratado em memória, no próprio processo |
 
 Novos usuários se cadastram pelo app; as variáveis do dono só importam enquanto o usuário 1 ainda tem o e-mail provisório.
 

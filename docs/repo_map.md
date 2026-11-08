@@ -29,6 +29,10 @@
 | `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`). Specs de produto: `public-profile`, `security`, `partners`, `plan-limit`, `locale`; helper `totp.ts` |
 | `infra/` | Terraform do Azure (o job `terraform-plan` roda em PR no `deploy.yml`) |
 | `azure-pipelines.yml` | Pipeline do Azure DevOps: build e testes, sem deploy |
+| `Infrastructure/Outbox/` | Outbox transacional (`OutboxMessage`, `Outbox.Enqueue` na mesma transação da ação, `OutboxProcessor`, worker com `Outbox:WorkerEnabled`; handlers `email` e `week_closed`) |
+| `Infrastructure/Resilience.cs` | Políticas de retry/timeout/circuit breaker dos clientes HTTP de push e e-mail, com circuito por host |
+| `Infrastructure/Observability/Telemetry.cs` | OpenTelemetry: `ActivitySource`, `Meter` e contadores (check-ins, push enviado/falho, `plan_limit`) |
+| `Infrastructure/Events/` | `WeekClosed`, `IEventBus` (em memória, ou Azure Service Bus com `ServiceBus:ConnectionString`) e `WeekClosedConsumer` (aviso ao parceiro) |
 | `Infrastructure/PlanGate.cs`, `Domain/Plans.cs` | Limites do plano Free (403 `plan_limit`) e filtro do MCP |
 | `web/src/components/ui/` | Primitivas visuais |
 
@@ -42,6 +46,7 @@
 - **Datas:** `AppClock` e `web/src/lib/dates.ts`. Nunca usar `DateTime.UtcNow` nem `new Date("YYYY-MM-DD")`.
 - **Migrations:** `Infrastructure/Migrations/` (aplicadas no startup; não edite as antigas).
 - **Auth:** `ApiKeyAuthentication.cs`, `Features/Auth/` (`AuthEndpoints`, `AuthSession`, `AuthTokens`, `GoogleAuth`), `CurrentUser.cs`, `OwnerBootstrap.cs`.
+- **Outbox:** e-mail e eventos saem por `Infrastructure/Outbox/`; payload de e-mail é limpo ao enviar (tem token em claro).
 - **Push:** `Infrastructure/Push/` (criptografia própria, sem pacote externo).
 - **Offline:** `features/checkins/checkInMutation.ts`, `app/queryClient.ts` (`buster`).
 - **Deploy:** `deploy.yml` (win-x86, plano Free), `Dockerfile`.

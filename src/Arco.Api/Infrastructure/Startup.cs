@@ -1,4 +1,5 @@
 using Arco.Api.Infrastructure.Observability;
+using Arco.Api.Infrastructure.Events;
 using Arco.Api.Infrastructure.Outbox;
 using Arco.Api.Features.Admin;
 using Arco.Api.Features.Billing;
@@ -96,6 +97,7 @@ public static class Startup
 
         // Outbox: e-mails (and events) saved with the action, delivered with retries.
         services.AddArcoOutbox(config);
+        services.AddArcoEvents(config);
 
         // Demo accounts are deleted after 24 hours.
         if (config.GetValue("Demo:CleanupEnabled", true)) services.AddHostedService<DemoCleanupService>();

@@ -108,6 +108,7 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Mostra os números da semana (XP, check-ins, consistência por hábito, objetivos do ciclo) e pergunta: o que funcionou, o que atrapalhou e qual o foco da próxima semana. Ao menos uma resposta.
 - Uma por semana; dá XP. A tela Hoje avisa quando a semana revisável teve check-ins e ainda não foi revisada.
 - Lembrete push configurável (padrão: domingo, 18:00).
+- Ao concluir a revisão, cada parceiro aceito é avisado uma única vez por semana: push se tiver inscrição, senão e-mail (no idioma dele). O aviso sai do Outbox e do barramento de eventos, com reentrega sem duplicar.
 
 ### Notificações
 - Web Push (VAPID), por dispositivo, ativado no Perfil. No iPhone/iPad exige o app instalado na tela de início.
