@@ -1,5 +1,5 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, defaultShouldDehydrateQuery } from '@tanstack/react-query'
 import type { PersistQueryClientOptions } from '@tanstack/react-query-persist-client'
 import { ApiError } from '../api/client'
 import { registerCheckInDefaults } from '../features/checkins/checkInMutation'
@@ -33,5 +33,11 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister: createAsyncStoragePersister({ storage: idbStorage, key: 'arco-query-cache', throttleTime: 1000 }),
   maxAge: MAX_AGE,
   // Trocar quando o formato das respostas mudar de um jeito incompatível.
-  buster: 'v4',
+  buster: 'v5',
+  dehydrateOptions: {
+    // "Sem sessão" nunca vai para o aparelho: senão, ao voltar do login com Google (página recarregada), o app
+    // leria o null salvo e não perguntaria de novo ao servidor. A sessão válida continua salva para abrir offline.
+    shouldDehydrateQuery: (query) =>
+      defaultShouldDehydrateQuery(query) && !(query.queryKey.length === 1 && query.queryKey[0] === 'auth' && !query.state.data),
+  },
 }
