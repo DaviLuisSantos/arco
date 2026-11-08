@@ -142,14 +142,23 @@ public static class Startup
             });
             auth.AddGoogle(GoogleDefaults.AuthenticationScheme, o =>
             {
-                o.ClientId = config["Auth:Google:ClientId"]!;
-                o.ClientSecret = config["Auth:Google:ClientSecret"]!;
+                o.ClientId = config["Auth:Google:ClientId"]!.Trim();
+                o.ClientSecret = config["Auth:Google:ClientSecret"]!.Trim();
                 o.SignInScheme = ExternalScheme;
                 o.CallbackPath = Arco.Api.Features.Auth.GoogleAuth.ProviderCallbackPath;
                 // Cancelled consent or bad state: back to the login screen instead of a 500.
                 o.Events.OnRemoteFailure = ctx =>
                 {
-                    ctx.Response.Redirect("/login?error=google");
+                    var message = ctx.Failure?.Message ?? "";
+                    ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Arco.GoogleAuth")
+                        .LogWarning(ctx.Failure, "Google remote failure: {Message}", message);
+                    var reason = message.Contains("Correlation", StringComparison.OrdinalIgnoreCase) ? "correlation"
+                        : message.Contains("access_denied", StringComparison.OrdinalIgnoreCase) ? "denied"
+                        : message.Contains("invalid_client", StringComparison.OrdinalIgnoreCase) ? "client"
+                        : message.Contains("token endpoint", StringComparison.OrdinalIgnoreCase) ? "token"
+                        : message.Contains("user information", StringComparison.OrdinalIgnoreCase) ? "userinfo"
+                        : "remote";
+                    ctx.Response.Redirect(Arco.Api.Features.Auth.GoogleAuth.FailureRedirect(reason));
                     ctx.HandleResponse();
                     return Task.CompletedTask;
                 };

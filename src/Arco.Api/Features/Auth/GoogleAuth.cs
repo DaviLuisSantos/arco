@@ -11,7 +11,8 @@ public static class GoogleAuth
     public const string ProviderCallbackPath = "/api/auth/google/callback";
     /// <summary>Our endpoint that runs after the middleware: links or creates the user and signs in.</summary>
     public const string CallbackRoute = "/api/auth/google/complete";
-    private const string FailureRedirect = "/login?error=google";
+    /// <summary>Login screen with a short reason code, so a failure can be diagnosed without server logs.</summary>
+    public static string FailureRedirect(string reason) => "/login?error=google&reason=" + Uri.EscapeDataString(reason);
 
     public static bool IsConfigured(IConfiguration config) =>
         !string.IsNullOrWhiteSpace(config["Auth:Google:ClientId"]) && !string.IsNullOrWhiteSpace(config["Auth:Google:ClientSecret"]);
@@ -33,22 +34,31 @@ public static class GoogleAuth
     }
 
     public static async Task<IResult> Callback(string? returnUrl, HttpContext http, AppDbContext db, TimeProvider time,
-        CancellationToken ct)
+        ILoggerFactory loggers, CancellationToken ct)
     {
         var external = await http.AuthenticateAsync(Startup.ExternalScheme);
         await http.SignOutAsync(Startup.ExternalScheme);
-        if (!external.Succeeded || external.Principal is not { } principal) return Results.Redirect(FailureRedirect);
+        if (!external.Succeeded || external.Principal is not { } principal)
+        {
+            loggers.CreateLogger("Arco.GoogleAuth").LogWarning("Google: external cookie missing ({Failure}).", external.Failure?.Message);
+            return Results.Redirect(FailureRedirect("external"));
+        }
 
         var subject = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         var email = principal.FindFirstValue(ClaimTypes.Email)?.Trim().ToLowerInvariant();
         var emailVerified = string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase);
-        if (string.IsNullOrEmpty(subject)) return Results.Redirect(FailureRedirect);
+        if (string.IsNullOrEmpty(subject)) return Results.Redirect(FailureRedirect("subject"));
 
         var now = time.GetUtcNow().UtcDateTime;
         var user = await db.Users.FirstOrDefaultAsync(u => u.GoogleSubject == subject, ct);
         if (user is null)
         {
-            if (string.IsNullOrEmpty(email) || !emailVerified) return Results.Redirect(FailureRedirect);
+            if (string.IsNullOrEmpty(email) || !emailVerified)
+            {
+                loggers.CreateLogger("Arco.GoogleAuth").LogWarning("Google: e-mail missing or unverified (verified claim: {Claim}).",
+                    principal.FindFirstValue("email_verified"));
+                return Results.Redirect(FailureRedirect("unverified"));
+            }
 
             user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
             if (user is not null)
