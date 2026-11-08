@@ -147,6 +147,15 @@ public static class Startup
                 o.SignInScheme = ExternalScheme;
                 o.CallbackPath = Arco.Api.Features.Auth.GoogleAuth.ProviderCallbackPath;
                 // Cancelled consent or bad state: back to the login screen instead of a 500.
+                o.Events.OnRedirectToAuthorizationEndpoint = ctx =>
+                {
+                    // TEMPORARY diagnostic: remember the redirect_uri sent to Google.
+                    var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(ctx.RedirectUri).Query);
+                    ctx.Response.Cookies.Append("arco_ru_dbg", q.TryGetValue("redirect_uri", out var v) ? v.ToString() : "",
+                        new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromMinutes(10) });
+                    ctx.Response.Redirect(ctx.RedirectUri);
+                    return Task.CompletedTask;
+                };
                 o.Events.OnRemoteFailure = ctx =>
                 {
                     var message = ctx.Failure?.Message ?? "";
@@ -155,8 +164,11 @@ public static class Startup
                     // TEMPORARY diagnostic: the failure chain, trimmed (no credentials appear in it).
                     var chain = "";
                     for (var e = ctx.Failure; e is not null; e = e.InnerException) chain += e.Message + " | ";
-                    var reason = System.Text.RegularExpressions.Regex.Replace(chain, @"[^A-Za-z0-9 _:;.,=|()-]", "");
-                    if (reason.Length > 300) reason = reason[..300];
+                    var req = ctx.HttpContext.Request;
+                    chain += " back=" + req.Scheme + "://" + req.Host + req.PathBase + o.CallbackPath;
+                    chain += " out=" + (req.Cookies["arco_ru_dbg"] ?? "(sem cookie)");
+                    var reason = System.Text.RegularExpressions.Regex.Replace(chain, @"[^A-Za-z0-9 _:;.,=|()/-]", "");
+                    if (reason.Length > 400) reason = reason[..400];
                     ctx.Response.Redirect(Arco.Api.Features.Auth.GoogleAuth.FailureRedirect(reason));
                     ctx.HandleResponse();
                     return Task.CompletedTask;
