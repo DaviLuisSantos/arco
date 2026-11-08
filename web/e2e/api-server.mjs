@@ -1,6 +1,6 @@
 // Sobe a API para o E2E: publica em Release (nunca em bin/Debug), usa banco temporário e
-// escuta em :5199. O Playwright encerra este processo ao fim; o filho e a pasta temporária
-// são limpos junto.
+// escuta em E2E_API_PORT (padrão :5199). O Playwright encerra este processo ao fim; o filho e a
+// pasta temporária são limpos junto.
 import { execFileSync, spawn } from 'node:child_process'
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -10,9 +10,10 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const port = process.env.E2E_API_PORT ?? '5199'
 // O Playwright pode encerrar este processo à força (Windows) sem passar pelo shutdown:
-// limpa o que ficou de execuções anteriores.
+// limpa o que ficou de execuções anteriores nesta porta, sem tocar nas de outra execução simultânea.
+const workPrefix = `arco-e2e-${port}-`
 for (const name of readdirSync(tmpdir())) {
-  if (!name.startsWith('arco-e2e-')) continue
+  if (!name.startsWith(workPrefix)) continue
   try {
     rmSync(join(tmpdir(), name), { recursive: true, force: true })
   } catch {
@@ -20,7 +21,7 @@ for (const name of readdirSync(tmpdir())) {
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), 'arco-e2e-'))
+const work = mkdtempSync(join(tmpdir(), workPrefix))
 const publishDir = join(work, 'publish')
 
 console.log(`[e2e-api] publicando em ${publishDir}`)

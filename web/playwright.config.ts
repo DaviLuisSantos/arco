@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const API_PORT = 5199
-const WEB_PORT = 4199
+// Portas configuráveis para permitir execuções simultâneas (ex.: dois worktrees).
+const API_PORT = Number(process.env.E2E_API_PORT ?? 5199)
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 4199)
 
 export default defineConfig({
   testDir: './e2e',
@@ -30,6 +31,7 @@ export default defineConfig({
       url: `http://localhost:${API_PORT}/api/health`,
       timeout: 300_000,
       reuseExistingServer: false,
+      env: { E2E_API_PORT: String(API_PORT) },
       stdout: 'pipe',
       stderr: 'pipe',
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
