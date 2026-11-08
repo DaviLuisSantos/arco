@@ -222,6 +222,17 @@ public sealed class BillingApiTests : IDisposable
         Assert.True((bool)billing["cancelAtPeriodEnd"]!);
         Assert.NotNull(billing["renewsAt"]);
 
+        // The customer portal on current API versions sets cancel_at and keeps cancel_at_period_end false.
+        var portalCancel = Event("evt_cancel_at", "customer.subscription.updated",
+            """{"id":"sub_1","customer":"cus_1","status":"active","cancel_at_period_end":false,"cancel_at":1900000000,"current_period_end":1900000000}""");
+        Assert.Equal(HttpStatusCode.OK, (await PostWebhookAsync(anon, portalCancel)).StatusCode);
+        Assert.True((await LoadUserAsync(userId)).PlanCancelAtPeriodEnd);
+
+        var portalUndo = Event("evt_cancel_at_undo", "customer.subscription.updated",
+            """{"id":"sub_1","customer":"cus_1","status":"active","cancel_at_period_end":false,"cancel_at":null,"current_period_end":1900000000}""");
+        Assert.Equal(HttpStatusCode.OK, (await PostWebhookAsync(anon, portalUndo)).StatusCode);
+        Assert.False((await LoadUserAsync(userId)).PlanCancelAtPeriodEnd);
+
         // Same, with the period end on the first item (new layout).
         var moved = Event("evt_3", "customer.subscription.updated",
             """{"id":"sub_1","customer":"cus_1","status":"active","cancel_at_period_end":false,"items":{"data":[{"current_period_end":1950000000}]}}""");

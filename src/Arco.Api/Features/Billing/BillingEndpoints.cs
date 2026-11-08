@@ -215,7 +215,9 @@ public static class BillingEndpoints
             user.Plan = UserPlan.Pro;
             user.StripeSubscriptionId = subscriptionId ?? user.StripeSubscriptionId;
             user.PlanRenewsAt = PeriodEnd(sub) ?? user.PlanRenewsAt;
-            user.PlanCancelAtPeriodEnd = sub.TryGetProperty("cancel_at_period_end", out var c) && c.ValueKind == JsonValueKind.True;
+            // The customer portal on current API versions sets cancel_at and leaves cancel_at_period_end false.
+            user.PlanCancelAtPeriodEnd = (sub.TryGetProperty("cancel_at_period_end", out var c) && c.ValueKind == JsonValueKind.True)
+                || Unix(sub, "cancel_at") is not null;
         }
         else
         {
