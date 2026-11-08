@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de Privacidade — Arco</title>
+  <meta name="description" content="Como o Arco coleta, usa e protege os seus dados.">
+  <link rel="canonical" href="https://arco.daviluis.dev/landing/privacidade/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg: #fafaf7; --fg: #14181f; --muted: #5b6573; --line: #e5e5df; --accent: #4f46e5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b0f14; --fg: #eef1f5; --muted: #98a2b3; --line: #1f2733; --accent: #818cf8; }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--fg); font: 16px/1.7 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 20px 64px; }
+    a { color: var(--accent); }
+    .back { display: inline-block; margin-bottom: 28px; text-decoration: none; color: var(--muted); font-size: .94rem; }
+    h1 { font-size: 2rem; letter-spacing: -.02em; line-height: 1.2; }
+    .updated { color: var(--muted); font-size: .9rem; margin: 6px 0 32px; }
+    h2 { font-size: 1.15rem; margin: 32px 0 8px; }
+    p, li { color: var(--fg); }
+    ul { padding-left: 1.2em; margin: 8px 0; }
+    li { margin: 4px 0; }
+    footer { border-top: 1px solid var(--line); margin-top: 48px; padding-top: 20px; color: var(--muted); font-size: .88rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/landing/">← Voltar para o Arco</a>
+    <h1>Política de Privacidade</h1>
+    <p class="updated">Última atualização: 8 de novembro de 2026</p>
+
+    <p>O Arco é um app de hábitos em ciclos. Esta página explica quais dados ele guarda, para quê e o que você pode fazer com eles.</p>
+
+    <h2>O que coletamos</h2>
+    <ul>
+      <li><strong>Conta:</strong> e-mail, nome de exibição e senha (guardada só como hash BCrypt, nunca em texto).</li>
+      <li><strong>Login com Google:</strong> se você usar, recebemos do Google apenas o seu e-mail, o nome e um identificador da conta. Não acessamos contatos, arquivos nem qualquer outro dado da sua conta Google.</li>
+      <li><strong>Seus registros no app:</strong> hábitos, níveis, check-ins, ciclos, objetivos, sessões de foco, revisões e XP.</li>
+      <li><strong>Notificações:</strong> se você ativar os lembretes, o endereço de inscrição push do seu navegador.</li>
+      <li><strong>Técnicos:</strong> um cookie de sessão (necessário para manter você conectado) e registros de acesso do servidor, usados para segurança e para corrigir erros.</li>
+    </ul>
+
+    <h2>Como usamos</h2>
+    <ul>
+      <li>Para fazer o app funcionar: mostrar os seus dados, calcular progresso e enviar os lembretes que você ativou.</li>
+      <li>Para enviar e-mails de conta: confirmação de e-mail e recuperação de senha. Não enviamos propaganda.</li>
+    </ul>
+    <p>Não vendemos, não alugamos e não compartilhamos seus dados para publicidade. Não há rastreadores de terceiros nem anúncios.</p>
+
+    <h2>Quem processa os dados</h2>
+    <ul>
+      <li><strong>Microsoft Azure:</strong> hospedagem do app e do banco de dados.</li>
+      <li><strong>Resend:</strong> envio dos e-mails de conta.</li>
+      <li><strong>Google:</strong> apenas se você escolher entrar com Google.</li>
+      <li><strong>Serviço de push do navegador</strong> (Google, Apple ou Mozilla): entrega das notificações, quando ativadas.</li>
+    </ul>
+
+    <h2>Seus dados são só seus</h2>
+    <p>Cada conta é isolada: nenhum outro usuário vê os seus registros. Você pode, a qualquer momento, no Perfil do app:</p>
+    <ul>
+      <li><strong>Exportar</strong> todos os seus dados em JSON;</li>
+      <li><strong>Excluir a conta</strong>, o que apaga de forma permanente a conta e todos os registros ligados a ela.</li>
+    </ul>
+    <p>Contas de demonstração e os dados delas são apagados automaticamente 24 horas depois de criados. Cópias de segurança do servidor são mantidas por até 14 dias e depois descartadas.</p>
+
+    <h2>Segurança</h2>
+    <p>O acesso é feito só por HTTPS; senhas e chaves de API são guardadas como hash; o cookie de sessão é HttpOnly e Secure.</p>
+
+    <h2>Mudanças</h2>
+    <p>Se esta política mudar, a data no topo será atualizada.</p>
+
+    <footer>© Arco · <a href="/landing/">arco.daviluis.dev</a></footer>
+  </main>
+</body>
+</html>
