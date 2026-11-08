@@ -36,6 +36,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
     public DbSet<TotpRecoveryCode> TotpRecoveryCodes => Set<TotpRecoveryCode>();
     public DbSet<Partnership> Partnerships => Set<Partnership>();
     public DbSet<StripeEvent> StripeEvents => Set<StripeEvent>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -233,6 +234,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
         {
             e.Property(x => x.Key).HasMaxLength(100);
             e.HasIndex(x => new { x.UserId, x.Key }).IsUnique();
+        });
+
+        b.Entity<OutboxMessage>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(50);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.HasIndex(x => x.NextAttemptAt);
         });
 
         b.Entity<ApiKey>(e =>

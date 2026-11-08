@@ -3,6 +3,7 @@ using System.Net.Mail;
 using System.Security.Claims;
 using Arco.Api.Features.Demo;
 using Arco.Api.Infrastructure.Email;
+using Arco.Api.Infrastructure.Outbox;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
@@ -82,7 +83,7 @@ public static class AuthEndpoints
     // ---- Sign up / in / out ----
 
     private static async Task<IResult> Register(RegisterRequest? request, AppDbContext db, TimeProvider time,
-        IEmailSender email, IConfiguration config, HttpContext http, ILoggerFactory logs, CancellationToken ct)
+        OutboxProcessor outbox, IConfiguration config, HttpContext http, CancellationToken ct)
     {
         var address = NormalizeEmail(request?.Email);
         if (address is null) return ApiResults.Validation("Informe um e-mail válido.");
@@ -114,7 +115,7 @@ public static class AuthEndpoints
             throw;
         }
 
-        await SendVerificationAsync(db, email, config, http, user, now, logs, ct);
+        await SendVerificationAsync(db, outbox, config, http, user, now, ct);
         await AuthSession.SignInAsync(http, user, AuthMethods.Password);
         return Results.Created("/api/auth/me", Me.From(user, config));
     }
@@ -227,18 +228,18 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> ResendVerification(AppDbContext db, CurrentUser current, TimeProvider time,
-        IEmailSender email, IConfiguration config, HttpContext http, ILoggerFactory logs, CancellationToken ct)
+        OutboxProcessor outbox, IConfiguration config, HttpContext http, CancellationToken ct)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.Id, ct);
         if (user is null) return ApiResults.Unauthorized();
         if (user.EmailVerifiedAt is not null || user.IsDemo) return Results.NoContent();
 
-        await SendVerificationAsync(db, email, config, http, user, time.GetUtcNow().UtcDateTime, logs, ct);
+        await SendVerificationAsync(db, outbox, config, http, user, time.GetUtcNow().UtcDateTime, ct);
         return Results.NoContent();
     }
 
     private static async Task<IResult> ForgotPassword(ForgotPasswordRequest? request, AppDbContext db, TimeProvider time,
-        IEmailSender email, IConfiguration config, HttpContext http, ILoggerFactory logs, CancellationToken ct)
+        OutboxProcessor outbox, IConfiguration config, HttpContext http, CancellationToken ct)
     {
         // Always 204, so the endpoint does not reveal which e-mails have an account.
         var address = NormalizeEmail(request?.Email);
@@ -249,10 +250,11 @@ public static class AuthEndpoints
 
         var now = time.GetUtcNow().UtcDateTime;
         var raw = AuthTokens.Issue(db, user.Id, UserTokenPurpose.ResetPassword, AuthTokens.ResetPasswordLifetime, now);
-        await db.SaveChangesAsync(ct);
-
         var (subject, html) = EmailTemplates.ResetPassword($"{BaseUrl(config, http)}/reset-password?token={raw}", user.Locale);
-        await TrySendAsync(email, user.Email, subject, html, logs, ct);
+        // The token and the e-mail are saved together: if the provider is down the worker sends it later.
+        var message = Outbox.Enqueue(db, OutboxKinds.Email, new EmailOutboxPayload(user.Email, subject, html), now);
+        await db.SaveChangesAsync(ct);
+        await outbox.TryDispatchAsync(message.Id, ct);
         return Results.NoContent();
     }
 
@@ -353,27 +355,15 @@ public static class AuthEndpoints
     private static string BaseUrl(IConfiguration config, HttpContext http) =>
         (config["App:BaseUrl"] ?? $"{http.Request.Scheme}://{http.Request.Host}").TrimEnd('/');
 
-    private static async Task SendVerificationAsync(AppDbContext db, IEmailSender email, IConfiguration config, HttpContext http,
-        User user, DateTime now, ILoggerFactory logs, CancellationToken ct)
+    private static async Task SendVerificationAsync(AppDbContext db, OutboxProcessor outbox, IConfiguration config, HttpContext http,
+        User user, DateTime now, CancellationToken ct)
     {
         var raw = AuthTokens.Issue(db, user.Id, UserTokenPurpose.VerifyEmail, AuthTokens.VerifyEmailLifetime, now);
-        await db.SaveChangesAsync(ct);
         var (subject, html) = EmailTemplates.VerifyEmail($"{BaseUrl(config, http)}/verify-email?token={raw}", user.Locale);
-        await TrySendAsync(email, user.Email, subject, html, logs, ct);
-    }
-
-    /// <summary>A failing mail provider must not break sign-up or leak whether an account exists.</summary>
-    private static async Task TrySendAsync(IEmailSender email, string to, string subject, string html, ILoggerFactory logs,
-        CancellationToken ct)
-    {
-        try
-        {
-            await email.SendAsync(to, subject, html, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logs.CreateLogger("Arco.Api.Features.Auth").LogError(ex, "Failed to send e-mail to {To}.", to);
-        }
+        // The token and the e-mail are saved together: a failing mail provider must not break sign-up, the worker retries.
+        var message = Outbox.Enqueue(db, OutboxKinds.Email, new EmailOutboxPayload(user.Email, subject, html), now);
+        await db.SaveChangesAsync(ct);
+        await outbox.TryDispatchAsync(message.Id, ct);
     }
 
     private static IResult EmailTaken() =>

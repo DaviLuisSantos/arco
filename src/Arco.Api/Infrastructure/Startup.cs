@@ -1,3 +1,4 @@
+using Arco.Api.Infrastructure.Outbox;
 using Arco.Api.Features.Admin;
 using Arco.Api.Features.Billing;
 using Arco.Api.Features.Partners;
@@ -91,6 +92,9 @@ public static class Startup
         services.AddScoped<PushNotifier>();
         services.AddScoped<ReminderDispatcher>();
         if (config.GetValue("Push:SchedulerEnabled", true)) services.AddHostedService<ReminderService>();
+
+        // Outbox: e-mails (and events) saved with the action, delivered with retries.
+        services.AddArcoOutbox(config);
 
         // Demo accounts are deleted after 24 hours.
         if (config.GetValue("Demo:CleanupEnabled", true)) services.AddHostedService<DemoCleanupService>();

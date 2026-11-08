@@ -342,3 +342,22 @@ public class PushDispatch : IUserOwned
     public string Key { get; set; } = "";
     public DateTime SentAt { get; set; }
 }
+
+/// <summary>
+/// A side effect (e-mail, event) saved in the same transaction as the action that caused it and delivered afterwards,
+/// with retries. Not user-owned: the worker has no user. The payload may hold secrets, so it is cleared when the message
+/// is done (sent or given up).
+/// </summary>
+public class OutboxMessage
+{
+    public long Id { get; set; }
+    public string Kind { get; set; } = "";
+    public string Payload { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+    public DateTime NextAttemptAt { get; set; }
+    public int Attempts { get; set; }
+    public DateTime? LockedUntil { get; set; }
+    public DateTime? SentAt { get; set; }
+    public DateTime? FailedAt { get; set; }
+    public string? LastError { get; set; }
+}

@@ -37,6 +37,7 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
         builder.UseSetting("Push:SchedulerEnabled", "false");
         builder.UseSetting("Backup:Enabled", "false");
         builder.UseSetting("Demo:CleanupEnabled", "false");
+        builder.UseSetting("Outbox:WorkerEnabled", "false");
         builder.UseSetting("Auth:ActionsPerMinute", "1000");
         builder.ConfigureTestServices(services =>
         {
@@ -120,10 +121,31 @@ public sealed class FakeEmailSender : IEmailSender
 
     public Mail Last(string to) => Sent.Last(m => m.To == to.ToLowerInvariant());
 
-    public Task SendAsync(string to, string subject, string html, CancellationToken ct)
+    private int _failures;
+    private readonly List<string?> _keys = [];
+
+    /// <summary>Makes the next <paramref name="count"/> sends throw (use int.MaxValue for "always").</summary>
+    public void FailNext(int count) => Interlocked.Exchange(ref _failures, count);
+
+    /// <summary>Idempotency keys of the sends the provider accepted.</summary>
+    public IReadOnlyList<string?> Keys { get { lock (_sent) return [.. _keys]; } }
+
+    /// <summary>Delay applied before accepting a send (to test concurrent claims).</summary>
+    public TimeSpan Delay { get; set; }
+
+    public async Task SendAsync(string to, string subject, string html, CancellationToken ct, string? idempotencyKey = null)
     {
-        lock (_sent) _sent.Add(new Mail(to, subject, html));
-        return Task.CompletedTask;
+        if (Delay > TimeSpan.Zero) await Task.Delay(Delay, ct);
+        if (Volatile.Read(ref _failures) > 0)
+        {
+            Interlocked.Decrement(ref _failures);
+            throw new EmailSendException("Falha simulada do provedor.");
+        }
+        lock (_sent)
+        {
+            _sent.Add(new Mail(to, subject, html));
+            _keys.Add(idempotencyKey);
+        }
     }
 }
 
