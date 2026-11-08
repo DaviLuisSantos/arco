@@ -46,3 +46,21 @@ export async function startDemo(page: Page) {
   await page.goto('/')
   await reachToday(page)
 }
+
+/** Cria um hábito direto pela API (usa o cookie da página). */
+export async function createHabit(page: Page, name: string) {
+  const res = await page.request.post('/api/habits', {
+    data: {
+      name,
+      frequencyType: 'Daily',
+      levelDescription: '20 min',
+      minimumDescription: '5 min',
+    },
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+}
+
+export async function gotoProfile(page: Page) {
+  await page.getByRole('link', { name: 'Perfil' }).click()
+  await expect(page.getByRole('heading', { name: 'Perfil', level: 1 })).toBeVisible()
+}

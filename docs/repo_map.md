@@ -26,13 +26,15 @@
 | `web/src/lib/` | Datas, erros, mutações, IndexedDB, push |
 | `web/src/i18n/` | i18next: `locales/{pt-BR,en}/<ns>.ts`, `setLocale`, detecção de idioma |
 | `web/src/features/{billing,security,publicProfile,partners}` | Plano, 2FA e sessões, perfil público, parceiros |
-| `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`) |
+| `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`). Specs de produto: `public-profile`, `security`, `partners`, `plan-limit`, `locale`; helper `totp.ts` |
+| `infra/` | Terraform do Azure (o job `terraform-plan` roda em PR no `deploy.yml`) |
+| `azure-pipelines.yml` | Pipeline do Azure DevOps: build e testes, sem deploy |
 | `Infrastructure/PlanGate.cs`, `Domain/Plans.cs` | Limites do plano Free (403 `plan_limit`) e filtro do MCP |
 | `web/src/components/ui/` | Primitivas visuais |
 
 ## Testes e checagens
 - `dotnet test` (tudo) · `dotnet test --filter FullyQualifiedName~DomainTests` (só domínio, rápido)
-- `cd web && npm run lint && npm run build` · `npm run e2e` (Playwright: publica a API em :5199 e o preview em :4199)
+- `cd web && npm run lint && npm run build` · `npm run e2e` (Playwright: publica a API e o preview; portas padrão :5199/:4199, configuráveis por `E2E_API_PORT`/`E2E_WEB_PORT`)
 - CI: `.github/workflows/deploy.yml` (roda os dois em todo PR)
 
 ## Áreas sensíveis

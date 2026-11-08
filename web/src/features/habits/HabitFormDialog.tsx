@@ -13,7 +13,7 @@ import { WEEKDAY_INITIALS, WEEKDAY_NAMES } from '../../lib/dates'
 import { errorMessage } from '../../lib/errors'
 import { queryKeys } from '../../lib/queryKeys'
 import { useInvalidateData } from '../../lib/useInvalidateData'
-import { usePlanLimitHandler } from '../billing'
+import { PlanLimitNotice, usePlanLimitHandler } from '../billing'
 import { LevelUpRuleField, PlannedLevelsField, type LevelUpRuleDraft, type PlannedLevelDraft } from './LadderFields'
 
 interface HabitFormDialogProps {
@@ -90,6 +90,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     daysPerWeek: habit?.levelUpDaysPerWeek ?? 5,
   })
   const [errors, setErrors] = useState<Errors>({})
+  const [limit, setLimit] = useState(false)
 
   const save = useMutation({
     mutationFn: (input: HabitInput) => (habit ? habitsApi.update(habit.id, input) : habitsApi.create(input)),
@@ -99,7 +100,8 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     },
     // Limite do plano: aviso com link para o Plano; outros erros, o toast genérico.
     onError: (err) => {
-      if (!handlePlanLimit(err)) toast.error(errorMessage(err))
+      if (handlePlanLimit(err)) setLimit(true)
+      else toast.error(errorMessage(err))
     },
     onSettled: () => invalidate(),
   })
@@ -133,6 +135,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     const e = validate()
     setErrors(e)
     if (Object.keys(e).length > 0) return
+    setLimit(false)
     onPendingChange(true)
     save.mutate(
       {
@@ -299,6 +302,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
       <p className="-mt-2 text-xs text-muted">
         {t('form.reminderHint')}
       </p>
+      {limit && <PlanLimitNotice />}
     </form>
   )
 }
