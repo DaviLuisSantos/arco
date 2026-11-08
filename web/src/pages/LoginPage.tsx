@@ -19,7 +19,9 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() =>
+    params.get('error') === 'google' ? 'Não foi possível entrar com o Google. Tente de novo.' : null,
+  )
   const [submitting, setSubmitting] = useState(false)
   const [demoing, setDemoing] = useState(false)
   const demoStarted = useRef(false)

@@ -50,7 +50,7 @@ public static class AuthEndpoints
         group.MapPost("/change-password", ChangePassword).RequireAuthorization();
         group.MapDelete("/account", DeleteAccount).RequireAuthorization();
         group.MapGet("/google", GoogleAuth.Challenge).AllowAnonymous();
-        group.MapGet("/google/callback", GoogleAuth.Callback).AllowAnonymous();
+        group.MapGet("/google/complete", GoogleAuth.Callback).AllowAnonymous();
         return api;
     }
 

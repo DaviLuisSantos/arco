@@ -146,7 +146,8 @@ Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 
 | `POST /api/auth/change-password` | `{ currentPassword?, newPassword }` | **204**; 401 `invalid_credentials`; só com o cookie |
 | `DELETE /api/auth/account` | `{ password? }` | **204**; apaga o usuário e todos os dados em cascata; só com o cookie |
 | `GET /api/auth/google?returnUrl=` | — | challenge OAuth; falha → redireciona a `/login?error=google` |
-| `/api/auth/google/callback` | — | redireciona para `returnUrl` ou `/` |
+| `/api/auth/google/callback` | — | retorno do Google (tratado pelo middleware; é o redirect URI a cadastrar) |
+| `GET /api/auth/google/complete` | — | vincula ou cria o usuário, define o cookie e redireciona para `returnUrl` ou `/` |
 
 - `Me` = `{ id, email, displayName, emailVerified, isDemo, hasPassword, hasGoogle }`.
 - Rotas anônimas: todas, exceto `logout`, `resend-verification`, `change-password` e `account`.

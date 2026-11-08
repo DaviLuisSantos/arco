@@ -145,6 +145,14 @@ public static class Startup
                 o.ClientId = config["Auth:Google:ClientId"]!;
                 o.ClientSecret = config["Auth:Google:ClientSecret"]!;
                 o.SignInScheme = ExternalScheme;
+                o.CallbackPath = Arco.Api.Features.Auth.GoogleAuth.ProviderCallbackPath;
+                // Cancelled consent or bad state: back to the login screen instead of a 500.
+                o.Events.OnRemoteFailure = ctx =>
+                {
+                    ctx.Response.Redirect("/login?error=google");
+                    ctx.HandleResponse();
+                    return Task.CompletedTask;
+                };
                 o.ClaimActions.MapJsonKey("email_verified", "email_verified");
             });
         }

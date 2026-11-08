@@ -7,7 +7,10 @@ namespace Arco.Api.Features.Auth;
 /// <summary>Login with Google: active only with <c>Auth:Google:ClientId</c> and <c>Auth:Google:ClientSecret</c>.</summary>
 public static class GoogleAuth
 {
-    public const string CallbackRoute = "/api/auth/google/callback";
+    /// <summary>Where Google sends the user back (handled by the Google middleware; register this URI in the Google console).</summary>
+    public const string ProviderCallbackPath = "/api/auth/google/callback";
+    /// <summary>Our endpoint that runs after the middleware: links or creates the user and signs in.</summary>
+    public const string CallbackRoute = "/api/auth/google/complete";
     private const string FailureRedirect = "/login?error=google";
 
     public static bool IsConfigured(IConfiguration config) =>
