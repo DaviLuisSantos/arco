@@ -61,6 +61,38 @@ public sealed class AdminApiTests : IDisposable
     }
 
     [Fact]
+    public async Task Retention_cohort_has_known_rates()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.UseSetting("Admin:Emails", "boss@teste.arco"));
+        var admin = factory.CreateClient();
+        await _factory.RegisterAsync(admin, "boss@teste.arco");
+        var other = factory.CreateClient();
+        await _factory.RegisterAsync(other, "other@teste.arco");
+        // Bump the clock-independent cohort: both users "signed up" on Tue 2030-02-26 (cohort week 2030-02-25).
+        await _factory.AsUserAsync(await _factory.UserIdAsync("boss@teste.arco"), async sp =>
+        {
+            await sp.GetRequiredService<AppDbContext>().Users
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.CreatedAt, new DateTime(2030, 2, 26, 10, 0, 0, DateTimeKind.Utc)));
+            return 0;
+        });
+        // Only the boss checks in, on 2030-03-04 (cohort week + 1).
+        var res = await admin.PostAsJsonAsync("/api/habits", new
+        {
+            name = "Meditar", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min",
+        });
+        var id = (int)(await res.JsonAsync())["id"]!;
+        var ci = await admin.PutAsJsonAsync("/api/checkins", new { habitId = id, date = "2030-03-04", status = "Done" });
+        Assert.True(ci.IsSuccessStatusCode, await ci.Content.ReadAsStringAsync());
+
+        var json = await (await admin.GetAsync("/api/admin/metrics")).JsonAsync();
+        var row = json["retention"]!.AsArray().Single(r => (string)r!["cohortWeek"]! == "2030-02-25")!;
+        Assert.Equal(2, (int)row["size"]!);
+        Assert.Equal(0.5, (double)row["week1"]!);
+        Assert.Equal(0, (double)row["week2"]!);
+        Assert.Equal(0, (double)row["week4"]!);
+    }
+
+    [Fact]
     public async Task Push_is_in_english_for_an_english_user()
     {
         var client = await _factory.LoggedInClientAsync("en@teste.arco");

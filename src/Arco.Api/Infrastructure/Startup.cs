@@ -88,7 +88,7 @@ public static class Startup
 
         // Web Push: VAPID keys (generated into the data dir when not configured) and the reminder loop.
         services.AddSingleton(VapidKeys.Load(config, dataDir));
-        services.AddHttpClient<IPushSender, WebPushSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHttpClient<IPushSender, WebPushSender>().AddArcoResilience();
         services.AddScoped<PushNotifier>();
         services.AddScoped<ReminderDispatcher>();
         if (config.GetValue("Push:SchedulerEnabled", true)) services.AddHostedService<ReminderService>();

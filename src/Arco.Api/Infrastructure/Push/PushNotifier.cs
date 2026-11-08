@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace Arco.Api.Infrastructure.Push;
 
@@ -21,6 +23,7 @@ public sealed class PushNotifier(AppDbContext db, IPushSender sender, AppClock c
         foreach (var subscription in subscriptions)
         {
             PushOutcome outcome;
+            var transient = false; // circuit open or timed out: says nothing about the subscription itself
             try
             {
                 outcome = await sender.SendAsync(subscription, json, ct);
@@ -35,6 +38,12 @@ public sealed class PushNotifier(AppDbContext db, IPushSender sender, AppClock c
                 log.LogWarning(ex, "Push to subscription {Id} timed out", subscription.Id);
                 outcome = PushOutcome.Failed;
             }
+            catch (Exception ex) when (ex is BrokenCircuitException or TimeoutRejectedException && !ct.IsCancellationRequested)
+            {
+                log.LogWarning(ex, "Push to subscription {Id} skipped: push service unavailable", subscription.Id);
+                outcome = PushOutcome.Failed;
+                transient = true;
+            }
 
             switch (outcome)
             {
@@ -47,6 +56,7 @@ public sealed class PushNotifier(AppDbContext db, IPushSender sender, AppClock c
                     db.PushSubscriptions.Remove(subscription);
                     break;
                 default:
+                    if (transient) break;
                     if (++subscription.FailureCount >= MaxConsecutiveFailures) db.PushSubscriptions.Remove(subscription);
                     break;
             }
