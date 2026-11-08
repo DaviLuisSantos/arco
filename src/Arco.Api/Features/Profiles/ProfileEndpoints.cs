@@ -6,7 +6,7 @@ public static partial class ProfileEndpoints
 {
     public sealed record UpdatePublicProfileRequest(bool? Enabled, string? Slug, bool? ShowHabits, string? Theme);
 
-    public sealed record PublicProfileSettingsDto(bool Enabled, string? Slug, bool ShowHabits, string Theme);
+    public sealed record PublicProfileSettingsDto(bool Enabled, string? Slug, bool ShowHabits, string Theme, string? Url = null);
 
     public sealed record PublicStoneDto(int Week, double Rate);
 
@@ -85,7 +85,8 @@ public static partial class ProfileEndpoints
     // --- Handlers ---
 
     private static async Task<IResult> UpdatePublic(
-        UpdatePublicProfileRequest? request, AppDbContext db, CurrentUser current, CancellationToken ct)
+        UpdatePublicProfileRequest? request, AppDbContext db, CurrentUser current, IConfiguration config,
+        HttpContext http, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
 
@@ -134,8 +135,10 @@ public static partial class ProfileEndpoints
             return ApiResults.Conflict("Esse endereço já está em uso.", ErrorCodes.SlugTaken);
         }
 
+        var baseUrl = (config["App:BaseUrl"] ?? $"{http.Request.Scheme}://{http.Request.Host}").TrimEnd('/');
         return Results.Ok(new PublicProfileSettingsDto(
-            user.PublicProfileEnabled, user.PublicSlug, user.PublicShowHabits, user.PublicTheme));
+            user.PublicProfileEnabled, user.PublicSlug, user.PublicShowHabits, user.PublicTheme,
+            user.PublicSlug is null ? null : $"{baseUrl}/u/{user.PublicSlug}"));
     }
 
     private static async Task<IResult> GetPublic(

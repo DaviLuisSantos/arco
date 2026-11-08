@@ -515,6 +515,8 @@ export interface PublicProfileSettings {
   slug: string | null
   showHabits: boolean
   theme: string
+  /** Só em `PUT /api/profile/public`: `{App:BaseUrl}/u/{slug}`. */
+  url?: string | null
 }
 
 /** Login com 2FA: 200 com ticket em vez de 204. */

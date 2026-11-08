@@ -28,3 +28,12 @@ Thumbs.db
 # Playwright
 web/test-results/
 web/playwright-report/
+
+# Terraform (infra/): sem state nem valores locais; os .example ficam
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+backend.hcl
+tfplan

@@ -117,3 +117,24 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 As ferramentas do MCP (`/api/mcp`) chamam a própria API pelo endereço público da requisição. Se algum dia isso
 falhar no ambiente (ex.: o app não alcança o próprio domínio), defina `Mcp__SelfBaseUrl` nas configurações do Web App
 com a URL base da API (ex.: `https://arco.daviluis.dev`).
+
+## Terraform (infraestrutura como código)
+
+A pasta `infra/` descreve o que hoje foi criado à mão no portal: grupo de recursos `arco_group`, plano Free (F1),
+Web App `arco` (32 bits, sem Always On, HTTP/2, TLS 1.2, FTPS desligado, app settings), Key Vault com RBAC,
+a managed identity `arco-github` com as credenciais OIDC e os role assignments.
+
+- **Segredos não passam pelo Terraform.** As settings sensíveis (`Auth__PasswordHash`, `Email__ResendApiKey`,
+  `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Auth__Google__ClientSecret`, `Push__VapidPrivateKey`, `Sentry__Dsn`,
+  `APPLICATIONINSIGHTS_CONNECTION_STRING`, `ServiceBus__ConnectionString`) viram referências `@Microsoft.KeyVault(...)`;
+  os valores são gravados no cofre por fora, para não irem ao state.
+- **`app_settings` é o mapa inteiro.** Depois de importar, o Terraform apaga qualquer setting que não esteja no código.
+  Por isso o `plan` precisa dar zero destroy e zero setting removida antes do primeiro `apply`.
+- **OIDC:** a credencial `arco-production` só vale para jobs com `environment: production`. O Terraform cria também
+  `arco-pull-request` (subject `...:pull_request`), usada pelo job `terraform-plan`.
+- **CI:** o job `terraform-plan` do `deploy.yml` roda só em PR, só com `vars.TF_PLAN_ENABLED == 'true'`, e nunca aplica.
+  O deploy continua independente dele e mantém os `az webapp config` atuais (mesmos valores que o Terraform declara).
+- **Apply:** sempre manual, de uma máquina sua. O passo a passo (backend, import, conferência do plan) está em
+  [`infra/IMPORT.md`](../infra/IMPORT.md).
+
+Validação local (sem falar com o Azure): `cd infra && terraform fmt -check && terraform init -backend=false && terraform validate`.

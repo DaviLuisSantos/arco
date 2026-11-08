@@ -1,0 +1,9 @@
+# Copie para backend.hcl (ignorado pelo git) e preencha. Uso:
+#   terraform init -backend-config=backend.hcl
+# O estado fica num Storage Account que já existe; o login é o do Azure AD (az login),
+# então quem roda o Terraform precisa da função "Storage Blob Data Contributor" na conta.
+resource_group_name  = "<grupo-de-recursos-do-state>"
+storage_account_name = "<storage-account-do-state>"
+container_name       = "tfstate"
+key                  = "arco.tfstate"
+use_azuread_auth     = true

@@ -188,7 +188,7 @@ No downgrade nada é apagado; só a criação fica bloqueada.
 
 ## Perfil público
 
-- `PUT /api/profile/public` `{ enabled, slug, showHabits, theme }` → `{ enabled, slug, showHabits, theme }` (só com cookie).
+- `PUT /api/profile/public` `{ enabled, slug, showHabits, theme }` (todos opcionais; corpo vazio só devolve o estado) → `{ enabled, slug, showHabits, theme, url }` (cookie ou chave de API). `url` é `{App:BaseUrl}/u/{slug}` (`null` sem slug).
   `slug` casa `^[a-z0-9-]{3,30}$` e não pode ser reservado (admin, api, login…) → 400 `validation`; já em uso → **409** `slug_taken`.
   `theme` em `indigo|emerald|amber|rose|sky` (outro → 400); diferente de `indigo` no Free → **403** `plan_limit`.
 - `GET /api/public/profiles/{slug}` (anônimo) → `{ displayName, level, totalXp, theme, cycle: { name, week, totalWeeks, stones: [{ week, rate }] } | null, habits: [{ name, level, streak }] | null }`.
@@ -236,8 +236,9 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
 - Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
   `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
-  `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ler_documentacao_api` (este arquivo) e
-  `chamar_api` (qualquer rota; exceto `/api/backup`, `/api/api-keys`, `/api/auth/*` e o próprio `/api/mcp`).
+  `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ver_parceiros`, `ver_resumo_parceiro(id)`,
+  `configurar_perfil_publico(ativo?, slug?)` (sem argumentos só devolve o estado e o link), `ver_plano`,
+  `ler_documentacao_api` (este arquivo) e `chamar_api` (qualquer rota; exceto `/api/backup`, `/api/api-keys`, `/api/auth/*` e o próprio `/api/mcp`).
 - Conectar no Claude Code:
   `claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_…"`
 

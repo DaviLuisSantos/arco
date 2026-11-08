@@ -104,6 +104,30 @@ public sealed class McpTests : IDisposable
     }
 
     [Fact]
+    public async Task Partner_profile_and_plan_tools_work()
+    {
+        await using var mcp = await ConnectAsync(await CreateKeyAsync());
+
+        var partners = await CallJsonAsync(mcp, "ver_parceiros");
+        Assert.Empty(partners["sharedWithMe"]!.AsArray());
+
+        var missing = await mcp.CallToolAsync("ver_resumo_parceiro", new Dictionary<string, object?> { ["id"] = 999 });
+        Assert.True(missing.IsError);
+
+        var state = await CallJsonAsync(mcp, "configurar_perfil_publico");
+        Assert.False((bool)state["enabled"]!);
+        Assert.Null(state["url"]);
+
+        var on = await CallJsonAsync(mcp, "configurar_perfil_publico",
+            new() { ["ativo"] = true, ["slug"] = "meu-arco" });
+        Assert.True((bool)on["enabled"]!);
+        Assert.EndsWith("/u/meu-arco", (string?)on["url"]);
+
+        var plan = await CallJsonAsync(mcp, "ver_plano");
+        Assert.Equal("pro", ((string?)plan["plan"])?.ToLowerInvariant());
+    }
+
+    [Fact]
     public async Task Api_errors_come_back_as_tool_errors_in_portuguese()
     {
         await using var mcp = await ConnectAsync(await CreateKeyAsync());

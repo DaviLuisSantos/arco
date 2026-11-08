@@ -193,6 +193,31 @@ public sealed class ArcoTools(ArcoApiClient api)
     [Description("Todas as conquistas, com progresso e data de desbloqueio.")]
     public Task<string> VerConquistas(CancellationToken ct = default) => api.GetAsync("/api/achievements", ct);
 
+    // --- Parceiros, perfil público e plano ---
+
+    [McpServerTool(Name = "ver_parceiros", Title = "Ver parceiros", ReadOnly = true)]
+    [Description("Parceiros de responsabilidade: com quem você compartilha, quem compartilha com você (ids para ver_resumo_parceiro) e convites pendentes.")]
+    public Task<string> VerParceiros(CancellationToken ct = default) => api.GetAsync("/api/partners", ct);
+
+    [McpServerTool(Name = "ver_resumo_parceiro", Title = "Ver resumo do parceiro", ReadOnly = true)]
+    [Description("Resumo semanal (semana atual e anterior) de alguém que compartilha com você.")]
+    public Task<string> VerResumoParceiro(
+        [Description("Id da parceria (veja ver_parceiros, sharedWithMe).")] int id,
+        CancellationToken ct = default) =>
+        api.GetAsync($"/api/partners/{id}/summary", ct);
+
+    [McpServerTool(Name = "configurar_perfil_publico", Title = "Configurar perfil público")]
+    [Description("Liga ou desliga o perfil público e escolhe o endereço (slug). Sem argumentos, só devolve o estado atual e o link.")]
+    public Task<string> ConfigurarPerfilPublico(
+        [Description("true liga, false desliga. Omitido = não mexe.")] bool? ativo = null,
+        [Description("Endereço: 3 a 30 caracteres, letras minúsculas, números e hífen. Omitido = não mexe.")] string? slug = null,
+        CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, "/api/profile/public", new { enabled = ativo, slug }, ct);
+
+    [McpServerTool(Name = "ver_plano", Title = "Ver plano", ReadOnly = true)]
+    [Description("Plano atual (free ou pro), renovação, limites e uso.")]
+    public Task<string> VerPlano(CancellationToken ct = default) => api.GetAsync("/api/billing", ct);
+
     // --- Cobertura total ---
 
     [McpServerTool(Name = "ler_documentacao_api", Title = "Ler documentação da API", ReadOnly = true)]

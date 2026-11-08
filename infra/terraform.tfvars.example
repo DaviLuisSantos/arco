@@ -1,0 +1,18 @@
+# Copie para terraform.tfvars (ignorado pelo git). Sem segredos: só nomes, IDs e e-mails.
+subscription_id   = "<subscription id>"
+service_plan_name = "<nome do plano F1 no portal>"
+key_vault_name    = "<nome-unico-do-cofre>"
+
+# Subjects do OIDC (formato com IDs imutáveis; veja docs/RELATO-AZURE.md)
+github_oidc_subject_production   = "repo:DaviLuisSantos@83884291/arco@1429116785:environment:production"
+github_oidc_subject_pull_request = "repo:DaviLuisSantos@83884291/arco@1429116785:pull_request"
+
+key_vault_admin_object_ids = ["<object id de quem grava os segredos>"]
+
+# Settings que não são segredo e já existem hoje no Web App (omita as que não existem)
+owner_email      = "<e-mail do dono>"
+email_from       = "Arco <no-reply@daviluis.dev>"
+google_client_id = "<client id>"
+admin_emails     = "<e-mails do admin>"
+stripe_price_id  = "<price_...>"
+push_subject     = "mailto:<e-mail>"

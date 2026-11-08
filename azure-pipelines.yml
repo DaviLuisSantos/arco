@@ -1,0 +1,40 @@
+# CI no Azure DevOps. Só build e testes; o deploy continua no GitHub Actions.
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UseDotNet@2
+    displayName: Instalar .NET 10
+    inputs:
+      packageType: sdk
+      version: 10.0.x
+
+  - task: NodeTool@0
+    displayName: Instalar Node 24
+    inputs:
+      versionSpec: 24.x
+
+  - script: dotnet test
+    displayName: dotnet test
+
+  - script: npm ci
+    displayName: npm ci
+    workingDirectory: web
+
+  - script: npm run lint
+    displayName: npm run lint
+    workingDirectory: web
+
+  - script: npm run build
+    displayName: npm run build
+    workingDirectory: web
