@@ -41,7 +41,7 @@ No Web App, abra **Settings → Environment variables → App settings → + Add
 | `Auth__PasswordHash` | só bootstrap; saída de `dotnet run --project src/Arco.Api -- hash-password "sua-senha"` (sem aspas) |
 | `Email__ResendApiKey` | chave do Resend para enviar verificação e reset. Sem ela, os links só aparecem no log (`LogEmailSender`) |
 | `Email__From` | remetente, ex.: `Arco <no-reply@seu-dominio>` (padrão `Arco <onboarding@resend.dev>`) |
-| `App__BaseUrl` | URL pública, ex.: `https://<host>`; base dos links dos e-mails |
+| `App__BaseUrl` | URL pública, ex.: `https://<host>`. Obrigatória em produção: fora de Development vira a origem de toda requisição (o Cloudflare faz o Azure ver ora o domínio, ora o `*.azurewebsites.net`), o que mantém estável o redirect_uri do Google e os links dos e-mails |
 | `Auth__Google__ClientId` / `Auth__Google__ClientSecret` | opcionais; habilitam "Entrar com Google". Redirect URI autorizada: `https://<host>/api/auth/google/callback` |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
 
