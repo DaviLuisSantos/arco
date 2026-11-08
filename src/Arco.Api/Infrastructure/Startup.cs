@@ -155,7 +155,10 @@ public static class Startup
                     var reason = message.Contains("Correlation", StringComparison.OrdinalIgnoreCase) ? "correlation"
                         : message.Contains("access_denied", StringComparison.OrdinalIgnoreCase) ? "denied"
                         : message.Contains("invalid_client", StringComparison.OrdinalIgnoreCase) ? "client"
-                        : message.Contains("token endpoint", StringComparison.OrdinalIgnoreCase) ? "token"
+                        : message.Contains("token endpoint", StringComparison.OrdinalIgnoreCase)
+                            ? "token-" + (System.Text.RegularExpressions.Regex.Match(message,
+                                @"(invalid_[a-z_]+|unauthorized_client|redirect_uri_mismatch|unsupported_[a-z_]+)").Value is { Length: > 0 } code
+                                ? code : "unknown")
                         : message.Contains("user information", StringComparison.OrdinalIgnoreCase) ? "userinfo"
                         : "remote";
                     ctx.Response.Redirect(Arco.Api.Features.Auth.GoogleAuth.FailureRedirect(reason));
