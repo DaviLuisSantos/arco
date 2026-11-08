@@ -28,6 +28,19 @@ public sealed class AdminApiTests : IDisposable
     }
 
     [Fact]
+    public async Task Sentry_test_fails_for_admin_and_is_hidden_from_others()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.UseSetting("Admin:Emails", "boss@teste.arco"));
+        var admin = factory.CreateClient();
+        await _factory.RegisterAsync(admin, "boss@teste.arco");
+        var other = factory.CreateClient();
+        await _factory.RegisterAsync(other, "other@teste.arco");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, (await admin.PostAsync("/api/admin/sentry-test", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync("/api/admin/sentry-test", null)).StatusCode);
+    }
+
+    [Fact]
     public async Task Non_admin_gets_404()
     {
         using var factory = _factory.WithWebHostBuilder(b => b.UseSetting("Admin:Emails", "boss@teste.arco"));

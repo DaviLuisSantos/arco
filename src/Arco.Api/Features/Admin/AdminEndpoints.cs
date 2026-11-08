@@ -25,6 +25,16 @@ public static class AdminEndpoints
             .WithTags("Admin")
             .WithSummary("Métricas do produto (somente admin; 404 para os demais)")
             .Produces<AdminMetrics>();
+
+        // Diagnostic: an unhandled exception that must show up in Sentry. Regular users cannot tell it exists.
+        secured.MapPost("/admin/sentry-test", async (ClaimsPrincipal principal, AppDbContext db, IConfiguration config,
+                CancellationToken ct) =>
+            {
+                if (!await IsAdminAsync(principal, db, config, ct)) return ApiResults.NotFound();
+                throw new InvalidOperationException("Teste do Sentry disparado pelo admin.");
+            })
+            .WithTags("Admin")
+            .WithSummary("Força um erro 500 para testar o Sentry (somente admin; 404 para os demais)");
         return secured;
     }
 

@@ -209,6 +209,7 @@ Um usuário (dono) convida outro para ver o resumo semanal dele. Aceitam cookie 
 
 - `GET /api/admin/metrics` → `{ users: { total, verified, demo, pro }, signupsByDay, checkInsByDay (30 dias), activeUsers: { d1, d7, d30 }, retention: [{ cohortWeek, size, week1, week2, week4 }] (8 coortes; frações de 0 a 1) }`.
   Quem não está em `Admin:Emails` recebe **404**. Contas demo ficam de fora, exceto na contagem.
+- `POST /api/admin/sentry-test` → força um **500** (`internal_error`) para testar o Sentry. Quem não está em `Admin:Emails` recebe **404**.
 
 ## Documentação interativa (OpenAPI)
 
