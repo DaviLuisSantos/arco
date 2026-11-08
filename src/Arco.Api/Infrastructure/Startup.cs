@@ -147,28 +147,19 @@ public static class Startup
                 o.SignInScheme = ExternalScheme;
                 o.CallbackPath = Arco.Api.Features.Auth.GoogleAuth.ProviderCallbackPath;
                 // Cancelled consent or bad state: back to the login screen instead of a 500.
-                o.Events.OnRedirectToAuthorizationEndpoint = ctx =>
-                {
-                    // TEMPORARY diagnostic: remember the redirect_uri sent to Google.
-                    var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(ctx.RedirectUri).Query);
-                    ctx.Response.Cookies.Append("arco_ru_dbg", q.TryGetValue("redirect_uri", out var v) ? v.ToString() : "",
-                        new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromMinutes(10) });
-                    ctx.Response.Redirect(ctx.RedirectUri);
-                    return Task.CompletedTask;
-                };
                 o.Events.OnRemoteFailure = ctx =>
                 {
                     var message = ctx.Failure?.Message ?? "";
                     ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Arco.GoogleAuth")
                         .LogWarning(ctx.Failure, "Google remote failure: {Message}", message);
-                    // TEMPORARY diagnostic: the failure chain, trimmed (no credentials appear in it).
-                    var chain = "";
-                    for (var e = ctx.Failure; e is not null; e = e.InnerException) chain += e.Message + " | ";
-                    var req = ctx.HttpContext.Request;
-                    chain += " back=" + req.Scheme + "://" + req.Host + req.PathBase + o.CallbackPath;
-                    chain += " out=" + (req.Cookies["arco_ru_dbg"] ?? "(sem cookie)");
-                    var reason = System.Text.RegularExpressions.Regex.Replace(chain, @"[^A-Za-z0-9 _:;.,=|()/-]", "");
-                    if (reason.Length > 400) reason = reason[..400];
+                    var reason = message.Contains("Correlation", StringComparison.OrdinalIgnoreCase) ? "correlation"
+                        : message.Contains("access_denied", StringComparison.OrdinalIgnoreCase) ? "denied"
+                        : System.Text.RegularExpressions.Regex.Match(message,
+                            "invalid_[a-z_]+|unauthorized_client|redirect_uri_mismatch|unsupported_[a-z_]+").Value is { Length: > 0 } code
+                            ? code
+                        : message.Contains("token endpoint", StringComparison.OrdinalIgnoreCase) ? "token"
+                        : message.Contains("user information", StringComparison.OrdinalIgnoreCase) ? "userinfo"
+                        : "remote";
                     ctx.Response.Redirect(Arco.Api.Features.Auth.GoogleAuth.FailureRedirect(reason));
                     ctx.HandleResponse();
                     return Task.CompletedTask;
@@ -250,6 +241,21 @@ public static class Startup
     public static void UseArco(this WebApplication app)
     {
         app.UseForwardedHeaders();
+
+        // Behind Cloudflare + Azure the Host seen by the app varies (custom domain or *.azurewebsites.net), which made
+        // the OAuth redirect_uri differ between the challenge and the callback. Outside Development, App:BaseUrl is the
+        // public origin for every request.
+        if (!app.Environment.IsDevelopment()
+            && Uri.TryCreate(app.Configuration["App:BaseUrl"], UriKind.Absolute, out var publicOrigin))
+        {
+            app.Use((ctx, next) =>
+            {
+                ctx.Request.Scheme = publicOrigin.Scheme;
+                ctx.Request.Host = new HostString(publicOrigin.Authority);
+                return next();
+            });
+        }
+
         app.UseExceptionHandler(handler => handler.Run(HandleExceptionAsync));
 
         app.Use(async (ctx, next) =>
