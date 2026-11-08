@@ -7,6 +7,7 @@ public static class AccountSecurityEndpoints
 {
     public sealed record TwoFactorCodeRequest(string? Code);
     public sealed record LocaleRequest(string? Locale);
+    public sealed record DisplayNameRequest(string? DisplayName);
     public sealed record TwoFactorSetup(string Secret, string OtpauthUri);
     public sealed record TwoFactorEnabled(List<string> RecoveryCodes);
     public sealed record SessionInfo(Guid Id, DateTime CreatedAt, DateTime LastSeenAt, string UserAgent, bool Current);
@@ -31,6 +32,7 @@ public static class AccountSecurityEndpoints
         group.MapPost("/sessions/revoke-others", RevokeOthers).RequireAuthorization()
             .WithSummary("Encerra todas as sessões, exceto a atual")
             .Produces(StatusCodes.Status204NoContent).Produces<ApiError>(StatusCodes.Status403Forbidden);
+        group.MapPut("/display-name", SetDisplayName).RequireAuthorization().WithSummary("Altera o nome de exibição");
         group.MapPut("/locale", SetLocale).RequireAuthorization()
             .WithSummary("Define o idioma da conta (pt-BR ou en)")
             .Produces(StatusCodes.Status204NoContent).Produces<ApiError>(StatusCodes.Status400BadRequest).Produces<ApiError>(StatusCodes.Status403Forbidden);
@@ -144,6 +146,15 @@ public static class AccountSecurityEndpoints
     }
 
     // ---- Preferences ----
+
+    private static async Task<IResult> SetDisplayName(DisplayNameRequest? request, AppDbContext db, CurrentUser current, CancellationToken ct)
+    {
+        var name = Text.Clean(request?.DisplayName);
+        if (name is null) return ApiResults.Validation("Informe um nome.");
+        if (name.Length > 80) return ApiResults.Validation("O nome deve ter no máximo 80 caracteres.");
+        await db.Users.Where(u => u.Id == current.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.DisplayName, name), ct);
+        return Results.NoContent();
+    }
 
     private static async Task<IResult> SetLocale(LocaleRequest? request, HttpContext http, AppDbContext db, CurrentUser current,
         CancellationToken ct)

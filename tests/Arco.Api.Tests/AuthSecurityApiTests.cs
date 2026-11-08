@@ -173,6 +173,25 @@ public sealed class AuthSecurityApiTests : IDisposable
     }
 
     [Fact]
+    public async Task Display_name_can_be_changed_by_cookie_or_api_key()
+    {
+        var client = await _factory.LoggedInClientAsync();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync("/api/auth/display-name", new { displayName = "  Davi  " })).StatusCode);
+        Assert.Equal("Davi", (string?)(await client.GetJsonAsync("/api/auth/me"))["displayName"]);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/auth/display-name", new { displayName = "   " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/auth/display-name", new { displayName = new string('a', 81) })).StatusCode);
+        Assert.Equal("Davi", (string?)(await client.GetJsonAsync("/api/auth/me"))["displayName"]);
+
+        var key = (string)(await (await client.PostAsJsonAsync("/api/api-keys", new { name = "teste" })).JsonAsync())["key"]!;
+        var bot = _factory.CreateClient();
+        bot.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        Assert.Equal(HttpStatusCode.NoContent, (await bot.PutAsJsonAsync("/api/auth/display-name", new { displayName = "Pela API" })).StatusCode);
+        Assert.Equal("Pela API", (string?)(await client.GetJsonAsync("/api/auth/me"))["displayName"]);
+    }
+
+    [Fact]
     public async Task Me_has_the_new_fields_and_locale_and_onboarding_update_them()
     {
         var client = _factory.CreateClient();

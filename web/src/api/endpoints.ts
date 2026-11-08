@@ -65,6 +65,7 @@ export const authApi = {
   sessions: () => api.get<AuthSession[]>('/auth/sessions'),
   revokeSession: (id: number) => api.delete<void>(`/auth/sessions/${id}`),
   revokeOtherSessions: () => api.post<void>('/auth/sessions/revoke-others'),
+  setDisplayName: (displayName: string) => api.put<void>('/auth/display-name', { displayName }),
   setLocale: (locale: string) => api.put<void>('/auth/locale', { locale }),
   completeOnboarding: () => api.post<void>('/auth/onboarding/complete'),
   /** 401 (sem cookie) também conta como sessão encerrada. */

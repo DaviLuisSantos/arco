@@ -30,6 +30,15 @@ export function AccountCard() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  const [name, setName] = useState<string | null>(null)
+  const rename = useAppMutation((displayName: string) => authApi.setDisplayName(displayName), {
+    successMessage: t('nameSaved'),
+    onSuccess: () => {
+      setName(null)
+      void qc.invalidateQueries({ queryKey: queryKeys.auth })
+    },
+  })
+
   const change = useAppMutation(
     (input: { currentPassword?: string; newPassword: string }) => authApi.changePassword(input),
     {
@@ -43,6 +52,9 @@ export function AccountCard() {
   )
 
   if (!me) return null
+
+  const nameValue = name ?? me.displayName
+  const canRename = nameValue.trim() !== '' && nameValue.trim() !== me.displayName
 
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -87,6 +99,27 @@ export function AccountCard() {
           )}
         </div>
       </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          rename.mutate(nameValue.trim())
+        }}
+        className="flex flex-col gap-3"
+        noValidate
+      >
+        <Input
+          label={t('displayName')}
+          autoComplete="name"
+          maxLength={80}
+          value={nameValue}
+          onChange={(e) => setName(e.target.value)}
+          hint={t('displayNameHint')}
+        />
+        <Button type="submit" variant="secondary" loading={rename.isPending} disabled={!canRename}>
+          {t('saveName')}
+        </Button>
+      </form>
 
       {!me.isDemo && (
         <form onSubmit={submit} className="flex flex-col gap-3" noValidate>

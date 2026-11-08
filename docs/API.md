@@ -156,6 +156,7 @@ Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 
 | `GET /api/auth/sessions` | — | **200** `[{ id, createdAt, lastSeenAt, userAgent, current }]` (abertas nos últimos 30 dias, mais recentes primeiro) |
 | `DELETE /api/auth/sessions/{id}` | — | **204**; o cookie daquela sessão deixa de valer (a atual = logout); 404 se não é sua |
 | `POST /api/auth/sessions/revoke-others` | — | **204**; mantém só a sessão atual |
+| `PUT /api/auth/display-name` | `{ displayName }` | **204**; 1 a 80 caracteres; 400 `validation` |
 | `PUT /api/auth/locale` | `{ locale }` | **204**; `"pt-BR"` ou `"en"` (idioma do app e dos e-mails); 400 `validation` |
 | `POST /api/auth/onboarding/complete` | — | **204**; `onboarded` passa a `true` |
 
