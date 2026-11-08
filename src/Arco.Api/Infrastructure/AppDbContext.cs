@@ -32,6 +32,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
     public DbSet<PushDispatch> PushDispatches => Set<PushDispatch>();
     public DbSet<UnlockedAchievement> Achievements => Set<UnlockedAchievement>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+    public DbSet<TotpRecoveryCode> TotpRecoveryCodes => Set<TotpRecoveryCode>();
+    public DbSet<Partnership> Partnerships => Set<Partnership>();
+    public DbSet<StripeEvent> StripeEvents => Set<StripeEvent>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -77,7 +81,42 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
             e.Property(x => x.GoogleSubject).HasMaxLength(255);
             e.HasIndex(x => x.GoogleSubject).IsUnique();
             e.Property(x => x.DisplayName).HasMaxLength(80);
+            e.Property(x => x.Locale).HasMaxLength(8).HasDefaultValue("pt-BR");
+            e.Property(x => x.Plan).HasConversion<string>().HasMaxLength(8).HasDefaultValue(UserPlan.Free);
+            e.Property(x => x.StripeCustomerId).HasMaxLength(64);
+            e.Property(x => x.StripeSubscriptionId).HasMaxLength(64);
+            e.Property(x => x.TotpSecretProtected).HasMaxLength(500);
+            e.Property(x => x.TotpPendingSecretProtected).HasMaxLength(500);
+            e.Property(x => x.PublicSlug).HasMaxLength(30);
+            e.HasIndex(x => x.PublicSlug).IsUnique();
+            e.Property(x => x.PublicShowHabits).HasDefaultValue(true);
+            e.Property(x => x.PublicTheme).HasMaxLength(20).HasDefaultValue("indigo");
         });
+
+        b.Entity<UserSession>(e =>
+        {
+            e.Property(x => x.UserAgent).HasMaxLength(200);
+            e.Property(x => x.Ip).HasMaxLength(45);
+            e.HasIndex(x => x.UserId);
+        });
+
+        b.Entity<TotpRecoveryCode>(e =>
+        {
+            e.Property(x => x.CodeHash).HasMaxLength(64);
+            e.HasIndex(x => x.UserId);
+        });
+
+        b.Entity<Partnership>(e =>
+        {
+            e.Property(x => x.TokenHash).HasMaxLength(64);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => x.OwnerUserId);
+            e.HasIndex(x => x.PartnerUserId);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.PartnerUserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<StripeEvent>(e => e.Property(x => x.Id).HasMaxLength(100));
 
         b.Entity<UserToken>(e =>
         {

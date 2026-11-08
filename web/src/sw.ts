@@ -13,13 +13,15 @@ clientsClaim()
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//, /^\/landing\//] }))
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api\//, /^\/landing\//, /^\/u\//] }))
 
 interface PushPayload {
   title?: string
   body?: string
   url?: string
   tag?: string
+  /** Idioma do texto, quando o servidor informa ("pt-BR" | "en"). */
+  lang?: string
 }
 
 self.addEventListener('push', (event) => {
@@ -35,7 +37,8 @@ self.addEventListener('push', (event) => {
       tag: data.tag,
       icon: '/pwa-192x192.png',
       badge: '/favicon-32x32.png',
-      lang: 'pt-BR',
+      // O texto já vem traduzido do servidor; sem `lang` no payload, usa o idioma do navegador.
+      lang: data.lang || self.navigator.language || 'pt-BR',
       data: { url: data.url || '/' },
     }),
   )

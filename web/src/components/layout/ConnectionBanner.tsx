@@ -1,11 +1,10 @@
 import { useIsMutating, useQueryClient } from '@tanstack/react-query'
 import { CloudOff, RefreshCw } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
+import { currentLocale } from '../../i18n'
 import { CHECK_IN_KEY } from '../../features/checkins/checkInMutation'
 import { useOnline } from '../../lib/useOnline'
-
-const time = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })
-const dayAndTime = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
 /** Momento da resposta mais antiga entre as telas abertas (0 = nenhuma). */
 function useOldestShownData(): number {
@@ -25,11 +24,18 @@ function useOldestShownData(): number {
 
 function formatShown(at: number): string {
   const d = new Date(at)
-  return d.toDateString() === new Date().toDateString() ? time.format(d) : dayAndTime.format(d).replace(',', '')
+  const l = currentLocale()
+  if (d.toDateString() === new Date().toDateString()) {
+    return new Intl.DateTimeFormat(l, { hour: '2-digit', minute: '2-digit' }).format(d)
+  }
+  return new Intl.DateTimeFormat(l, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .format(d)
+    .replace(',', '')
 }
 
 /** Aviso global de "Offline" (com a idade dos dados na tela) e de "Sincronizando…". */
 export function ConnectionBanner() {
+  const { t } = useTranslation()
   const online = useOnline()
   const queued = useIsMutating({ mutationKey: CHECK_IN_KEY })
   const shownAt = useOldestShownData()
@@ -40,7 +46,7 @@ export function ConnectionBanner() {
     return (
       <div role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">
         <RefreshCw className="size-4 shrink-0 animate-spin" aria-hidden />
-        Sincronizando…
+        {t('syncing')}
       </div>
     )
   }
@@ -50,10 +56,10 @@ export function ConnectionBanner() {
       <CloudOff className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
       <div className="min-w-0">
         <p className="font-medium">
-          Offline{shownAt ? ` — dados de ${formatShown(shownAt)}` : ''}
-          {queued > 0 && <span className="text-muted"> · {queued} check-in{queued > 1 ? 's' : ''} na fila</span>}
+          {shownAt ? t('offlineDataFrom', { when: formatShown(shownAt) }) : t('offline')}
+          {queued > 0 && <span className="text-muted"> · {t('queuedCheckIns', { count: queued })}</span>}
         </p>
-        <p className="text-muted">Os check-ins são enviados quando a conexão voltar. O resto precisa de internet.</p>
+        <p className="text-muted">{t('offlineHint')}</p>
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import { Check, CircleCheck, Link2, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { goalsApi } from '../../api/endpoints'
 import type { Goal, Milestone } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -13,16 +14,17 @@ import { formatNumber, goalProgressText, parseDecimal } from '../../lib/format'
 import { useAppMutation } from '../../lib/useAppMutation'
 
 export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
+  const { t } = useTranslation(['goals', 'common'])
   const [confirm, setConfirm] = useState<'delete' | 'complete' | null>(null)
   const done = goal.completedAt !== null
   const daysLeft = diffDays(today, goal.deadline)
 
   const remove = useAppMutation(() => goalsApi.remove(goal.id), {
-    successMessage: 'Objetivo excluído.',
+    successMessage: t('card.deleted'),
     onSuccess: () => setConfirm(null),
   })
   const complete = useAppMutation(() => goalsApi.complete(goal.id), {
-    successMessage: 'Objetivo concluído!',
+    successMessage: t('card.completed'),
     onSuccess: () => setConfirm(null),
   })
 
@@ -36,31 +38,31 @@ export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
         {done ? (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-done/15 px-2 py-0.5 text-xs font-semibold text-done">
             <CircleCheck className="size-3.5" aria-hidden />
-            Concluído
+            {t('card.done')}
           </span>
         ) : (
           <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
-            {goal.type === 'Numeric' ? 'Numérico' : 'Marcos'}
+            {t(`type.${goal.type}`)}
           </span>
         )}
       </div>
 
       <div>
-        <ProgressBar value={goal.progress} tone={done ? 'done' : 'accent'} label={`Progresso de ${goal.title}`} />
+        <ProgressBar value={goal.progress} tone={done ? 'done' : 'accent'} label={t('card.progressOf', { title: goal.title })} />
         <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
           <span>
             {goalProgressText(goal)} · {Math.round(goal.progress * 100)}%
           </span>
           <span>
             {done && goal.completedAt
-              ? `Concluído em ${formatInstant(goal.completedAt, { day: 'numeric', month: 'short' })}`
-              : `Prazo ${formatDate(goal.deadline)}${daysLeft >= 0 ? ` · ${daysLeft} dias` : ' · vencido'}`}
+              ? t('card.completedOn', { date: formatInstant(goal.completedAt, { day: 'numeric', month: 'short' }) })
+              : `${t('card.deadline', { date: formatDate(goal.deadline) })}${daysLeft >= 0 ? ` · ${t('card.daysLeft', { count: daysLeft })}` : ` · ${t('card.overdue')}`}`}
           </span>
         </div>
         {goal.habitIds.length > 0 && (
           <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted">
             <Link2 className="size-3" aria-hidden />
-            {goal.habitIds.length} {goal.habitIds.length === 1 ? 'hábito ligado' : 'hábitos ligados'}
+            {t('card.linkedHabits', { count: goal.habitIds.length })}
           </p>
         )}
       </div>
@@ -75,12 +77,12 @@ export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
         {!done && (
           <Button variant="secondary" size="sm" onClick={() => setConfirm('complete')}>
             <Check className="size-4" aria-hidden />
-            Concluir
+            {t('card.complete')}
           </Button>
         )}
         <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setConfirm('delete')}>
           <Trash2 className="size-4" aria-hidden />
-          Excluir
+          {t('common:delete')}
         </Button>
       </div>
 
@@ -89,22 +91,22 @@ export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
         onClose={() => setConfirm(null)}
         onConfirm={() => complete.mutate()}
         loading={complete.isPending}
-        title="Concluir objetivo?"
+        title={t('card.completeTitle')}
         description={
           <>
-            Marque “{goal.title}” como concluído agora. <span className="font-semibold text-xp">+150 XP</span>
+            {t('card.completeDescription', { title: goal.title })} <span className="font-semibold text-xp">+150 XP</span>
           </>
         }
-        confirmLabel="Concluir"
+        confirmLabel={t('card.complete')}
       />
       <ConfirmDialog
         open={confirm === 'delete'}
         onClose={() => setConfirm(null)}
         onConfirm={() => remove.mutate()}
         loading={remove.isPending}
-        title="Excluir objetivo?"
-        description="O XP que ele deu (conclusão e marcos) sai do seu total. Os hábitos ligados a ele continuam, só perdem o vínculo. Essa ação não pode ser desfeita."
-        confirmLabel="Excluir"
+        title={t('card.deleteTitle')}
+        description={t('card.deleteDescription')}
+        confirmLabel={t('common:delete')}
         danger
       />
     </Card>
@@ -112,17 +114,18 @@ export function GoalCard({ goal, today }: { goal: Goal; today: string }) {
 }
 
 function NumericDetails({ goal }: { goal: Goal }) {
+  const { t } = useTranslation('goals')
   const [value, setValue] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
   const unit = goal.unit ? ` ${goal.unit}` : ''
-  const stats: Array<{ label: string; value: number | null }> = [
-    { label: 'Início', value: goal.startValue },
-    { label: 'Atual', value: goal.currentValue ?? goal.startValue },
-    { label: 'Meta', value: goal.targetValue },
+  const stats: Array<{ key: string; label: string; value: number | null }> = [
+    { key: 'start', label: t('card.start'), value: goal.startValue },
+    { key: 'current', label: t('card.current'), value: goal.currentValue ?? goal.startValue },
+    { key: 'target', label: t('card.target'), value: goal.targetValue },
   ]
   const progress = useAppMutation((v: number) => goalsApi.progress(goal.id, { value: v, note: note.trim() || null }), {
-    successMessage: 'Progresso registrado.',
+    successMessage: t('card.progressSaved'),
     onSuccess: () => {
       setValue('')
       setNote('')
@@ -133,7 +136,7 @@ function NumericDetails({ goal }: { goal: Goal }) {
     e.preventDefault()
     const parsed = parseDecimal(value)
     if (parsed === null) {
-      setError('Informe um número.')
+      setError(t('card.numberRequired'))
       return
     }
     setError(null)
@@ -143,8 +146,8 @@ function NumericDetails({ goal }: { goal: Goal }) {
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-3 gap-2 text-center">
-        {stats.map(({ label, value: v }) => (
-          <div key={label} className="rounded-xl bg-surface-2 px-2 py-2">
+        {stats.map(({ key, label, value: v }) => (
+          <div key={key} className="rounded-xl bg-surface-2 px-2 py-2">
             <dt className="text-xs text-muted">{label}</dt>
             <dd className="font-semibold">{v === null ? '—' : `${formatNumber(v)}${unit}`}</dd>
           </div>
@@ -155,20 +158,20 @@ function NumericDetails({ goal }: { goal: Goal }) {
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <Input
-                aria-label="Novo valor"
+                aria-label={t('card.newValue')}
                 inputMode="decimal"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder={`Novo valor${unit}`}
+                placeholder={`${t('card.newValue')}${unit}`}
                 error={error}
               />
             </div>
             <Button type="submit" loading={progress.isPending} className="shrink-0">
-              Registrar
+              {t('card.register')}
             </Button>
           </div>
           {value && (
-            <Input aria-label="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota (opcional)" />
+            <Input aria-label={t('card.note')} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('card.note')} />
           )}
         </form>
       )}

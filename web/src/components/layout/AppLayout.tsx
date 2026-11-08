@@ -1,20 +1,25 @@
-import { CircleUser, ListChecks, Sun, Target } from 'lucide-react'
+import { CircleUser, ListChecks, Shield, Sun, Target, type LucideIcon } from 'lucide-react'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { cn } from '../../lib/cn'
 import { AccountBanners } from '../../features/account/AccountBanners'
+import { useAuthStatus } from '../../lib/useAuthStatus'
 import { syncPushSubscription } from '../../lib/push'
 import { ArcoLogo } from './ArcoLogo'
 import { ConnectionBanner } from './ConnectionBanner'
 
-const NAV = [
-  { to: '/', label: 'Hoje', icon: Sun, end: true },
-  { to: '/habits', label: 'Hábitos', icon: ListChecks, end: false },
-  { to: '/cycle', label: 'Ciclo', icon: Target, end: false },
-  { to: '/profile', label: 'Perfil', icon: CircleUser, end: false },
+const NAV: { to: string; key: 'nav.today' | 'nav.habits' | 'nav.cycle' | 'nav.profile' | 'nav.admin'; icon: LucideIcon; end: boolean }[] = [
+  { to: '/', key: 'nav.today', icon: Sun, end: true },
+  { to: '/habits', key: 'nav.habits', icon: ListChecks, end: false },
+  { to: '/cycle', key: 'nav.cycle', icon: Target, end: false },
+  { to: '/profile', key: 'nav.profile', icon: CircleUser, end: false },
 ]
 
 export function AppLayout() {
+  const { t } = useTranslation('layout')
+  const me = useAuthStatus().data
+  const nav: typeof NAV = me?.isAdmin ? [...NAV, { to: '/admin', key: 'nav.admin', icon: Shield, end: false }] : NAV
   // Mantém a inscrição push deste dispositivo registrada no servidor.
   useEffect(() => {
     void syncPushSubscription()
@@ -28,8 +33,8 @@ export function AppLayout() {
           <ArcoLogo className="size-8" />
           <span className="text-xl font-extrabold tracking-tight">Arco</span>
         </div>
-        <nav aria-label="Principal" className="flex flex-col gap-1">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+        <nav aria-label={t('nav.main')} className="flex flex-col gap-1">
+          {nav.map(({ to, key, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -42,7 +47,7 @@ export function AppLayout() {
               }
             >
               <Icon className="size-5" aria-hidden />
-              {label}
+              {t(key)}
             </NavLink>
           ))}
         </nav>
@@ -58,11 +63,11 @@ export function AppLayout() {
 
       {/* Bottom nav (celular) */}
       <nav
-        aria-label="Principal"
+        aria-label={t('nav.main')}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <ul className="grid grid-cols-4">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+        <ul className={cn('grid', nav.length > 4 ? 'grid-cols-5' : 'grid-cols-4')}>
+          {nav.map(({ to, key, icon: Icon, end }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -84,7 +89,7 @@ export function AppLayout() {
                     >
                       <Icon className="size-6" aria-hidden />
                     </span>
-                    {label}
+                    {t(key)}
                   </>
                 )}
               </NavLink>

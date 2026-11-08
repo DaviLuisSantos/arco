@@ -24,3 +24,7 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Playwright
+web/test-results/
+web/playwright-report/

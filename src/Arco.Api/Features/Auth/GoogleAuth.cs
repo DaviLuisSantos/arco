@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace Arco.Api.Features.Auth;
 
@@ -34,7 +35,7 @@ public static class GoogleAuth
     }
 
     public static async Task<IResult> Callback(string? returnUrl, HttpContext http, AppDbContext db, TimeProvider time,
-        ILoggerFactory loggers, CancellationToken ct)
+        ILoggerFactory loggers, IDataProtectionProvider protection, CancellationToken ct)
     {
         var external = await http.AuthenticateAsync(Startup.ExternalScheme);
         await http.SignOutAsync(Startup.ExternalScheme);
@@ -83,10 +84,18 @@ public static class GoogleAuth
                     DisplayName = name.Length > 80 ? name[..80] : name,
                     EmailVerifiedAt = now,
                     CreatedAt = now,
+                    Locale = Locales.FromRequest(http.Request),
                 };
                 db.Users.Add(user);
             }
             await db.SaveChangesAsync(ct);
+        }
+
+        // Two-step verification: the login screen asks for the code and finishes with /api/auth/login/2fa.
+        if (user.TotpEnabledAt is not null)
+        {
+            var ticket = TwoFactor.IssueTicket(protection, user, AuthMethods.Google, now);
+            return Results.Redirect("/login?twofactor=" + Uri.EscapeDataString(ticket));
         }
 
         await AuthSession.SignInAsync(http, user, AuthMethods.Google);

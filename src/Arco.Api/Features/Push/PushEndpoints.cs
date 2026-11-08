@@ -16,11 +16,11 @@ public static class PushEndpoints
 
     public static IEndpointRouteBuilder MapPush(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/push");
-        group.MapGet("/config", Config);
-        group.MapPost("/subscriptions", Subscribe);
-        group.MapPost("/subscriptions/remove", Unsubscribe);
-        group.MapPost("/test", Test);
+        var group = api.MapGroup("/push").WithTags("Push");
+        group.MapGet("/config", Config).WithSummary("Configuração de push");
+        group.MapPost("/subscriptions", Subscribe).WithSummary("Registra inscrição push");
+        group.MapPost("/subscriptions/remove", Unsubscribe).WithSummary("Remove inscrição push");
+        group.MapPost("/test", Test).WithSummary("Envia push de teste");
         return api;
     }
 

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { checkInsApi } from '../../api/endpoints'
 import type { CheckInStatus } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -16,7 +17,6 @@ import {
   monthStart,
   WEEKDAY_INITIALS,
 } from '../../lib/dates'
-import { STATUS_LABELS } from '../../lib/format'
 import { queryKeys } from '../../lib/queryKeys'
 import { useAppMutation } from '../../lib/useAppMutation'
 
@@ -49,6 +49,7 @@ export function HabitHistory({
   /** false para hábitos arquivados (o servidor recusa check-in). */
   editable?: boolean
 }) {
+  const { t } = useTranslation(['habits', 'checkins'])
   const [month, setMonth] = useState(() => monthStart(today))
   const [editing, setEditing] = useState<string | null>(null)
   const earliestEditable = addDays(today, -MAX_DAYS_IN_PAST)
@@ -76,7 +77,7 @@ export function HabitHistory({
         <Button
           variant="ghost"
           size="sm"
-          aria-label="Mês anterior"
+          aria-label={t('history.prevMonth')}
           disabled={!canGoBack}
           onClick={() => setMonth(addMonths(month, -1))}
         >
@@ -88,7 +89,7 @@ export function HabitHistory({
         <Button
           variant="ghost"
           size="sm"
-          aria-label="Próximo mês"
+          aria-label={t('history.nextMonth')}
           disabled={!canGoForward}
           onClick={() => setMonth(addMonths(month, 1))}
         >
@@ -109,7 +110,7 @@ export function HabitHistory({
           {days.map((d) => {
             const status = byDate.get(d)
             const future = d > today
-            const label = `${formatDate(d, { day: 'numeric', month: 'long' })}: ${status ? STATUS_LABELS[status] : 'sem check-in'}`
+            const label = `${formatDate(d, { day: 'numeric', month: 'long' })}: ${status ? t(`checkins:status.${status}`) : t('history.noCheckIn')}`
             const canEdit = editable && !future && d >= earliestEditable && d >= firstDay
             const cls = cn(
               'grid aspect-square w-full place-items-center rounded-lg text-xs font-semibold',
@@ -120,7 +121,7 @@ export function HabitHistory({
             return (
               <li key={d} title={future ? undefined : label} aria-label={canEdit ? undefined : future ? undefined : label}>
                 {canEdit ? (
-                  <button type="button" className={cls} aria-label={`${label}. Editar`} onClick={() => setEditing(d)}>
+                  <button type="button" className={cls} aria-label={t('history.editDay', { label })} onClick={() => setEditing(d)}>
                     {Number(d.slice(8))}
                   </button>
                 ) : (
@@ -136,7 +137,7 @@ export function HabitHistory({
         {STATUSES.map((s) => (
           <span key={s} className="inline-flex items-center gap-1.5">
             <span className={cn('size-3 rounded', CELL[s])} aria-hidden />
-            {STATUS_LABELS[s]}{' '}
+            {t(`checkins:status.${s}`)}{' '}
             <span className="font-semibold text-text">
               {(checkIns.data ?? []).filter((c) => c.status === s).length}
             </span>
@@ -145,14 +146,14 @@ export function HabitHistory({
       </div>
 
       {editable && (
-        <p className="text-xs text-muted">Toque em um dos últimos {MAX_DAYS_IN_PAST} dias para marcar o que ficou de fora.</p>
+        <p className="text-xs text-muted">{t('history.hint', { days: MAX_DAYS_IN_PAST })}</p>
       )}
 
       <Dialog
         open={editing !== null}
         onClose={() => setEditing(null)}
         title={editing ? formatDate(editing, { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
-        description="O XP e a sequência são recalculados."
+        description={t('history.recalc')}
       >
         {editing && (
           <div className="flex flex-col gap-2 pt-1">
@@ -165,7 +166,7 @@ export function HabitHistory({
                 disabled={save.isPending}
                 onClick={() => save.mutate({ date: editing, status: s })}
               >
-                {STATUS_LABELS[s]}
+                {t(`checkins:status.${s}`)}
               </Button>
             ))}
             {byDate.has(editing) && (
@@ -176,7 +177,7 @@ export function HabitHistory({
                 disabled={save.isPending}
                 onClick={() => save.mutate({ date: editing, status: null })}
               >
-                Remover check-in
+                {t('history.remove')}
               </Button>
             )}
           </div>

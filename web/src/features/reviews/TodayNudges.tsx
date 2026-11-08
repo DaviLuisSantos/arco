@@ -1,5 +1,6 @@
 import { ChevronRight, ChevronsDown, ChevronsUp, NotebookPen } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { Today } from '../../api/types'
 import { diffDays, formatDate } from '../../lib/dates'
@@ -7,6 +8,7 @@ import { formatPercent } from '../../lib/format'
 
 /** Lembretes da tela Hoje: revisão semanal pendente, ciclo encerrado e hábitos prontos para subir. */
 export function TodayNudges({ today }: { today: Today }) {
+  const { t } = useTranslation('reviews')
   const { weeklyReview, cycle, habits, date } = today
   const suggested = habits.filter((h) => h.levelUpSuggested)
   const goBack = habits.filter((h) => h.levelDownSuggested)
@@ -20,16 +22,16 @@ export function TodayNudges({ today }: { today: Today }) {
         <Nudge
           to="/cycle"
           icon={<NotebookPen className="size-5" aria-hidden />}
-          title="O ciclo chegou ao fim"
-          description={`Feche “${cycle.name}” com a revisão guiada e ganhe +100 XP.`}
+          title={t('cycleEnded')}
+          description={t('cycleDesc', { name: cycle.name })}
         />
       )}
       {weeklyReview.due && (
         <Nudge
           to="/review"
           icon={<NotebookPen className="size-5" aria-hidden />}
-          title="Revisão da semana"
-          description={`Semana de ${formatDate(weeklyReview.weekStart)} a ${formatDate(weeklyReview.weekEnd)} · +30 XP`}
+          title={t('weekReview')}
+          description={t('weekDesc', { start: formatDate(weeklyReview.weekStart), end: formatDate(weeklyReview.weekEnd) })}
         />
       )}
       {suggested.map((h) => (
@@ -37,11 +39,11 @@ export function TodayNudges({ today }: { today: Today }) {
           key={h.id}
           to={`/habits/${h.id}`}
           icon={<ChevronsUp className="size-5" aria-hidden />}
-          title={`${h.emoji ? `${h.emoji} ` : ''}${h.name}: pronto para o nível ${h.level + 1}`}
+          title={t('levelUpTitle', { habit: `${h.emoji ? `${h.emoji} ` : ''}${h.name}`, level: h.level + 1 })}
           description={
             h.levelUpWeeksDone !== null
-              ? `${h.levelUpWeeksDone} semanas seguidas com ${h.levelUpDaysPerWeek}+ dias.`
-              : `${formatPercent(h.consistency.rate)} de consistência nos últimos 14 dias.`
+              ? t('levelUpWeeks', { weeks: h.levelUpWeeksDone, days: h.levelUpDaysPerWeek })
+              : t('levelUpRate', { rate: formatPercent(h.consistency.rate) })
           }
         />
       ))}
@@ -50,8 +52,8 @@ export function TodayNudges({ today }: { today: Today }) {
           key={`down-${h.id}`}
           to={`/habits/${h.id}`}
           icon={<ChevronsDown className="size-5" aria-hidden />}
-          title={`${h.emoji ? `${h.emoji} ` : ''}${h.name}: voltar ao nível ${h.level - 1}?`}
-          description="Duas semanas abaixo da metade da meta. Um degrau atrás mantém a constância."
+          title={t('levelDownTitle', { habit: `${h.emoji ? `${h.emoji} ` : ''}${h.name}`, level: h.level - 1 })}
+          description={t('levelDownDesc')}
         />
       ))}
     </div>

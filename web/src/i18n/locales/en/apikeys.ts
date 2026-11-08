@@ -1,0 +1,30 @@
+import type ns from '../pt-BR/apikeys'
+
+const apikeys_en: typeof ns = {
+  revoked: 'Key revoked.',
+  title: 'API access',
+  descBefore: 'Everything the app does also works through the API, with the header',
+  descAfter: 'Each key grants full access: keep it like a password.',
+  keyPlaceholder: 'key',
+  created: 'created on {{date}}',
+  lastUsed: 'last used on {{date}}',
+  neverUsed: 'never used',
+  revokeAria: 'Revoke {{name}}',
+  newKey: 'New key',
+  revokeTitle: 'Revoke “{{name}}”?',
+  revokeDescription: 'Anything using this key stops working immediately. This cannot be undone.',
+  revoke: 'Revoke',
+  createdTitle: 'Key created',
+  newTitle: 'New API key',
+  createdDescription: "Copy it now: for security, it won't be shown again.",
+  newDescription: 'Give it a name that says where it will be used (e.g. “Claude”, “iPhone Shortcuts”).',
+  done: 'Done',
+  cancel: 'Cancel',
+  create: 'Create key',
+  nameLabel: 'Name',
+  namePlaceholder: 'Claude',
+  nameRequired: 'Give the key a name.',
+  copyAria: 'Copy key',
+  example: 'Example:',
+}
+export default apikeys_en

@@ -21,10 +21,10 @@ public static class FocusEndpoints
 
     public static IEndpointRouteBuilder MapFocus(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/focus-sessions");
-        group.MapPost("", Create);
-        group.MapDelete("/{id:int}", Delete);
-        group.MapGet("", List);
+        var group = api.MapGroup("/focus-sessions").WithTags("Foco");
+        group.MapPost("", Create).WithSummary("Registra sessão de foco");
+        group.MapDelete("/{id:int}", Delete).WithSummary("Remove sessão de foco");
+        group.MapGet("", List).WithSummary("Lista sessões de foco");
         return api;
     }
 

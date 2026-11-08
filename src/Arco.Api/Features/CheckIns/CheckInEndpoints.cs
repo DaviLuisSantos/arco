@@ -10,10 +10,10 @@ public static class CheckInEndpoints
 
     public static IEndpointRouteBuilder MapCheckIns(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/checkins");
-        group.MapPut("", Upsert);
-        group.MapDelete("/{habitId:int}/{date}", Delete);
-        group.MapGet("", List);
+        var group = api.MapGroup("/checkins").WithTags("Check-ins");
+        group.MapPut("", Upsert).WithSummary("Registra ou atualiza um check-in");
+        group.MapDelete("/{habitId:int}/{date}", Delete).WithSummary("Remove um check-in");
+        group.MapGet("", List).WithSummary("Lista check-ins");
         return api;
     }
 

@@ -1,4 +1,5 @@
 import { ChevronsUp } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { CheckInTotals, HabitPeriodStats } from '../../api/types'
 import { Card } from '../../components/ui/Card'
@@ -16,23 +17,24 @@ interface PeriodStatsProps {
 
 /** Números de um período (semana ou ciclo): XP, totais de check-in e consistência por hábito. */
 export function PeriodStats({ xp, checkIns, habits, minutes, showMinutes }: PeriodStatsProps) {
+  const { t } = useTranslation('reviews')
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-4 gap-2 text-center">
-        <Stat label="XP" value={formatXp(xp)} className="text-xp" />
-        <Stat label="Feito" value={checkIns.done} className="text-done" />
-        <Stat label="Mínimo" value={checkIns.minimum} className="text-minimum" />
-        <Stat label="Não fiz" value={checkIns.missed} className="text-missed" />
+        <Stat label={t('statXp')} value={formatXp(xp)} className="text-xp" />
+        <Stat label={t('statDone')} value={checkIns.done} className="text-done" />
+        <Stat label={t('statMinimum')} value={checkIns.minimum} className="text-minimum" />
+        <Stat label={t('statMissed')} value={checkIns.missed} className="text-missed" />
       </div>
 
       {showMinutes && (
         <p className="text-sm text-muted">
-          Foco no período: <span className="font-semibold text-text">{formatDuration(minutes ?? 0)}</span>
+          {t('focus')} <span className="font-semibold text-text">{formatDuration(minutes ?? 0)}</span>
         </p>
       )}
 
       {habits.length === 0 ? (
-        <p className="text-sm text-muted">Nenhum hábito neste período.</p>
+        <p className="text-sm text-muted">{t('noHabits')}</p>
       ) : (
         <Card className="p-0">
           <ul className="divide-y divide-border">
@@ -53,8 +55,8 @@ export function PeriodStats({ xp, checkIns, habits, minutes, showMinutes }: Peri
                   <p className="flex items-center gap-1 text-xs text-accent">
                     <ChevronsUp className="size-3.5" aria-hidden />
                     {h.levelsGained > 0
-                      ? `Subiu ${h.levelsGained} nível${h.levelsGained > 1 ? 'is' : ''} · agora no ${h.level}`
-                      : `Pronto para o nível ${h.level + 1}`}
+                      ? t(h.levelsGained > 1 ? 'leveledMany' : 'leveled', { count: h.levelsGained, level: h.level })
+                      : t('ready', { level: h.level + 1 })}
                   </p>
                 )}
               </li>

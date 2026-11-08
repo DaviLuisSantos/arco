@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { authApi } from '../api/endpoints'
 import { ArcoLogo } from '../components/layout/ArcoLogo'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Spinner } from '../components/ui/States'
+import { normalizeLocale, setLocale } from '../i18n'
 import { errorMessage } from '../lib/errors'
 import { queryKeys } from '../lib/queryKeys'
 import { useAuthStatus } from '../lib/useAuthStatus'
@@ -15,13 +17,17 @@ export function LoginPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation('security')
   const [params] = useSearchParams()
+  const [ticket, setTicket] = useState<string | null>(() => params.get('twofactor'))
+  const [code, setCode] = useState('')
+  const [useRecovery, setUseRecovery] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(() =>
     params.get('error') === 'google'
-      ? `Não foi possível entrar com o Google. Tente de novo.${params.get('reason') ? ` (código: ${params.get('reason')})` : ''}`
+      ? `${t('login.googleError')}${params.get('reason') ? t('login.googleErrorCode', { code: params.get('reason') }) : ''}`
       : null,
   )
   const [submitting, setSubmitting] = useState(false)
@@ -38,6 +44,34 @@ export function LoginPage() {
   const wantsDemo = params.get('demo') === '1'
   const wantsRegister = params.get('mode') === 'register'
   const loggedIn = !!auth.data
+  const langParam = normalizeLocale(params.get('lang'))
+
+  useEffect(() => {
+    if (langParam) void setLocale(langParam, false)
+  }, [langParam])
+
+  async function finishLogin() {
+    qc.clear()
+    qc.setQueryData(queryKeys.auth, await authApi.me())
+    void navigate(from, { replace: true })
+  }
+
+  async function handleCode(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!code.trim()) {
+      setError(t('twoFactor.typeCode'))
+      return
+    }
+    setSubmitting(true)
+    try {
+      await authApi.login2fa(ticket!, code.trim())
+      await finishLogin()
+    } catch (err) {
+      setError(errorMessage(err))
+      setSubmitting(false)
+    }
+  }
 
   async function startDemo() {
     setDemoing(true)
@@ -76,23 +110,79 @@ export function LoginPage() {
     setEmailError(null)
     setError(null)
     if (!email.trim()) {
-      setEmailError('Digite o e-mail.')
+      setEmailError(t('login.typeEmail'))
       return
     }
     if (!password) {
-      setError('Digite a senha.')
+      setError(t('login.typePassword'))
       return
     }
     setSubmitting(true)
     try {
-      await authApi.login(email.trim(), password)
-      qc.clear()
-      qc.setQueryData(queryKeys.auth, await authApi.me())
-      void navigate(from, { replace: true })
+      const res = await authApi.login(email.trim(), password)
+      if (res && res.twoFactorRequired) {
+        setTicket(res.ticket)
+        setSubmitting(false)
+        return
+      }
+      await finishLogin()
     } catch (err) {
       setError(errorMessage(err))
       setSubmitting(false)
     }
+  }
+
+  if (ticket) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex flex-col items-center gap-3 text-center">
+            <ArcoLogo className="size-16" />
+            <h1 className="text-2xl font-extrabold tracking-tight">{t('twoFactor.title')}</h1>
+            <p className="text-sm text-muted">{useRecovery ? t('twoFactor.recoveryHint') : t('twoFactor.codeHint')}</p>
+          </div>
+          <form onSubmit={(e) => void handleCode(e)} className="flex flex-col gap-4" noValidate>
+            <Input
+              label={useRecovery ? t('twoFactor.recoveryLabel') : t('twoFactor.codeLabel')}
+              inputMode={useRecovery ? 'text' : 'numeric'}
+              autoComplete="one-time-code"
+              autoFocus
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              error={error}
+            />
+            <Button type="submit" size="lg" block loading={submitting}>
+              {t('twoFactor.verify')}
+            </Button>
+          </form>
+          <div className="mt-6 flex flex-col items-center gap-2 text-sm text-muted">
+            <button
+              type="button"
+              className="hover:text-text"
+              onClick={() => {
+                setUseRecovery((v) => !v)
+                setCode('')
+                setError(null)
+              }}
+            >
+              {useRecovery ? t('twoFactor.useApp') : t('twoFactor.useRecovery')}
+            </button>
+            <button
+              type="button"
+              className="hover:text-text"
+              onClick={() => {
+                setTicket(null)
+                setCode('')
+                setError(null)
+                setUseRecovery(false)
+              }}
+            >
+              {t('twoFactor.back')}
+            </button>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -101,11 +191,11 @@ export function LoginPage() {
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <ArcoLogo className="size-16" />
           <h1 className="text-3xl font-extrabold tracking-tight">Arco</h1>
-          <p className="text-sm text-muted">Hábitos com progresso e objetivo.</p>
+          <p className="text-sm text-muted">{t('login.tagline')}</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <Input
-            label="E-mail"
+            label={t('login.email')}
             type="email"
             autoComplete="email"
             autoFocus
@@ -114,7 +204,7 @@ export function LoginPage() {
             error={emailError}
           />
           <Input
-            label="Senha"
+            label={t('login.password')}
             type="password"
             autoComplete="current-password"
             value={password}
@@ -122,7 +212,7 @@ export function LoginPage() {
             error={error}
           />
           <Button type="submit" size="lg" block loading={submitting} disabled={demoing}>
-            Entrar
+            {t('login.submit')}
           </Button>
         </form>
         <div className="mt-4 flex flex-col gap-3">
@@ -136,19 +226,19 @@ export function LoginPage() {
                 window.location.href = `/api/auth/google?returnUrl=${encodeURIComponent(from)}`
               }}
             >
-              Continuar com Google
+              {t('login.google')}
             </Button>
           )}
           <Button type="button" variant="ghost" block loading={demoing} onClick={() => void startDemo()}>
-            Experimentar demo
+            {t('login.demo')}
           </Button>
         </div>
         <div className="mt-6 flex flex-col items-center gap-2 text-sm text-muted">
           <Link to="/forgot-password" className="hover:text-text">
-            Esqueci a senha
+            {t('login.forgot')}
           </Link>
           <Link to="/register" className="hover:text-text">
-            Não tem conta? Criar conta
+            {t('login.register')}
           </Link>
         </div>
       </div>

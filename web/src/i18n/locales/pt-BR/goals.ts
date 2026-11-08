@@ -1,0 +1,65 @@
+const ns = {
+  type: { Numeric: 'Numérico', Milestones: 'Marcos' },
+  create: {
+    success: 'Objetivo criado.',
+    title: 'Novo objetivo',
+    submit: 'Criar objetivo',
+    titleRequired: 'Dê um título ao objetivo.',
+    deadlineRequired: 'Escolha um prazo.',
+    startRequired: 'Informe o valor inicial.',
+    targetRequired: 'Informe a meta.',
+    targetDiffers: 'A meta precisa ser diferente do valor inicial.',
+    milestoneRequired: 'Adicione ao menos um marco.',
+    milestoneMax: 'Use no máximo 20 marcos.',
+    type: 'Tipo de objetivo',
+    titleLabel: 'Título',
+    titlePlaceholderNumeric: 'Correr 10 km',
+    titlePlaceholderMilestones: 'Lançar o site',
+    description: 'Descrição (opcional)',
+    unit: 'Unidade',
+    unitPlaceholder: 'km',
+    initial: 'Inicial',
+    target: 'Meta',
+    milestones: 'Marcos',
+    removeMilestone: 'Remover marco {{name}}',
+    newMilestone: 'Novo marco',
+    nextMilestone: 'Próximo marco',
+    addMilestone: 'Adicionar marco',
+    deadline: 'Prazo',
+    deadlineHint: 'Padrão: fim do ciclo.',
+  },
+  card: {
+    deleted: 'Objetivo excluído.',
+    completed: 'Objetivo concluído!',
+    done: 'Concluído',
+    progressOf: 'Progresso de {{title}}',
+    completedOn: 'Concluído em {{date}}',
+    deadline: 'Prazo {{date}}',
+    daysLeft: '{{count}} dias',
+    overdue: 'vencido',
+    linkedHabits_one: '{{count}} hábito ligado',
+    linkedHabits_other: '{{count}} hábitos ligados',
+    complete: 'Concluir',
+    completeTitle: 'Concluir objetivo?',
+    completeDescription: 'Marque “{{title}}” como concluído agora.',
+    deleteTitle: 'Excluir objetivo?',
+    deleteDescription:
+      'O XP que ele deu (conclusão e marcos) sai do seu total. Os hábitos ligados a ele continuam, só perdem o vínculo. Essa ação não pode ser desfeita.',
+    start: 'Início',
+    current: 'Atual',
+    target: 'Meta',
+    progressSaved: 'Progresso registrado.',
+    numberRequired: 'Informe um número.',
+    newValue: 'Novo valor',
+    register: 'Registrar',
+    note: 'Nota (opcional)',
+  },
+  mini: { until: 'até {{date}}' },
+}
+export default ns
+
+declare module '../../index' {
+  interface ArcoResources {
+    goals: typeof ns
+  }
+}

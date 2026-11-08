@@ -29,14 +29,14 @@ public static class CycleEndpoints
 
     public static IEndpointRouteBuilder MapCycles(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/cycles");
-        group.MapGet("", List);
-        group.MapGet("/current", Current);
-        group.MapPost("", Create);
-        group.MapPut("/{id:int}", Update);
-        group.MapGet("/{id:int}/summary", Summary);
-        group.MapPost("/{id:int}/complete", Complete);
-        group.MapDelete("/{id:int}", Delete);
+        var group = api.MapGroup("/cycles").WithTags("Ciclos");
+        group.MapGet("", List).WithSummary("Lista ciclos");
+        group.MapGet("/current", Current).WithSummary("Ciclo atual");
+        group.MapPost("", Create).WithSummary("Cria um ciclo");
+        group.MapPut("/{id:int}", Update).WithSummary("Atualiza um ciclo");
+        group.MapGet("/{id:int}/summary", Summary).WithSummary("Resumo do ciclo");
+        group.MapPost("/{id:int}/complete", Complete).WithSummary("Conclui o ciclo");
+        group.MapDelete("/{id:int}", Delete).WithSummary("Exclui o ciclo");
         return api;
     }
 

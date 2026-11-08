@@ -1,5 +1,6 @@
 import { Check, RotateCw, Timer, X } from 'lucide-react'
 import { useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { checkInsApi } from '../../api/endpoints'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
@@ -44,13 +45,14 @@ interface Props {
 }
 
 export function FocusTimer({ habitId, emoji, name }: Props) {
+  const { t } = useTranslation(['focus', 'common'])
   const timer = useFocusTimer(habitId)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const color = habitColor(habitId)
 
   const markDone = useAppMutation(
     (date: string) => checkInsApi.upsert({ habitId, date, status: 'Done' }),
-    { successMessage: 'Marcado como Feito.', onSuccess: timer.dismissSaved },
+    { successMessage: t('markedDone'), onSuccess: timer.dismissSaved },
   )
 
   const { running, pending, saved } = timer
@@ -61,27 +63,27 @@ export function FocusTimer({ habitId, emoji, name }: Props) {
     const fill = target ? timer.elapsed / (target * 60) : (timer.elapsed % 3600) / 3600
     return (
       <div className="flex flex-col items-center gap-3 text-center">
-        <Brick color={color} fill={fill} size={96} label={`${name}: tijolo enchendo`} />
+        <Brick color={color} fill={fill} size={96} label={t('brickFilling', { name })} />
         <p
           className="text-4xl font-extrabold tabular-nums tracking-tight"
           role="timer"
-          aria-label={timer.remaining !== null ? 'Tempo restante' : 'Tempo decorrido'}
+          aria-label={timer.remaining !== null ? t('remaining') : t('elapsed')}
         >
           {clock(shown)}
         </p>
         <p className="text-sm text-muted">
           {running.targetMinutes !== null
-            ? `Foco de ${formatDuration(running.targetMinutes)}. Pode fechar o app: a contagem continua.`
-            : 'Cronômetro livre. Conclua quando quiser.'}
+            ? t('focusOf', { duration: formatDuration(running.targetMinutes) })
+            : t('freeTimerHint')}
         </p>
         <div className="flex w-full gap-2">
           <Button variant="ghost" block onClick={() => setConfirmCancel(true)}>
             <X className="size-4" aria-hidden />
-            Descartar
+            {t('discard')}
           </Button>
           <Button block loading={timer.saving} onClick={timer.finish}>
             <Check className="size-4" aria-hidden />
-            Concluir agora
+            {t('finishNow')}
           </Button>
         </div>
         <ConfirmDialog
@@ -91,9 +93,9 @@ export function FocusTimer({ habitId, emoji, name }: Props) {
             setConfirmCancel(false)
             timer.cancel()
           }}
-          title="Descartar esta sessão?"
-          description="O tempo decorrido não será registrado. Se preferir guardar, use “Concluir agora”."
-          confirmLabel="Descartar"
+          title={t('discardTitle')}
+          description={t('discardDescription')}
+          confirmLabel={t('discard')}
           danger
         />
       </div>
@@ -104,16 +106,20 @@ export function FocusTimer({ habitId, emoji, name }: Props) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm">
-          A sessão de <span className="font-semibold">{formatDuration(pending.minutes)}</span> ainda não foi salva.
-          Seus minutos estão guardados neste aparelho.
+          <Trans
+            ns="focus"
+            i18nKey="pendingText"
+            values={{ duration: formatDuration(pending.minutes) }}
+            components={{ b: <span className="font-semibold" /> }}
+          />
         </p>
         <div className="flex gap-2">
           <Button variant="ghost" block disabled={timer.saving} onClick={timer.discardPending}>
-            Descartar
+            {t('discard')}
           </Button>
           <Button block loading={timer.saving} onClick={timer.retry}>
             <RotateCw className="size-4" aria-hidden />
-            Tentar de novo
+            {t('common:retry')}
           </Button>
         </div>
       </div>
@@ -128,30 +134,30 @@ export function FocusTimer({ habitId, emoji, name }: Props) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
               {emoji ? `${emoji} ` : ''}
-              {formatDuration(saved.minutes)} de foco salvos
+              {t('savedFocus', { duration: formatDuration(saved.minutes) })}
             </p>
-            <p className="text-xs text-muted">Um tijolo novo na pedra do dia.</p>
+            <p className="text-xs text-muted">{t('newBrick')}</p>
           </div>
           <div className="flex shrink-0 gap-1">
             <Button size="sm" loading={markDone.isPending} onClick={() => markDone.mutate(saved.date)}>
-              Marcar como Feito
+              {t('markDone')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={timer.dismissSaved} aria-label="Fechar aviso">
+            <Button size="sm" variant="ghost" onClick={timer.dismissSaved} aria-label={t('dismiss')}>
               <X className="size-4" aria-hidden />
             </Button>
           </div>
         </div>
       )}
-      <div className="grid grid-cols-4 gap-2" role="group" aria-label="Duração do foco">
+      <div className="grid grid-cols-4 gap-2" role="group" aria-label={t('durationGroup')}>
         {PRESETS.map((m) => (
           <Button key={m} variant="secondary" size="sm" onClick={() => timer.start(m)}>
-            {m} min
+            {t('presetMinutes', { count: m })}
           </Button>
         ))}
       </div>
       <Button variant="ghost" size="sm" onClick={() => timer.start(null)}>
         <Timer className="size-4" aria-hidden />
-        Cronômetro livre
+        {t('freeTimer')}
       </Button>
     </div>
   )

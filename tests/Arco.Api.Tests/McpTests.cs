@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -13,9 +15,18 @@ public sealed class McpTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
+    /// <summary>MCP is a Pro feature: promotes every user created so far.</summary>
+    private async Task MakeEveryoneProAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<Arco.Api.Infrastructure.AppDbContext>().Users
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.Plan, Arco.Api.Domain.UserPlan.Pro));
+    }
+
     private async Task<string> CreateKeyAsync()
     {
         var app = await _factory.LoggedInClientAsync();
+        await MakeEveryoneProAsync();
         var res = await app.PostAsJsonAsync("/api/api-keys", new { name = "MCP" });
         return (string)(await res.JsonAsync())["key"]!;
     }

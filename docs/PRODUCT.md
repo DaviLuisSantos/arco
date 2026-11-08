@@ -134,7 +134,27 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
+5. **Vitrine SaaS** — planos Free/Pro com Stripe, onboarding, 2FA e sessões, perfil público, parceiro de responsabilidade, painel admin, pt-BR/en, OpenAPI e Scalar, Sentry.
 3. **Polimento** — streaks com tolerância (1 falha por semana), escada planejada e regra de subida por hábito, conquistas, histórico e estatísticas.
+
+## Planos, perfil público e parceiro
+
+- **Planos:** Free (até 5 hábitos ativos, 1 chave de API, sem MCP, perfil público só no tema índigo) e Pro (sem limites e
+  com temas). Quem passa do limite recebe `plan_limit` e o app mostra um aviso com link para o Plano; nada é apagado no
+  downgrade. A cobrança é por assinatura mensal no Stripe (checkout e portal); sem configuração do Stripe o app roda
+  sem cobrança. Contas demo e a do dono nascem Pro.
+- **Onboarding:** contas novas passam por "Primeiros passos" (`/welcome`): idioma, primeiro hábito e lembretes. Dá para pular
+  cada passo.
+- **Segurança da conta:** 2FA por app autenticador (TOTP) com 10 códigos de recuperação, e lista de sessões por aparelho,
+  com revogação de uma ou de todas as outras.
+- **Perfil público:** opcional, em `/u/<slug>`: nome, nível, XP, arco do ciclo e (se o usuário quiser) hábitos com nível
+  e sequência. Tem prévia social (Open Graph) com imagem gerada no servidor. Fora dos buscadores (`noindex`).
+- **Parceiro de responsabilidade:** o usuário gera um link de convite (7 dias); quem aceita passa a ver o resumo das duas
+  últimas semanas dele (feito/mínimo/esperado por hábito). Qualquer lado pode encerrar.
+- **Idiomas:** pt-BR (fonte) e en. A escolha vale para o app, os e-mails e as notificações; fica na conta e em
+  `localStorage`. A API devolve mensagens em pt-BR e o app traduz pelo `code`.
+- **Admin:** quem está em `Admin:Emails` vê métricas agregadas (usuários, cadastros, check-ins, usuários ativos e retenção
+  por coorte semanal), sem dados pessoais.
 
 ## API e chaves de API
 - Tudo o que o app faz é feito pela API (`docs/API.md`), e a API aceita, além do cookie do app, **chaves de API**
@@ -176,14 +196,9 @@ O app abre e funciona sem internet para **ler** e **marcar check-in**:
 - Ambiente local: a porta 5080 está ocupada por outro programa nesta máquina; `NODE_ENV=production` faz o
   `npm install` pular as devDependencies (use `npm install --include=dev`).
 
-## Próximos passos (rumo a SaaS)
-Em ordem de impacto. O servidor MCP (o primeiro da lista original) já está feito (veja "API e chaves de API").
+## Próximos passos
+O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.json`, `/api/docs`) e a cobrança já estão feitos.
 
-1. **Especificação OpenAPI.** Documento legível por máquina (ex.: `/api/openapi.json`) gerado a partir dos
-   endpoints, com os tipos de resposta. Serve para gerar clientes, validar o contrato em teste e publicar a documentação
-   para quem integra. Hoje os handlers devolvem `IResult` sem tipo declarado: será preciso anotar os tipos.
+1. **Tipos de resposta nas rotas antigas** do OpenAPI (as novas já têm `.Produces<T>`).
 2. **Chaves só de leitura.** Escopo por chave (`leitura` ou `leitura e escrita`), para integrações que só consultam
    (dashboards, relatórios) não poderem alterar nada.
-
-Fora desta lista, e bem maior: **multiusuário** (contas, isolamento dos dados por usuário, cobrança). É uma fase
-própria; hoje o app assume um único dono em todo lugar (sem `UserId` nas tabelas).

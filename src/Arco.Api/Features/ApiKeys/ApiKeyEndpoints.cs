@@ -16,10 +16,10 @@ public static class ApiKeyEndpoints
 
     public static IEndpointRouteBuilder MapApiKeys(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/api-keys");
-        group.MapGet("", List);
-        group.MapPost("", Create);
-        group.MapDelete("/{id:int}", Revoke);
+        var group = api.MapGroup("/api-keys").WithTags("Chaves de API");
+        group.MapGet("", List).WithSummary("Lista as chaves de API");
+        group.MapPost("", Create).WithSummary("Cria uma chave de API");
+        group.MapDelete("/{id:int}", Revoke).WithSummary("Revoga uma chave de API");
         return api;
     }
 
@@ -30,12 +30,13 @@ public static class ApiKeyEndpoints
             .Select(ApiKeyDto.From).ToList();
 
     private static async Task<IResult> Create(CreateApiKeyRequest? request, HttpContext http, AppDbContext db, AppClock clock,
-        CancellationToken ct)
+        CurrentUser user, CancellationToken ct)
     {
         if (http.User.UsedApiKey()) return ApiResults.Error(StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, ManagedInAppMessage);
 
         var name = request?.Name?.Trim();
         if (!Text.LengthBetween(name, 1, 60)) return ApiResults.Validation("O nome da chave deve ter entre 1 e 60 caracteres.");
+        if (await PlanGate.CheckApiKeyLimitAsync(db, user, ct) is { } limit) return limit;
         if (await db.ApiKeys.CountAsync(ct) >= MaxKeys)
             return ApiResults.Validation($"Você já tem {MaxKeys} chaves. Revogue alguma antes de criar outra.");
 

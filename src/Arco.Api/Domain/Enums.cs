@@ -13,3 +13,5 @@ public enum XpSource { CheckIn, HabitLevelUp, Milestone, GoalCompleted, CycleCom
 public enum CycleStatus { Active, Completed }
 
 public enum UserTokenPurpose { VerifyEmail, ResetPassword }
+
+public enum UserPlan { Free, Pro }

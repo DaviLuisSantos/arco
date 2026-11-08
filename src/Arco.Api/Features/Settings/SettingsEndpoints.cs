@@ -15,9 +15,9 @@ public static class SettingsEndpoints
 
     public static IEndpointRouteBuilder MapSettings(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/settings");
-        group.MapGet("", Get);
-        group.MapPut("", Update);
+        var group = api.MapGroup("/settings").WithTags("Configurações");
+        group.MapGet("", Get).WithSummary("Lê as configurações");
+        group.MapPut("", Update).WithSummary("Atualiza as configurações");
         return api;
     }
 

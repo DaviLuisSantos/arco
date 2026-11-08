@@ -13,6 +13,11 @@ public static class ErrorCodes
     public const string Conflict = "conflict";
     public const string RateLimited = "rate_limited";
     public const string InternalError = "internal_error";
+    public const string PlanLimit = "plan_limit";
+    public const string SlugTaken = "slug_taken";
+    public const string TwoFactorRequired = "two_factor_required";
+    public const string InvalidTwoFactorCode = "invalid_two_factor_code";
+    public const string StripeDisabled = "stripe_disabled";
 }
 
 /// <summary>Helpers that produce the API's <c>{ error, code }</c> error bodies.</summary>

@@ -6,7 +6,7 @@ public static class BackupEndpoints
 {
     public static IEndpointRouteBuilder MapBackup(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/backup", Export);
+        api.MapGet("/backup", Export).WithTags("Backup").WithSummary("Exporta os dados do usuário");
         return api;
     }
 

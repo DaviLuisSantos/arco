@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ArchStone, CycleArch } from '../../api/types'
 import { diffDays, localToday } from '../../lib/dates'
 import { formatDuration } from '../../lib/format'
@@ -35,12 +36,6 @@ interface ArchProps {
   small?: boolean
   /** Quando muda (e o ciclo está encerrado), a pedra-chave desce de novo. */
   animateKey?: number | string
-}
-
-const STATE_LABEL: Record<StoneState, string> = {
-  done: 'concluída',
-  now: 'em andamento',
-  future: 'ainda não começou',
 }
 
 function stoneState(stone: ArchStone, today: string, closed: boolean): StoneState {
@@ -85,6 +80,7 @@ function stoneBaseClass(state: StoneState, selected: boolean, interactive: boole
 }
 
 export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }: ArchProps) {
+  const { t } = useTranslation('arch')
   const today = localToday()
   const interactive = !small && !!onSelect
   const keySet = useKeystoneSet(arch.closed, animateKey, small)
@@ -104,19 +100,23 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
   }
 
   function stoneLabel(stone: ArchStone, state: StoneState): string {
-    return `Semana ${stone.week}: ${formatDuration(stone.minutes)} de ${formatDuration(target)}, ${STATE_LABEL[state]}`
+    return t('stoneLabel', {
+      week: stone.week,
+      minutes: formatDuration(stone.minutes),
+      target: formatDuration(target),
+      state: t(`state.${state}`),
+    })
   }
 
   const svgLabel =
-    `Arco do ciclo com ${arch.weeks} ${arch.weeks === 1 ? 'semana' : 'semanas'}: ` +
-    `${formatDuration(arch.totalMinutes)} de foco` +
-    (arch.closed ? ', ciclo concluído' : '')
+    t('svgLabel', { count: arch.weeks, total: formatDuration(arch.totalMinutes) }) +
+    (arch.closed ? t('svgLabelClosed') : '')
 
   const subText = arch.closed
-    ? 'ciclo concluído'
+    ? t('sub.closed')
     : !started
-      ? 'ainda não começou'
-      : `semana ${cur} de ${arch.weeks}`
+      ? t('sub.notStarted')
+      : t('sub.week', { current: cur, total: arch.weeks })
 
   function handleKey(e: KeyboardEvent, week: number) {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -225,7 +225,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
         {!small && (
           <>
             <text x={ks.x + ks.w / 2} y={ks.y + ks.h + 26} textAnchor="middle" className="fill-muted text-[13px]">
-              fim
+              {t('end')}
             </text>
             <text x={ROW_PAD} y={ROW_Y - 16} className="fill-text text-[22px] font-bold">
               {formatDuration(arch.totalMinutes)}
@@ -313,7 +313,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
       {!small && (
         <>
           <text x={kx.toFixed(1)} y={(ky + 4).toFixed(1)} textAnchor="middle" className="fill-muted text-[13px]">
-            fim
+            {t('end')}
           </text>
           <text x={CX} y={CY - 30} textAnchor="middle" className="fill-text text-[34px] font-bold tabular-nums">
             {formatDuration(arch.totalMinutes)}

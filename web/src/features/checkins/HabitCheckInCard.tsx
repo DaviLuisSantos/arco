@@ -1,9 +1,10 @@
 import { Check, Flag, Minus, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import type { CheckInStatus, TodayHabit } from '../../api/types'
 import { cn } from '../../lib/cn'
-import { STATUS_LABELS, formatDuration, streakText } from '../../lib/format'
+import { formatDuration, streakText } from '../../lib/format'
 import { useCheckIn } from './useCheckIn'
 
 const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string }> = [
@@ -13,6 +14,7 @@ const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string
 ]
 
 export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: string }) {
+  const { t } = useTranslation(['checkins', 'common'])
   const checkIn = useCheckIn()
   const current = habit.checkIn?.status ?? null
   const savedMinutes = habit.checkIn?.minutes ?? null
@@ -46,18 +48,21 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
             {habit.name}
           </Link>
           <p className="truncate text-sm text-muted">
-            Nv {habit.level} · {habit.levelDescription}
+            {t('card.level', { level: habit.level })} · {habit.levelDescription}
           </p>
-          <p className="truncate text-xs text-muted/90">Mínimo: {habit.minimumDescription}</p>
+          <p className="truncate text-xs text-muted/90">{t('card.minimum', { value: habit.minimumDescription })}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {habit.streak.current > 0 && (
               <span
                 className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-text"
-                title={`Sequência de ${streakText(habit.streak)} (recorde: ${streakText({ ...habit.streak, current: habit.streak.best })})`}
+                title={t('card.streakTitle', {
+                  current: streakText(habit.streak),
+                  best: streakText({ ...habit.streak, current: habit.streak.best }),
+                })}
               >
                 <span aria-hidden>🔥 </span>
                 {habit.streak.current}
-                <span className="sr-only"> de sequência</span>
+                <span className="sr-only"> {t('card.streakSr')}</span>
               </span>
             )}
             {habit.weekTarget !== null && (
@@ -67,7 +72,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
                   habit.weekCount >= habit.weekTarget ? 'bg-done/15 text-done' : 'bg-surface-2 text-muted',
                 )}
               >
-                {habit.weekCount}/{habit.weekTarget} na semana
+                {t('card.weekProgress', { done: habit.weekCount, target: habit.weekTarget })}
               </span>
             )}
             {habit.goalTitle && (
@@ -80,7 +85,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={`Check-in de ${habit.name}`}>
+      <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
         {OPTIONS.map(({ status, icon: Icon, active }) => {
           const selected = current === status
           return (
@@ -98,7 +103,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              {STATUS_LABELS[status]}
+              {t(`status.${status}`)}
             </button>
           )
         })}
@@ -107,7 +112,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
       {(current === 'Done' || current === 'Minimum') && (
         <form onSubmit={saveMinutes} className="mt-2 flex items-center gap-2">
           <label htmlFor={`minutes-${habit.id}`} className="shrink-0 text-sm text-muted">
-            Quantos minutos?
+            {t('card.minutesQuestion')}
           </label>
           <input
             id={`minutes-${habit.id}`}
@@ -116,7 +121,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
             min={0}
             max={480}
             step={1}
-            placeholder="opcional"
+            placeholder={t('card.optional')}
             value={text}
             onChange={(e) => setDraft(e.target.value)}
             aria-invalid={!validMinutes}
@@ -128,7 +133,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               disabled={checkIn.isPending && !checkIn.isPaused}
               className="h-10 shrink-0 rounded-xl border border-border bg-surface-2 px-3 text-sm font-semibold hover:text-text"
             >
-              Salvar
+              {t('common:save')}
             </button>
           )}
           {!changed && savedMinutes ? (

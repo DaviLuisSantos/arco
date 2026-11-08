@@ -5,8 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const THEME_COLOR = '#0f1117'
 
+// ARCO_API_URL: o E2E sobe a API em outra porta (playwright.config.ts).
 const apiProxy = {
-  '/api': { target: 'http://localhost:5080', changeOrigin: false },
+  '/api': { target: process.env.ARCO_API_URL ?? 'http://localhost:5080', changeOrigin: false },
 }
 
 // https://vite.dev/config/

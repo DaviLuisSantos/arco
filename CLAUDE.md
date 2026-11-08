@@ -20,7 +20,7 @@ Arco: app multiusuário de hábitos com progressão. Leia `docs/PRODUCT.md` (con
 ## Comandos
 - API: `dotnet run --project src/Arco.Api`, em :5080. Crie uma conta em `/register` (e-mails saem no log sem `Email:ResendApiKey`) ou use "Experimentar demo".
 - Web: `cd web && npm run dev`, em :5173, com proxy de `/api`.
-- Testes: `dotnet test`. Web: `npm run lint` (oxlint) e `npm run build`.
+- Testes: `dotnet test`. Web: `npm run lint` (oxlint) e `npm run build`; E2E: `npm run e2e` (Playwright; `npx playwright install chromium` na primeira vez).
 - Hash de senha: `dotnet run --project src/Arco.Api -- hash-password <senha>`.
 
 ## Regras importantes
@@ -34,4 +34,6 @@ Arco: app multiusuário de hábitos com progressão. Leia `docs/PRODUCT.md` (con
 - **Frontend:** nunca use `new Date("YYYY-MM-DD")`; use `web/src/lib/dates.ts`. O service worker (`web/src/sw.ts`, injectManifest) nunca cacheia `/api`; ele não é registrado em `npm run dev`, então push só funciona no build.
 - **Offline:** os dados offline vêm do cache do TanStack Query persistido no IndexedDB (`app/queryClient.ts`), nunca do service worker. Só o check-in funciona sem rede (`features/checkins/checkInMutation.ts`: pausa, fila ordenada via `scope`, retomada ao reabrir); as outras mutações usam `networkMode: 'always'` e falham na hora. Nas telas, use `isLoadingError` (e não `isError`) para não trocar dados em cache por um erro de refetch. Mudou o formato de uma resposta de forma incompatível? Troque o `buster`.
 - **Testes de integração com tempo:** `new ApiFactory(now)` usa um relógio controlável (`MutableTime`) e um `FakePushSender`; use datas futuras para o cookie de login não expirar.
-- **UI:** todo o texto é em pt-BR.
+- **i18n:** a UI tem pt-BR (fonte) e en, via i18next (`web/src/i18n/locales/{pt-BR,en}/<ns>.ts`, namespace = nome do arquivo). Nunca escreva texto fixo em componente: use `useTranslation('<ns>')`. Namespace novo se registra no próprio arquivo pt-BR (`declare module '../../index'`), sem editar `i18n/index.ts`. Erros: `web/src/lib/errors.ts` traduz pelo `code` (namespace `errors`) em en. Mensagens da API e dos testes continuam em pt-BR.
+- **Planos:** o Free tem limites (`Domain/Plans.cs`, `Infrastructure/PlanGate.cs`); estourar devolve 403 `plan_limit`. Hábito, chave de API e MCP novos passam pelo gate.
+- **UI:** o texto padrão é em pt-BR; o E2E usa os rótulos pt-BR.

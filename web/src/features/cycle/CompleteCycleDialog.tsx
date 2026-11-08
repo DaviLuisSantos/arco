@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cyclesApi } from '../../api/endpoints'
 import type { Cycle, CycleSummary } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -24,6 +25,7 @@ interface CompleteCycleDialogProps {
 
 /** Revisão guiada de fim de ciclo: números do ciclo → três perguntas (+ notas livres) → encerrar. */
 export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialogProps) {
+  const { t } = useTranslation(['cycle', 'common'])
   const [step, setStep] = useState<'numbers' | 'questions'>('numbers')
   const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS)
   const [notes, setNotes] = useState('')
@@ -36,7 +38,7 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
   const complete = useAppMutation(
     () => cyclesApi.complete(cycle.id, { ...cleanAnswers(answers), reviewNotes: notes.trim() || null }),
     {
-      successMessage: 'Ciclo encerrado. Hora de planejar o próximo!',
+      successMessage: t('complete.success'),
       onSuccess: () => {
         setAnswers(EMPTY_ANSWERS)
         setNotes('')
@@ -52,7 +54,7 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
 
   function submit() {
     if (notes.length > MAX_NOTES) {
-      setError(`Use até ${MAX_NOTES} caracteres nas notas.`)
+      setError(t('complete.notesTooLong', { max: MAX_NOTES }))
       return
     }
     setError(null)
@@ -63,13 +65,13 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
     <Dialog
       open={open}
       onClose={close}
-      title={step === 'numbers' ? `Revisão: ${cycle.name}` : 'Encerrar ciclo'}
+      title={step === 'numbers' ? t('complete.reviewTitle', { name: cycle.name }) : t('complete.endCycle')}
       description={
         step === 'numbers' ? (
-          'Como foi o ciclo, em números.'
+          t('complete.numbersDescription')
         ) : (
           <>
-            Responda o que fizer sentido e encerre. <span className="font-semibold text-xp">+100 XP</span>
+            {t('complete.questionsDescription')} <span className="font-semibold text-xp">+100 XP</span>
           </>
         )
       }
@@ -77,19 +79,19 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
         step === 'numbers' ? (
           <>
             <Button variant="secondary" block onClick={close}>
-              Cancelar
+              {t('common:cancel')}
             </Button>
             <Button block onClick={() => setStep('questions')}>
-              Continuar
+              {t('complete.continue')}
             </Button>
           </>
         ) : (
           <>
             <Button variant="secondary" block onClick={() => setStep('numbers')}>
-              Voltar
+              {t('common:back')}
             </Button>
             <Button block loading={complete.isPending} onClick={submit}>
-              Encerrar ciclo
+              {t('complete.endCycle')}
             </Button>
           </>
         )
@@ -107,12 +109,12 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
         <div className="flex flex-col gap-4">
           <ReviewQuestions prompts={CYCLE_PROMPTS} value={answers} onChange={setAnswers} />
           <Textarea
-            label="Notas livres"
+            label={t('complete.notes')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             maxLength={MAX_NOTES}
-            hint="Opcional."
+            hint={t('complete.optional')}
             error={error}
             className="min-h-20"
           />
@@ -123,13 +125,14 @@ export function CompleteCycleDialog({ cycle, open, onClose }: CompleteCycleDialo
 }
 
 function CycleNumbers({ summary }: { summary: CycleSummary }) {
+  const { t } = useTranslation(['cycle', 'common'])
   const completedGoals = summary.goals.filter((g) => g.completedAt).length
   return (
     <div className="flex flex-col gap-4">
       {summary.goals.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Objetivos · {completedGoals} de {summary.goals.length} concluídos
+            {t('complete.goalsDone', { done: completedGoals, total: summary.goals.length })}
           </p>
           {summary.goals.map((g) => (
             <div key={g.id} className="flex flex-col gap-1">
@@ -143,13 +146,13 @@ function CycleNumbers({ summary }: { summary: CycleSummary }) {
         </div>
       )}
       <div className="flex flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Hábitos</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('complete.habits')}</p>
         <PeriodStats xp={summary.xp} checkIns={summary.checkIns} habits={summary.habits} />
       </div>
       <p className="text-sm text-muted">
         {summary.weeklyReviews.length === 0
-          ? 'Nenhuma revisão semanal neste ciclo.'
-          : `${summary.weeklyReviews.length} revis${summary.weeklyReviews.length > 1 ? 'ões semanais' : 'ão semanal'} neste ciclo.`}
+          ? t('complete.weeklyReviewsNone')
+          : t('complete.weeklyReviews', { count: summary.weeklyReviews.length })}
       </p>
     </div>
   )

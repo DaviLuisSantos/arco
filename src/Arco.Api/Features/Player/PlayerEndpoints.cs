@@ -11,7 +11,7 @@ public static class PlayerEndpoints
 
     public static IEndpointRouteBuilder MapPlayer(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/player", GetPlayer);
+        api.MapGet("/player", GetPlayer).WithTags("Jogador").WithSummary("Estado do jogador (XP e nível)");
         return api;
     }
 

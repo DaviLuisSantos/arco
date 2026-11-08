@@ -17,10 +17,11 @@
 
 | Status | Codes |
 |---|---|
-| 400 | `validation`, `invalid_token` |
-| 401 | `unauthorized`, `invalid_credentials` |
-| 404 | `not_found` |
-| 409 | `active_cycle_exists`, `conflict`, `email_taken` |
+| 400 | `validation`, `invalid_token`, `invalid_two_factor_code` (ativar/desativar 2FA) |
+| 401 | `unauthorized`, `invalid_credentials`, `invalid_two_factor_code` (login com 2FA) |
+| 403 | `forbidden`, `plan_limit` |
+| 404 | `not_found`, `stripe_disabled` |
+| 409 | `active_cycle_exists`, `conflict`, `email_taken`, `slug_taken` |
 | 429 | `rate_limited` |
 | 500 | `internal_error` |
 
@@ -133,9 +134,10 @@ Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 
 
 | Rota | Corpo | Resposta |
 |---|---|---|
-| `POST /api/auth/register` | `{ email, password, displayName? }` | **201** + cookie + e-mail de verificação; 409 `email_taken`; 400 `validation` |
-| `POST /api/auth/login` | `{ email, password }` | **204** + cookie; 401 `invalid_credentials` |
-| `POST /api/auth/logout` | — | **204** |
+| `POST /api/auth/register` | `{ email, password, displayName?, locale? }` | **201** `Me` + cookie + e-mail de verificação; 409 `email_taken`; 400 `validation`. Sem `locale`, vem do `Accept-Language` (pt* → `pt-BR`, outro → `en`, ausente → `pt-BR`) |
+| `POST /api/auth/login` | `{ email, password }` | **204** + cookie; com 2FA, **200** `{ twoFactorRequired: true, ticket }` (sem cookie; ticket vale 5 min); 401 `invalid_credentials` |
+| `POST /api/auth/login/2fa` | `{ ticket, code }` | `code` = TOTP de 6 dígitos ou código de recuperação (uso único). **204** + cookie; 401 `invalid_two_factor_code` (código errado, ticket inválido/expirado ou senha trocada). Rate limit `login` |
+| `POST /api/auth/logout` | — | **204**; revoga a sessão atual |
 | `GET /api/auth/me` | — | **200** `Me` ou **401** |
 | `GET /api/auth/providers` | — | **200** `{ google: boolean }` |
 | `POST /api/auth/demo` | — | **201** + cookie de uma conta demo com dados de exemplo |
@@ -147,15 +149,71 @@ Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 
 | `DELETE /api/auth/account` | `{ password? }` | **204**; apaga o usuário e todos os dados em cascata; só com o cookie |
 | `GET /api/auth/google?returnUrl=` | — | challenge OAuth; falha → redireciona a `/login?error=google` |
 | `/api/auth/google/callback` | — | retorno do Google (tratado pelo middleware; é o redirect URI a cadastrar) |
-| `GET /api/auth/google/complete` | — | vincula ou cria o usuário, define o cookie e redireciona para `returnUrl` ou `/` |
+| `GET /api/auth/google/complete` | — | vincula ou cria o usuário, define o cookie e redireciona para `returnUrl` ou `/`; com 2FA ligado, não define o cookie e redireciona a `/login?twofactor=<ticket>` (conclua com `login/2fa`) |
+| `POST /api/auth/2fa/setup` | — | **200** `{ secret, otpauthUri }` (segredo pendente; Base32, SHA-1, 6 dígitos, 30 s); 409 `conflict` se já ativo; 403 em demo |
+| `POST /api/auth/2fa/enable` | `{ code }` | **200** `{ recoveryCodes: string[10] }` (mostrados só agora); 400 `invalid_two_factor_code`; 400 `validation` sem setup; 409 se já ativo |
+| `POST /api/auth/2fa/disable` | `{ code }` | **204** (TOTP ou código de recuperação); 400 `invalid_two_factor_code`; 400 `validation` se não está ativo |
+| `GET /api/auth/sessions` | — | **200** `[{ id, createdAt, lastSeenAt, userAgent, current }]` (abertas nos últimos 30 dias, mais recentes primeiro) |
+| `DELETE /api/auth/sessions/{id}` | — | **204**; o cookie daquela sessão deixa de valer (a atual = logout); 404 se não é sua |
+| `POST /api/auth/sessions/revoke-others` | — | **204**; mantém só a sessão atual |
+| `PUT /api/auth/locale` | `{ locale }` | **204**; `"pt-BR"` ou `"en"` (idioma do app e dos e-mails); 400 `validation` |
+| `POST /api/auth/onboarding/complete` | — | **204**; `onboarded` passa a `true` |
 
-- `Me` = `{ id, email, displayName, emailVerified, isDemo, hasPassword, hasGoogle }`.
-- Rotas anônimas: todas, exceto `logout`, `resend-verification`, `change-password` e `account`.
+- `Me` = `{ id, email, displayName, emailVerified, isDemo, hasPassword, hasGoogle, twoFactorEnabled, plan: "free"|"pro", locale: "pt-BR"|"en", isAdmin, onboarded, publicProfile: { enabled, slug, showHabits, theme } }`. `isAdmin` = e-mail listado em `Admin:Emails` (separados por vírgula).
+- Rotas anônimas: `register`, `login`, `login/2fa`, `me`, `providers`, `demo`, `verify-email`, `forgot-password`, `reset-password` e as do Google.
+- Sessões: cada cookie aponta para uma sessão (claim `sid`); sessão revogada ou inexistente → 401. `lastSeenAt` é atualizado no máximo a cada 5 min. Trocar a senha revoga as outras sessões; redefinir revoga todas.
+- 2FA: segredo cifrado (DataProtection, `arco.totp`); aceita 1 passo de 30 s de folga para cada lado; códigos de recuperação guardados só como SHA-256. Erros de código em rotas logadas são 400 (não 401, que o app trata como sessão encerrada).
+- Conta demo: nasce `pro` e `onboarded`.
+- E-mails (verificação, redefinição) saem no idioma da conta (`locale`).
 - Rate limit por IP: `login` (`Auth:LoginAttemptsPerMinute`, padrão 5) e `register`, `demo`, `forgot-password`, `resend-verification` (`Auth:ActionsPerMinute`, padrão 10) → 429 `rate_limited`.
 - Conta demo (`isDemo`): apagada automaticamente após 24h; não pode definir senha (403).
 - Vincular o Google a uma conta com e-mail não verificado apaga a senha dela e troca o stamp.
-- `change-password` e `account` com chave de API → 403 `forbidden`.
+- `change-password`, `account`, `sessions*`, `2fa/*`, `locale` e `onboarding/complete` com chave de API → 403 `forbidden`.
 - Chaves de API pertencem ao usuário que as criou e acessam apenas os dados dele.
+
+## Plano e cobrança
+
+Dois planos: `free` e `pro`. Limites (`Domain/Plans.cs`): Free tem até 5 hábitos ativos, 1 chave de API, sem MCP e só o tema
+`indigo` no perfil público; Pro não tem limite. Passar do limite devolve **403** `plan_limit`: criar ou desarquivar hábito acima
+do limite, criar chave acima do limite, qualquer chamada a `/api/mcp` no Free, tema de perfil diferente de `indigo` no Free.
+No downgrade nada é apagado; só a criação fica bloqueada.
+
+- `GET /api/billing` → `{ plan, renewsAt: string | null, cancelAtPeriodEnd, stripeEnabled, limits: { habits: number | null, apiKeys: number | null, mcp, profileTheme }, usage: { habits, apiKeys } }` (`null` = sem limite).
+- `POST /api/billing/checkout` → `{ url }` (Stripe Checkout da assinatura Pro).
+- `POST /api/billing/portal` → `{ url }` (portal de cobrança do Stripe).
+- Sem `Stripe:SecretKey`/`Stripe:PriceId`, `stripeEnabled` é `false` e checkout/portal devolvem **404** `stripe_disabled`.
+- Checkout: quem já tem assinatura Pro recebe **409**; o portal de quem ainda não tem cliente no Stripe devolve **404** `not_found`. Falha ao falar com o Stripe → **502** `internal_error`.
+- `POST /api/billing/webhook`: anônimo; valida a assinatura (`Stripe:WebhookSecret`; inválida → 400) e é idempotente por id de evento (`StripeEvent`).
+  Trata `checkout.session.completed`, `customer.subscription.updated` e `customer.subscription.deleted`.
+
+## Perfil público
+
+- `PUT /api/profile/public` `{ enabled, slug, showHabits, theme }` → `{ enabled, slug, showHabits, theme }` (só com cookie).
+  `slug` casa `^[a-z0-9-]{3,30}$` e não pode ser reservado (admin, api, login…) → 400 `validation`; já em uso → **409** `slug_taken`.
+  `theme` em `indigo|emerald|amber|rose|sky` (outro → 400); diferente de `indigo` no Free → **403** `plan_limit`.
+- `GET /api/public/profiles/{slug}` (anônimo) → `{ displayName, level, totalXp, theme, cycle: { name, week, totalWeeks, stones: [{ week, rate }] } | null, habits: [{ name, level, streak }] | null }`.
+  `habits` é `null` se `showHabits` está desligado; perfil desligado ou inexistente → 404. Conta Free exibe sempre `indigo`.
+- `GET /u/{slug}`: página HTML do servidor (Open Graph, `noindex`), fora de `/api`. `GET /u/{slug}/og.png`: PNG 1200×630 (SkiaSharp), cache de 1 h.
+
+## Parceiro de responsabilidade
+
+Um usuário (dono) convida outro para ver o resumo semanal dele. Aceitam cookie ou chave de API.
+
+- `POST /api/partners/invites` → **201** `{ id, link, expiresAt }` (vale 7 dias; no máximo 10 convites pendentes, senão 400).
+- `POST /api/partners/accept` `{ token }` → `{ id, owner: { displayName } }`. Convite inexistente, expirado ou usado → 404; o próprio convite → 400 `validation`; parceria repetida → 409.
+- `GET /api/partners` → `{ sharingWith: [{ id, displayName, since }], sharedWithMe: [{ id, displayName, since }], pendingInvites: [{ id, createdAt, expiresAt }] }`.
+- `GET /api/partners/{id}/summary`: só quem recebe o compartilhamento (senão 404) → `{ owner: { displayName, level }, weeks: [{ start, end, habits: [{ name, level, done, minimum, expected, rate, streak }], totals }] }`. Duas semanas: a atual (segunda até hoje) e a anterior.
+- `DELETE /api/partners/{id}` → **204** (qualquer um dos lados).
+
+## Admin
+
+- `GET /api/admin/metrics` → `{ users: { total, verified, demo, pro }, signupsByDay, checkInsByDay (30 dias), activeUsers: { d1, d7, d30 }, retention: [{ cohortWeek, size, week1, week2, week4 }] (8 coortes; frações de 0 a 1) }`.
+  Quem não está em `Admin:Emails` recebe **404**. Contas demo ficam de fora, exceto na contagem.
+
+## Documentação interativa (OpenAPI)
+
+- `GET /api/openapi/v1.json`: documento OpenAPI (anônimo). `GET /api/docs`: UI do Scalar (anônimo), com os esquemas cookie e Bearer.
+  Rotas novas trazem `.WithTags`, `.WithSummary` e `.Produces<T>`; as antigas ainda não têm os tipos de resposta.
 
 ## Chaves de API
 
@@ -163,7 +221,7 @@ Só com o cookie do app: com uma chave, estas rotas devolvem **403** `forbidden`
 
 - `GET /api/api-keys` → `Array<{ id, name, prefix, createdAt, lastUsedAt: string | null }>` (mais recentes primeiro).
   `prefix` = os 12 primeiros caracteres da chave; `lastUsedAt` é atualizado no máximo 1×/min.
-- `POST /api/api-keys` `{ name }` (1 a 60 caracteres; no máximo 20 chaves) → **201**
+- `POST /api/api-keys` `{ name }` (1 a 60 caracteres; no máximo 20 chaves; Free: 1 chave, acima disso 403 `plan_limit`) → **201**
   `{ id, name, prefix, createdAt, key }`. `key` (`arco_` + 43 caracteres) aparece **só nesta resposta**; o servidor
   guarda apenas o SHA-256.
 - `DELETE /api/api-keys/{id}` → **204** (revoga na hora). Inexistente → 404.
@@ -173,7 +231,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 ## Servidor MCP
 
 - `POST /api/mcp`: servidor [MCP](https://modelcontextprotocol.io) (Streamable HTTP, sem estado), autenticado como o
-  resto de `/api` (na prática, com chave de API). Para assistentes de IA operarem o Arco.
+  resto de `/api` (na prática, com chave de API). Só no plano Pro (Free → 403 `plan_limit`). Para assistentes de IA operarem o Arco.
 - As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
 - Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,

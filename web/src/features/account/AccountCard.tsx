@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { authApi } from '../../api/endpoints'
 import { Button } from '../../components/ui/Button'
@@ -15,6 +16,7 @@ import { useAuthStatus } from '../../lib/useAuthStatus'
 
 /** Conta no Perfil: e-mail, senha, vínculo com o Google e exclusão da conta. */
 export function AccountCard() {
+  const { t } = useTranslation('account')
   const me = useAuthStatus().data
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -31,7 +33,7 @@ export function AccountCard() {
   const change = useAppMutation(
     (input: { currentPassword?: string; newPassword: string }) => authApi.changePassword(input),
     {
-      successMessage: 'Senha salva.',
+      successMessage: t('passwordSaved'),
       onSuccess: () => {
         setCurrent('')
         setNext('')
@@ -45,11 +47,11 @@ export function AccountCard() {
   function submit(e: FormEvent) {
     e.preventDefault()
     if (next.length < 8) {
-      setError('A senha precisa ter pelo menos 8 caracteres.')
+      setError(t('passwordShort'))
       return
     }
     if (me?.hasPassword && !current) {
-      setError('Informe a senha atual.')
+      setError(t('passwordCurrentRequired'))
       return
     }
     setError(null)
@@ -74,24 +76,24 @@ export function AccountCard() {
       <div className="flex items-start gap-3">
         <UserRound className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden />
         <div className="min-w-0">
-          <p className="font-semibold">Conta</p>
+          <p className="font-semibold">{t('title')}</p>
           <p className="truncate text-sm">{me.displayName}</p>
           <p className="truncate text-sm text-muted">
             {me.email}
-            {!me.isDemo && (me.emailVerified ? ' · verificado' : ' · não verificado')}
+            {!me.isDemo && (me.emailVerified ? t('verified') : t('unverified'))}
           </p>
           {providers.data?.google && (
-            <p className="text-sm text-muted">Google: {me.hasGoogle ? 'vinculado' : 'não vinculado'}</p>
+            <p className="text-sm text-muted">{t('googleStatus', { status: me.hasGoogle ? t('googleLinked') : t('googleNotLinked') })}</p>
           )}
         </div>
       </div>
 
       {!me.isDemo && (
         <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-          <p className="text-sm font-medium">{me.hasPassword ? 'Trocar senha' : 'Definir senha'}</p>
+          <p className="text-sm font-medium">{me.hasPassword ? t('changePassword') : t('setPassword')}</p>
           {me.hasPassword && (
             <Input
-              label="Senha atual"
+              label={t('currentPassword')}
               type="password"
               autoComplete="current-password"
               value={current}
@@ -99,22 +101,22 @@ export function AccountCard() {
             />
           )}
           <Input
-            label="Nova senha"
+            label={t('newPassword')}
             type="password"
             autoComplete="new-password"
             value={next}
             onChange={(e) => setNext(e.target.value)}
             error={error}
-            hint="Mínimo de 8 caracteres."
+            hint={t('passwordHint')}
           />
           <Button type="submit" variant="secondary" loading={change.isPending}>
-            {me.hasPassword ? 'Trocar senha' : 'Definir senha'}
+            {me.hasPassword ? t('changePassword') : t('setPassword')}
           </Button>
         </form>
       )}
 
       <Button variant="danger" onClick={() => setConfirming(true)}>
-        Excluir conta
+        {t('deleteAccount')}
       </Button>
 
       <ConfirmDialog
@@ -125,13 +127,13 @@ export function AccountCard() {
         }}
         onConfirm={() => void deleteAccount()}
         loading={deleting}
-        title="Excluir sua conta?"
+        title={t('deleteTitle')}
         description={
           <div className="flex flex-col gap-3">
-            <span>Apaga a conta e todos os seus dados, de forma definitiva. Exporte os dados antes se quiser guardá-los.</span>
+            <span>{t('deleteDescription')}</span>
             {me.hasPassword && (
               <Input
-                label="Confirme com sua senha"
+                label={t('deleteConfirmPassword')}
                 type="password"
                 autoComplete="current-password"
                 value={deletePassword}
@@ -140,7 +142,7 @@ export function AccountCard() {
             )}
           </div>
         }
-        confirmLabel="Excluir tudo"
+        confirmLabel={t('deleteConfirm')}
         danger
       />
     </Card>

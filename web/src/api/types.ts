@@ -500,6 +500,126 @@ export interface Me {
   isDemo: boolean
   hasPassword: boolean
   hasGoogle: boolean
+  twoFactorEnabled: boolean
+  plan: Plan
+  locale: string
+  isAdmin: boolean
+  onboarded: boolean
+  publicProfile: PublicProfileSettings
+}
+
+export type Plan = 'free' | 'pro'
+
+export interface PublicProfileSettings {
+  enabled: boolean
+  slug: string | null
+  showHabits: boolean
+  theme: string
+}
+
+/** Login com 2FA: 200 com ticket em vez de 204. */
+export interface TwoFactorChallenge {
+  twoFactorRequired: true
+  ticket: string
+}
+
+export interface TwoFactorSetup {
+  secret: string
+  otpauthUri: string
+}
+
+export interface TwoFactorEnabled {
+  recoveryCodes: string[]
+}
+
+export interface AuthSession {
+  id: number
+  createdAt: string
+  lastSeenAt: string
+  userAgent: string | null
+  current: boolean
+}
+
+export interface BillingInfo {
+  plan: Plan
+  renewsAt: string | null
+  cancelAtPeriodEnd: boolean
+  stripeEnabled: boolean
+  limits: { habits: number | null; apiKeys: number | null; mcp: boolean; profileTheme: boolean }
+  usage: { habits: number; apiKeys: number }
+}
+
+export interface PublicProfileInput {
+  enabled: boolean
+  slug: string
+  showHabits: boolean
+  theme: string
+}
+
+export interface PublicProfile {
+  displayName: string
+  level: number
+  totalXp: number
+  theme: string
+  cycle: {
+    name: string
+    week: number
+    totalWeeks: number
+    stones: { week: number; rate: number }[]
+  } | null
+  habits: { name: string; level: number; streak: number }[] | null
+}
+
+export interface PartnerLink {
+  id: number
+  displayName: string
+  since: string
+}
+
+export interface PendingInvite {
+  id: number
+  createdAt: string
+  expiresAt: string
+}
+
+export interface Partners {
+  sharingWith: PartnerLink[]
+  sharedWithMe: PartnerLink[]
+  pendingInvites: PendingInvite[]
+}
+
+export interface PartnerInvite {
+  id: number
+  link: string
+  expiresAt: string
+}
+
+export interface PartnerWeekHabit {
+  name: string
+  level: number
+  done: number
+  minimum: number
+  expected: number
+  rate: number
+  streak: number
+}
+
+export interface PartnerSummary {
+  owner: { displayName: string; level: number }
+  weeks: {
+    start: string
+    end: string
+    habits: PartnerWeekHabit[]
+    totals: CheckInTotals
+  }[]
+}
+
+export interface AdminMetrics {
+  users: { total: number; verified: number; demo: number; pro: number }
+  signupsByDay: { date: string; count: number }[]
+  checkInsByDay: { date: string; count: number }[]
+  activeUsers: { d1: number; d7: number; d30: number }
+  retention: { cohortWeek: string; size: number; week1: number; week2: number; week4: number }[]
 }
 
 export interface AuthProviders {

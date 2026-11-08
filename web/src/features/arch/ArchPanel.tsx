@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Landmark, Pencil } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cyclesApi } from '../../api/endpoints'
 import type { ArchStone, Cycle, CycleArch } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -34,6 +35,7 @@ function defaultWeek(arch: CycleArch): number {
 
 /** Arco do ciclo: pedras por semana, legenda dos hábitos, detalhe da semana e dos dias. */
 export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
+  const { t } = useTranslation('arch')
   const query = useQuery({ queryKey: queryKeys.cycleArch(cycleId), queryFn: () => cyclesApi.arch(cycleId) })
   const [picked, setPicked] = useState<number | null>(null)
 
@@ -50,8 +52,8 @@ export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
       <Arch arch={arch} selectedWeek={week} onSelect={setPicked} animateKey={animateKey} />
 
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
-        <span className="font-semibold">{formatDuration(arch.totalMinutes)} de foco no ciclo</span>
-        <span className="text-muted">Meta: {formatDuration(arch.weeklyTargetMinutes)} por semana</span>
+        <span className="font-semibold">{t('panel.totalInCycle', { duration: formatDuration(arch.totalMinutes) })}</span>
+        <span className="text-muted">{t('panel.goalPerWeek', { duration: formatDuration(arch.weeklyTargetMinutes) })}</span>
       </div>
 
       {canEdit && <EditGoal cycle={cycle} current={arch.weeklyTargetMinutes} />}
@@ -59,12 +61,12 @@ export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
       {arch.habits.length === 0 ? (
         <EmptyState
           icon={<Landmark className="size-6" />}
-          title="Nenhuma sessão de foco ainda"
-          description="Use o cronômetro ou registre os minutos no check-in. Cada sessão vira um tijolo do arco."
+          title={t('panel.emptyTitle')}
+          description={t('panel.emptyDescription')}
         />
       ) : (
         <>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Legenda dos hábitos">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label={t('panel.legend')}>
             {arch.habits.map((h) => (
               <li key={h.habitId} className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
                 <span
@@ -87,14 +89,15 @@ export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
 }
 
 function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
+  const { t } = useTranslation('arch')
   const target = arch.weeklyTargetMinutes
   const names = new Map(arch.habits.map((h) => [h.habitId, h]))
   const bands = [...stone.byHabit].filter((b) => b.minutes > 0).sort((a, b) => b.minutes - a.minutes)
 
   return (
-    <section aria-label={`Semana ${stone.week}`} className="flex flex-col gap-3">
+    <section aria-label={t('panel.week', { week: stone.week })} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <h3 className="text-sm font-semibold">Semana {stone.week}</h3>
+        <h3 className="text-sm font-semibold">{t('panel.week', { week: stone.week })}</h3>
         <span className="text-xs text-muted">
           {formatDate(stone.from, { day: 'numeric', month: 'short' })} –{' '}
           {formatDate(stone.to, { day: 'numeric', month: 'short' })}
@@ -102,7 +105,7 @@ function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
       </div>
       <p className="text-sm">
         <span className="font-semibold">{formatDuration(stone.minutes)}</span>
-        <span className="text-muted"> de {formatDuration(target)}</span>
+        <span className="text-muted"> {t('panel.of', { duration: formatDuration(target) })}</span>
       </p>
       {bands.length > 0 && (
         <ul className="flex flex-col gap-1 text-sm">
@@ -116,7 +119,7 @@ function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
                     style={{ backgroundColor: habitColor(b.habitId) }}
                     aria-hidden
                   />
-                  <span className="truncate">{h ? `${h.emoji ? `${h.emoji} ` : ''}${h.name}` : 'Hábito removido'}</span>
+                  <span className="truncate">{h ? `${h.emoji ? `${h.emoji} ` : ''}${h.name}` : t('panel.removedHabit')}</span>
                 </span>
                 <span className="shrink-0 text-muted">{formatDuration(b.minutes)}</span>
               </li>
@@ -132,6 +135,7 @@ function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
 }
 
 function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
+  const { t } = useTranslation(['arch', 'common'])
   const [editing, setEditing] = useState(false)
   const [hours, setHours] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -139,7 +143,7 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
     (minutes: number) =>
       cyclesApi.update(cycle.id, { name: cycle.name, endDate: cycle.endDate, weeklyFocusMinutes: minutes }),
     {
-      successMessage: 'Meta semanal atualizada.',
+      successMessage: t('panel.goalUpdated'),
       onSuccess: () => setEditing(false),
     },
   )
@@ -153,7 +157,7 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
   function submit() {
     const h = Number(hours.replace(',', '.'))
     if (!Number.isFinite(h) || h < MIN_HOURS || h > MAX_HOURS) {
-      setError(`Informe de ${MIN_HOURS} a ${MAX_HOURS} horas.`)
+      setError(t('panel.hoursInvalid', { min: MIN_HOURS, max: MAX_HOURS }))
       return
     }
     setError(null)
@@ -165,7 +169,7 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
       <div>
         <Button variant="ghost" size="sm" onClick={open}>
           <Pencil className="size-4" aria-hidden />
-          Editar meta semanal
+          {t('panel.editGoal')}
         </Button>
       </div>
     )
@@ -180,7 +184,7 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
       }}
     >
       <Input
-        label="Meta de foco por semana (h)"
+        label={t('panel.goalLabel')}
         type="number"
         inputMode="decimal"
         min={MIN_HOURS}
@@ -189,14 +193,14 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
         value={hours}
         onChange={(e) => setHours(e.target.value)}
         error={error}
-        hint={`De ${MIN_HOURS} a ${MAX_HOURS} horas.`}
+        hint={t('panel.hoursHint', { min: MIN_HOURS, max: MAX_HOURS })}
       />
       <div className="flex gap-2">
         <Button type="button" variant="secondary" block onClick={() => setEditing(false)}>
-          Cancelar
+          {t('common:cancel')}
         </Button>
         <Button type="submit" block loading={save.isPending}>
-          Salvar
+          {t('common:save')}
         </Button>
       </div>
     </form>

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { statsApi } from '../api/endpoints'
 import { Card } from '../components/ui/Card'
@@ -10,6 +11,7 @@ import { WeeklyChart } from '../features/stats/WeeklyChart'
 import { queryKeys } from '../lib/queryKeys'
 
 export function StatsPage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'stats' })
   const stats = useQuery({ queryKey: queryKeys.stats, queryFn: statsApi.get })
 
   return (
@@ -17,9 +19,9 @@ export function StatsPage() {
       <div>
         <Link to="/profile" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-text">
           <ArrowLeft className="size-4" aria-hidden />
-          Perfil
+          {t('back')}
         </Link>
-        <PageHeader title="Estatísticas" />
+        <PageHeader title={t('title')} />
       </div>
 
       {stats.isPending ? (
@@ -30,19 +32,19 @@ export function StatsPage() {
         <>
           <section aria-labelledby="weeks-title">
             <h2 id="weeks-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-              Últimas {stats.data.weeks.length} semanas
+              {t('lastWeeks', { count: stats.data.weeks.length })}
             </h2>
             <Card>
               <WeeklyChart weeks={stats.data.weeks} today={stats.data.recent.to} />
             </Card>
             <p className="mt-2 text-xs text-muted">
-              Consistência = dias com Feito ou Mínimo ÷ dias esperados, somando todos os hábitos.
+              {t('consistencyNote')}
             </p>
           </section>
 
           <section aria-labelledby="recent-title">
             <h2 id="recent-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-              Últimos 30 dias
+              {t('last30')}
             </h2>
             <PeriodStats
               xp={stats.data.recent.xp}
@@ -52,7 +54,7 @@ export function StatsPage() {
               showMinutes
             />
             <Link to="/cycle" className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:underline">
-              Ver arco do ciclo
+              {t('viewArch')}
             </Link>
           </section>
         </>

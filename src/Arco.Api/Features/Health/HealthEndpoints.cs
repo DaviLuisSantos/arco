@@ -6,7 +6,7 @@ public static class HealthEndpoints
 
     public static IEndpointRouteBuilder MapHealth(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/health", GetHealth).AllowAnonymous();
+        api.MapGet("/health", GetHealth).AllowAnonymous().WithTags("Saúde").WithSummary("Verifica a saúde da API");
         return api;
     }
 

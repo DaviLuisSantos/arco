@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Archive, ChevronRight, Plus, Sprout } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import { habitsApi } from '../api/endpoints'
 import type { Habit } from '../api/types'
@@ -15,6 +16,7 @@ import { queryKeys } from '../lib/queryKeys'
 type Tab = 'active' | 'archived'
 
 export function HabitsPage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'habits' })
   const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('active')
   const habits = useQuery({ queryKey: queryKeys.habits, queryFn: () => habitsApi.list(true) })
@@ -35,22 +37,22 @@ export function HabitsPage() {
   return (
     <div>
       <PageHeader
-        title="Hábitos"
+        title={t('title')}
         action={
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="size-4" aria-hidden />
-            Novo hábito
+            {t('new')}
           </Button>
         }
       />
 
       <Segmented
-        label="Filtro de hábitos"
+        label={t('filter')}
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'active', label: 'Ativos' },
-          { value: 'archived', label: 'Arquivados' },
+          { value: 'active', label: t('active') },
+          { value: 'archived', label: t('archived') },
         ]}
         className="mb-4"
       />
@@ -63,20 +65,20 @@ export function HabitsPage() {
         tab === 'active' ? (
           <EmptyState
             icon={<Sprout className="size-6" />}
-            title="Nenhum hábito ativo"
-            description="Comece pequeno: um hábito com uma dose possível e uma versão mínima."
+            title={t('noActiveTitle')}
+            description={t('noActiveDescription')}
             action={
               <Button onClick={() => setCreating(true)}>
                 <Plus className="size-4" aria-hidden />
-                Criar hábito
+                {t('create')}
               </Button>
             }
           />
         ) : (
           <EmptyState
             icon={<Archive className="size-6" />}
-            title="Nada arquivado"
-            description="Hábitos arquivados aparecem aqui e podem ser restaurados."
+            title={t('noArchivedTitle')}
+            description={t('noArchivedDescription')}
           />
         )
       ) : (
@@ -95,6 +97,7 @@ export function HabitsPage() {
 }
 
 function HabitRow({ habit }: { habit: Habit }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'habits' })
   return (
     <Link
       to={`/habits/${habit.id}`}
@@ -106,7 +109,7 @@ function HabitRow({ habit }: { habit: Habit }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{habit.name}</span>
         <span className="block truncate text-sm text-muted">
-          Nv {habit.level} · {habit.levelDescription} · {frequencyText(habit)}
+          {t('rowLevel', { level: habit.level, description: habit.levelDescription, frequency: frequencyText(habit) })}
         </span>
       </span>
       <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />

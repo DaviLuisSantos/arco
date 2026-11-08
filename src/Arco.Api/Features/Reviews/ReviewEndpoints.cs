@@ -27,10 +27,10 @@ public static class ReviewEndpoints
 
     public static IEndpointRouteBuilder MapReviews(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/reviews/weekly");
-        group.MapGet("", List);
-        group.MapGet("/current", Current);
-        group.MapPost("", Create);
+        var group = api.MapGroup("/reviews/weekly").WithTags("Revisões");
+        group.MapGet("", List).WithSummary("Lista revisões semanais");
+        group.MapGet("/current", Current).WithSummary("Revisão semanal atual");
+        group.MapPost("", Create).WithSummary("Cria revisão semanal");
         return api;
     }
 

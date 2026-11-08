@@ -2,7 +2,10 @@ import { api, ApiError } from './client'
 import type {
   CycleArch,
   Achievement,
+  AdminMetrics,
   ApiKey,
+  AuthSession,
+  BillingInfo,
   AuthProviders,
   CheckIn,
   CheckInInput,
@@ -27,6 +30,14 @@ import type {
   HabitLevelUpResult,
   Health,
   Me,
+  PartnerInvite,
+  Partners,
+  PartnerSummary,
+  PublicProfile,
+  PublicProfileInput,
+  TwoFactorChallenge,
+  TwoFactorEnabled,
+  TwoFactorSetup,
   LevelUpInput,
   PlayerDetail,
   PushConfig,
@@ -44,7 +55,18 @@ import type {
 export const authApi = {
   register: (input: { email: string; password: string; displayName?: string }) =>
     api.post<void>('/auth/register', input),
-  login: (email: string, password: string) => api.post<void>('/auth/login', { email, password }),
+  /** 204 (undefined) = entrou; com 2FA vem o desafio com o ticket. */
+  login: (email: string, password: string) =>
+    api.post<TwoFactorChallenge | undefined>('/auth/login', { email, password }),
+  login2fa: (ticket: string, code: string) => api.post<void>('/auth/login/2fa', { ticket, code }),
+  twoFactorSetup: () => api.post<TwoFactorSetup>('/auth/2fa/setup'),
+  twoFactorEnable: (code: string) => api.post<TwoFactorEnabled>('/auth/2fa/enable', { code }),
+  twoFactorDisable: (code: string) => api.post<void>('/auth/2fa/disable', { code }),
+  sessions: () => api.get<AuthSession[]>('/auth/sessions'),
+  revokeSession: (id: number) => api.delete<void>(`/auth/sessions/${id}`),
+  revokeOtherSessions: () => api.post<void>('/auth/sessions/revoke-others'),
+  setLocale: (locale: string) => api.put<void>('/auth/locale', { locale }),
+  completeOnboarding: () => api.post<void>('/auth/onboarding/complete'),
   /** 401 (sem cookie) também conta como sessão encerrada. */
   logout: async (): Promise<void> => {
     try {
@@ -72,6 +94,30 @@ export const authApi = {
   changePassword: (input: { currentPassword?: string; newPassword: string }) =>
     api.post<void>('/auth/change-password', input),
   deleteAccount: (password?: string) => api.delete<void>('/auth/account', { password }),
+}
+
+export const billingApi = {
+  get: () => api.get<BillingInfo>('/billing'),
+  checkout: () => api.post<{ url: string }>('/billing/checkout'),
+  portal: () => api.post<{ url: string }>('/billing/portal'),
+}
+
+export const profileApi = {
+  updatePublic: (input: PublicProfileInput) => api.put<void>('/profile/public', input),
+  getPublic: (slug: string) => api.get<PublicProfile>(`/public/profiles/${encodeURIComponent(slug)}`),
+}
+
+export const partnersApi = {
+  list: () => api.get<Partners>('/partners'),
+  invite: () => api.post<PartnerInvite>('/partners/invites'),
+  accept: (token: string) =>
+    api.post<{ id: number; owner: { displayName: string } }>('/partners/accept', { token }),
+  summary: (id: number) => api.get<PartnerSummary>(`/partners/${id}/summary`),
+  remove: (id: number) => api.delete<void>(`/partners/${id}`),
+}
+
+export const adminApi = {
+  metrics: () => api.get<AdminMetrics>('/admin/metrics'),
 }
 
 /** Exporta os dados do usuário (GET /api/backup) e dispara o download do JSON. */

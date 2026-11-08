@@ -1,0 +1,18 @@
+export default {
+  title: 'Public profile',
+  description: 'Share your level, cycle and habits on a page anyone with the link can open.',
+  enable: 'Enable public profile',
+  slug: 'Address',
+  slugHint: '3 to 30 characters: lowercase letters, numbers and hyphens.',
+  slugInvalid: 'Use 3 to 30 characters: a-z, 0-9 and hyphens.',
+  preview: 'Your link: {{url}}',
+  showHabits: 'Show my habits',
+  theme: 'Theme',
+  themeProOnly: 'Themes other than Indigo are exclusive to the Pro plan.',
+  themes: { indigo: 'Indigo', emerald: 'Emerald', amber: 'Amber', rose: 'Rose', sky: 'Sky' },
+  save: 'Save profile',
+  saved: 'Public profile saved.',
+  copy: 'Copy link',
+  copied: 'Link copied.',
+  open: 'Open',
+}

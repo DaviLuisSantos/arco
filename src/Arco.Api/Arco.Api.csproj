@@ -6,22 +6,37 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.1.0</Version>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- O pacote Sentry adiciona "using Sentry" implícito, que colide com CheckInStatus. -->
+    <SentryImplicitUsings>false</SentryImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.19.0" />
+    <PackageReference Include="Sentry.AspNetCore" Version="6.12.1" PrivateAssets="build;buildtransitive;contentfiles;analyzers" />
+    <!-- Imagem OG do perfil público. SkiaSharp (MIT); o ImageSharp atual exige licença comercial no build. -->
+    <PackageReference Include="SkiaSharp" Version="4.154.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.1" />
+    <PackageReference Include="Stripe.net" Version="53.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Contrato da API, servido pelo MCP (ferramenta ler_documentacao_api). -->
     <EmbeddedResource Include="..\..\docs\API.md" LogicalName="Arco.Api.docs.API.md" />
+    <!-- Inter (SIL OFL 1.1), usada na imagem OG do perfil público. -->
+    <EmbeddedResource Include="Resources/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Remove="Sentry" />
   </ItemGroup>
 
   <ItemGroup>

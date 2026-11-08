@@ -1,10 +1,12 @@
 import { Trophy } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { XpFeedbackContext, type XpFeedbackApi } from './xp-context'
 
 export function XpFeedbackProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('xp')
   const [level, setLevel] = useState<number | null>(null)
   const api = useMemo<XpFeedbackApi>(() => ({ celebrateLevel: setLevel }), [])
   const close = () => setLevel(null)
@@ -15,10 +17,10 @@ export function XpFeedbackProvider({ children }: { children: ReactNode }) {
       <Dialog
         open={level !== null}
         onClose={close}
-        title="Subiu de nível!"
+        title={t('levelUp')}
         footer={
           <Button block size="lg" onClick={close}>
-            Continuar
+            {t('cont')}
           </Button>
         }
       >
@@ -26,8 +28,8 @@ export function XpFeedbackProvider({ children }: { children: ReactNode }) {
           <div className="grid size-24 animate-pop place-items-center rounded-full bg-gradient-to-br from-accent-strong to-xp shadow-lg">
             <Trophy className="size-11 text-bg" aria-hidden />
           </div>
-          <p className="text-4xl font-extrabold tracking-tight">Nível {level}!</p>
-          <p className="max-w-xs text-muted">Cada check-in conta. Continue puxando o arco.</p>
+          <p className="text-4xl font-extrabold tracking-tight">{t('level', { level })}</p>
+          <p className="max-w-xs text-muted">{t('tagline')}</p>
         </div>
       </Dialog>
     </XpFeedbackContext.Provider>

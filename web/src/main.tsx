@@ -1,3 +1,4 @@
+import './app/sentry'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -7,6 +8,7 @@ import { persistOptions, queryClient } from './app/queryClient'
 import { router } from './app/router'
 import { ToastProvider } from './components/ui/Toast'
 import { XpFeedbackProvider } from './features/xp/XpFeedbackProvider'
+import './i18n'
 import './index.css'
 import { queryKeys } from './lib/queryKeys'
 

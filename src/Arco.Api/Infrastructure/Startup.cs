@@ -1,3 +1,7 @@
+using Arco.Api.Features.Admin;
+using Arco.Api.Features.Billing;
+using Arco.Api.Features.Partners;
+using Arco.Api.Features.Profiles;
 using Arco.Api.Features.Focus;
 using Arco.Api.Features.Mcp;
 using Arco.Api.Features.ApiKeys;
@@ -28,6 +32,10 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.Http.Headers;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 using Microsoft.Data.Sqlite;
 
 namespace Arco.Api.Infrastructure;
@@ -52,6 +60,7 @@ public static class Startup
     public const string AuthActionsRateLimitPolicy = "auth-actions";
     /// <summary>Temporary cookie that holds the Google identity between the provider callback and our own.</summary>
     public const string ExternalScheme = "arco-external";
+    public const string OpenApiDocumentName = "v1";
 
     public static void AddArco(this WebApplicationBuilder builder)
     {
@@ -74,6 +83,7 @@ public static class Startup
         services.AddHttpContextAccessor();
         services.AddScoped<CurrentUser>();
         services.AddArcoEmail(config);
+        services.AddSingleton<StripeClientFactory>(secretKey => new Stripe.StripeClient(secretKey));
 
         // Web Push: VAPID keys (generated into the data dir when not configured) and the reminder loop.
         services.AddSingleton(VapidKeys.Load(config, dataDir));
@@ -105,6 +115,32 @@ public static class Startup
         services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         // Malformed JSON / bad route values throw BadHttpRequestException, mapped to 400 { code: "validation" }.
         services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
+
+        // OpenAPI document (/api/openapi/v1.json) and Scalar UI (/api/docs); both anonymous.
+        services.AddOpenApi(OpenApiDocumentName, o => o.AddDocumentTransformer(AddSecuritySchemes));
+
+        // Sentry: only when Sentry:Dsn is set. No PII; the user is identified by id alone.
+        var sentryDsn = config["Sentry:Dsn"];
+        if (!string.IsNullOrWhiteSpace(sentryDsn))
+        {
+            builder.WebHost.UseSentry(o =>
+            {
+                o.Dsn = sentryDsn;
+                o.SendDefaultPii = false;
+                o.Environment = config["Sentry:Environment"] ?? env.EnvironmentName;
+                o.Release = AppInfo.Version;
+                o.TracesSampleRate = config.GetValue("Sentry:TracesSampleRate", 0.0);
+                o.SetBeforeSend(e =>
+                {
+                    if (e.User.Id is { } id) e.User = new Sentry.SentryUser { Id = id };
+                    else e.User = new Sentry.SentryUser();
+                    e.Request.Cookies = null;
+                    e.Request.Headers.Clear();
+                    e.Request.QueryString = null;
+                    return e;
+                });
+            });
+        }
 
         // Auth
         // Requests with "Authorization: Bearer …" use an API key; everything else, the app's cookie.
@@ -189,6 +225,48 @@ public static class Startup
             o.KnownIPNetworks.Clear();
             o.KnownProxies.Clear();
         });
+    }
+
+    /// <summary>Declares the two ways to authenticate (app cookie, API key) in the OpenAPI document.</summary>
+    private static Task AddSecuritySchemes(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken ct)
+    {
+        document.Info.Title = "Arco API";
+        document.Info.Version = AppInfo.Version;
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["cookie"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = AuthCookieName,
+            Description = "Cookie de sessão do app (login em /api/auth/login).",
+        };
+        document.Components.SecuritySchemes["bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            Description = "Chave de API: Authorization: Bearer arco_…",
+        };
+        document.Security =
+        [
+            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("cookie", document)] = [] },
+            new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference("bearer", document)] = [] },
+        ];
+        return Task.CompletedTask;
+    }
+
+    /// <summary>True when the visitor's top-ranked language in Accept-Language is English.</summary>
+    private static bool PrefersEnglish(HttpRequest request)
+    {
+        var languages = request.GetTypedHeaders().AcceptLanguage;
+        if (languages.Count == 0) return false;
+        var top = languages
+            .Where(l => l.Value.HasValue && l.Value != "*" && (l.Quality ?? 1.0) > 0)
+            .OrderByDescending(l => l.Quality ?? 1.0)
+            .FirstOrDefault();
+        return top?.Value.Value is { } tag
+               && (tag.Equals("en", StringComparison.OrdinalIgnoreCase)
+                   || tag.StartsWith("en-", StringComparison.OrdinalIgnoreCase));
     }
 
     private static RateLimitPartition<string> PerIpPerMinute(HttpContext http, int permitLimit) =>
@@ -276,7 +354,14 @@ public static class Startup
                 ctx.Response.Headers.CacheControl = "no-cache";
                 ctx.Response.Headers.Vary = "Cookie";
                 var session = await ctx.AuthenticateAsync(AuthScheme);
-                if (!session.Succeeded) ctx.Request.Path = "/landing/index.html";
+                if (!session.Succeeded)
+                {
+                    ctx.Response.Headers.Append("Vary", "Accept-Language");
+                    var english = PrefersEnglish(ctx.Request)
+                        && ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider
+                            .GetFileInfo("landing/en/index.html").Exists;
+                    ctx.Request.Path = english ? "/landing/en/index.html" : "/landing/index.html";
+                }
             }
             await next();
         });
@@ -311,10 +396,24 @@ public static class Startup
         secured.MapStats();
         secured.MapBackup();
         secured.MapApiKeys();
-        secured.MapMcp("/mcp");
+        secured.MapMcp("/mcp").AddMcpPlanFilter();
         secured.MapReviews();
         secured.MapPush();
         secured.MapSettings();
+        secured.MapBilling(api);
+        secured.MapProfiles(api);
+        secured.MapPartners();
+        secured.MapAdmin();
+
+        // API docs: OpenAPI JSON and the Scalar reference, anonymous.
+        app.MapOpenApi("/api/openapi/{documentName}.json").AllowAnonymous();
+        app.MapScalarApiReference("/api/docs", o => o
+            .WithTitle("Arco API")
+            .WithOpenApiRoutePattern("/api/openapi/{documentName}.json")
+            .AddPreferredSecuritySchemes("bearer", "cookie")).AllowAnonymous();
+
+        // Public pages outside /api (/u/{slug}).
+        app.MapPublicProfilePage();
 
         // Unknown /api routes are JSON 404s, never the SPA.
         api.MapFallback("{**path}", () => ApiResults.NotFound("Rota não encontrada."));
@@ -335,6 +434,8 @@ public static class Startup
             return;
         }
 
+        ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Arco.Api")
+            .LogError(error, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
         await ApiResults.WriteErrorAsync(ctx, StatusCodes.Status500InternalServerError,
             ErrorCodes.InternalError, "Erro interno");
     }

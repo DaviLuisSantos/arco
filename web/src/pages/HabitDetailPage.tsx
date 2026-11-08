@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, ArrowLeft, Bell, ChevronsDown, ChevronsUp, Flag, Pencil } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { goalsApi, habitsApi, todayApi } from '../api/endpoints'
@@ -16,35 +17,51 @@ import { LevelUpDialog } from '../features/habits/LevelUpDialog'
 import { addDays, localDateOf, localToday } from '../lib/dates'
 import { formatPercent, frequencyText, streakText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
+import { errorMessage } from '../lib/errors'
+import { useInvalidateData } from '../lib/useInvalidateData'
+import { useToast } from '../components/ui/toast-context'
+import { usePlanLimitHandler } from '../features/billing'
 import { useAppMutation } from '../lib/useAppMutation'
 
 type Modal = 'edit' | 'levelUp' | 'levelDown' | 'archive' | null
 
 export function HabitDetailPage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'habitDetail' })
   const id = Number(useParams().id)
   const habit = useQuery({ queryKey: queryKeys.habit(id), queryFn: () => habitsApi.get(id), enabled: Number.isInteger(id) })
   const today = useQuery({ queryKey: queryKeys.today, queryFn: todayApi.get, select: (t) => t.date })
   const goals = useQuery({ queryKey: queryKeys.currentGoals, queryFn: () => goalsApi.list() })
+  const toast = useToast()
+  const invalidate = useInvalidateData()
+  const handlePlanLimit = usePlanLimitHandler()
   const [modal, setModal] = useState<Modal>(null)
   const close = () => setModal(null)
 
-  const archive = useAppMutation(() => habitsApi.archive(id), { successMessage: 'Hábito arquivado.', onSuccess: close })
+  const archive = useAppMutation(() => habitsApi.archive(id), { successMessage: t('archivedSuccess'), onSuccess: close })
   const dismiss = useAppMutation(() => habitsApi.dismissLevelUpSuggestion(id), {
-    successMessage: 'Sugestão adiada por 7 dias.',
+    successMessage: t('snoozed'),
   })
-  const restore = useAppMutation(() => habitsApi.restore(id), { successMessage: 'Hábito restaurado.' })
+  const restore = useMutation({
+    mutationFn: () => habitsApi.restore(id),
+    onSuccess: () => toast.success(t('restored')),
+    // Limite do plano: aviso com link para o Plano; outros erros, o toast genérico.
+    onError: (err) => {
+      if (!handlePlanLimit(err)) toast.error(errorMessage(err))
+    },
+    onSettled: () => invalidate(),
+  })
   const levelDown = useAppMutation(() => habitsApi.levelDown(id), {
-    successMessage: 'Voltou um nível. O degrau continua na escada.',
+    successMessage: t('levelDownSuccess'),
     onSuccess: close,
   })
   const dismissDown = useAppMutation(() => habitsApi.dismissLevelDownSuggestion(id), {
-    successMessage: 'Sugestão adiada por 7 dias.',
+    successMessage: t('snoozed'),
   })
 
   const back = (
     <Link to="/habits" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-text">
       <ArrowLeft className="size-4" aria-hidden />
-      Hábitos
+      {t('back')}
     </Link>
   )
 
@@ -53,7 +70,7 @@ export function HabitDetailPage() {
     return (
       <div>
         {back}
-        <EmptyState icon={<Flag className="size-6" />} title="Hábito não encontrado" description="Ele pode ter sido removido." />
+        <EmptyState icon={<Flag className="size-6" />} title={t('notFound')} description={t('notFoundDescription')} />
       </div>
     )
   }
@@ -75,8 +92,8 @@ export function HabitDetailPage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-extrabold tracking-tight break-words">{h.name}</h1>
             <p className="text-sm text-muted">
-              Nível {h.level} · {frequencyText(h)}
-              {archived && ' · arquivado'}
+              {t('levelLine', { level: h.level, frequency: frequencyText(h) })}
+              {archived && t('archivedSuffix')}
             </p>
             {goal && (
               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
@@ -85,7 +102,7 @@ export function HabitDetailPage() {
               </span>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setModal('edit')} aria-label="Editar hábito">
+          <Button variant="ghost" size="sm" onClick={() => setModal('edit')} aria-label={t('edit')}>
             <Pencil className="size-4" aria-hidden />
           </Button>
         </header>
@@ -96,28 +113,28 @@ export function HabitDetailPage() {
           <div>
             <p className="flex items-center gap-1.5 font-semibold text-accent">
               <ChevronsUp className="size-4" aria-hidden />
-              Pronto para o nível {h.level + 1}?
+              {t('readyFor', { level: h.level + 1 })}
             </p>
             <p className="mt-1 text-sm text-muted">
               {h.levelUpWeeksDone !== null ? (
-                <>
-                  Você cumpriu {h.levelUpWeeksDone} semanas seguidas com {h.levelUpDaysPerWeek}+ dias.
-                </>
+                t('weeksDone', { weeks: h.levelUpWeeksDone, days: h.levelUpDaysPerWeek })
               ) : (
-                <>
-                  Você fez a dose completa {h.consistency.done} de {h.consistency.expected} vezes nos últimos 14 dias (
-                  {formatPercent(h.consistency.rate)}). Parece que “{h.levelDescription}” ficou fácil.
-                </>
+                t('easy', {
+                  done: h.consistency.done,
+                  expected: h.consistency.expected,
+                  rate: formatPercent(h.consistency.rate),
+                  description: h.levelDescription,
+                })
               )}
-              {h.plannedLevels[0] && <> Próximo degrau: “{h.plannedLevels[0].description}”.</>}
+              {h.plannedLevels[0] && t('nextStep', { description: h.plannedLevels[0].description })}
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" block loading={dismiss.isPending} onClick={() => dismiss.mutate()}>
-              Agora não
+              {t('notNow')}
             </Button>
             <Button block onClick={() => setModal('levelUp')}>
-              Subir de nível
+              {t('levelUp')}
             </Button>
           </div>
         </Card>
@@ -128,19 +145,18 @@ export function HabitDetailPage() {
           <div>
             <p className="flex items-center gap-1.5 font-semibold">
               <ChevronsDown className="size-4 text-muted" aria-hidden />
-              Que tal voltar ao nível {h.level - 1}?
+              {t('backTo', { level: h.level - 1 })}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Nas duas últimas semanas você ficou abaixo da metade da meta. Voltar um degrau mantém a constância;
-              “{h.levelDescription}” volta para a escada e você sobe de novo quando estiver firme.
+              {t('backToText', { description: h.levelDescription })}
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" block loading={dismissDown.isPending} onClick={() => dismissDown.mutate()}>
-              Agora não
+              {t('notNow')}
             </Button>
             <Button variant="secondary" block onClick={() => setModal('levelDown')}>
-              Voltar ao nível {h.level - 1}
+              {t('backToButton', { level: h.level - 1 })}
             </Button>
           </div>
         </Card>
@@ -148,25 +164,26 @@ export function HabitDetailPage() {
 
       <Card className="flex flex-col gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Dose atual</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('currentDose')}</p>
           <p className="text-lg font-semibold">{h.levelDescription}</p>
-          <p className="text-sm text-muted">Mínimo: {h.minimumDescription}</p>
+          <p className="text-sm text-muted">{t('minimum', { description: h.minimumDescription })}</p>
           {!archived && (
             <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
               <span
                 className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                title="Feito e Mínimo contam. Uma falha isolada por semana é perdoada; duas seguidas, ou duas na mesma semana, zeram."
+                title={t('streakTitle')}
               >
                 <span aria-hidden>🔥 </span>
-                Sequência: <span className="font-semibold text-text">{streakText(h.streak)}</span>
-                {h.streak.best > h.streak.current && ` · recorde ${streakText({ ...h.streak, current: h.streak.best })}`}
+                {t('streak')} <span className="font-semibold text-text">{streakText(h.streak)}</span>
+                {h.streak.best > h.streak.current &&
+                  t('record', { value: streakText({ ...h.streak, current: h.streak.best }) })}
               </span>
               {h.levelUpWeeksDone !== null && h.levelUpWeeks !== null ? (
                 <span
                   className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                  title={`Sobe depois de ${h.levelUpWeeks} semanas seguidas com ${h.levelUpDaysPerWeek}+ dias (Feito e Mínimo contam).`}
+                  title={t('weeksTitle', { weeks: h.levelUpWeeks, days: h.levelUpDaysPerWeek })}
                 >
-                  Semanas com {h.levelUpDaysPerWeek}+ dias:{' '}
+                  {t('weeksWith', { days: h.levelUpDaysPerWeek })}{' '}
                   <span className="font-semibold text-text">
                     {Math.min(h.levelUpWeeksDone, h.levelUpWeeks)}/{h.levelUpWeeks}
                   </span>
@@ -174,9 +191,9 @@ export function HabitDetailPage() {
               ) : (
                 <span
                   className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                  title="Só “Feito” conta para a sugestão de subir de nível."
+                  title={t('days14Title')}
                 >
-                  14 dias:{' '}
+                  {t('days14')}{' '}
                   <span className="font-semibold text-text">
                     {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
                   </span>
@@ -184,7 +201,7 @@ export function HabitDetailPage() {
               )}
               <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-muted">
                 <Bell className="size-3" aria-hidden />
-                {h.reminderTime ? `Lembrete às ${h.reminderTime}` : 'Sem lembrete'}
+                {h.reminderTime ? t('reminderAt', { time: h.reminderTime }) : t('noReminder')}
               </span>
             </div>
           )}
@@ -192,7 +209,7 @@ export function HabitDetailPage() {
         {!archived && (
           <Button onClick={() => setModal('levelUp')}>
             <ChevronsUp className="size-4" aria-hidden />
-            Subir de nível <span className="font-bold opacity-80">+50 XP</span>
+            {t('levelUp')} <span className="font-bold opacity-80">+50 XP</span>
           </Button>
         )}
       </Card>
@@ -200,7 +217,7 @@ export function HabitDetailPage() {
       {!archived && (
         <section aria-labelledby="focus-title">
           <h2 id="focus-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-            Foco
+            {t('focus')}
           </h2>
           <Card>
             <FocusTimer key={h.id} habitId={h.id} emoji={h.emoji} name={h.name} />
@@ -210,7 +227,7 @@ export function HabitDetailPage() {
 
       <section aria-labelledby="grid-title">
         <h2 id="grid-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          Histórico
+          {t('history')}
         </h2>
         <Card>
           <HabitHistory
@@ -225,14 +242,14 @@ export function HabitDetailPage() {
 
       <section aria-labelledby="levels-title">
         <h2 id="levels-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-          Níveis
+          {t('levels')}
         </h2>
         <Card>
           <LevelTimeline levels={h.levels} planned={h.plannedLevels} current={h.level} />
           {!archived && h.level > 1 && (
             <Button variant="ghost" size="sm" className="mt-3" onClick={() => setModal('levelDown')}>
               <ChevronsDown className="size-4" aria-hidden />
-              Voltar ao nível {h.level - 1}
+              {t('backToButton', { level: h.level - 1 })}
             </Button>
           )}
         </Card>
@@ -241,12 +258,12 @@ export function HabitDetailPage() {
       {archived ? (
         <Button variant="secondary" loading={restore.isPending} onClick={() => restore.mutate()}>
           <ArchiveRestore className="size-4" aria-hidden />
-          Restaurar hábito
+          {t('restore')}
         </Button>
       ) : (
         <Button variant="ghost" onClick={() => setModal('archive')}>
           <Archive className="size-4" aria-hidden />
-          Arquivar hábito
+          {t('archive')}
         </Button>
       )}
 
@@ -257,18 +274,18 @@ export function HabitDetailPage() {
         onClose={close}
         onConfirm={() => levelDown.mutate()}
         loading={levelDown.isPending}
-        title={`Voltar ao nível ${h.level - 1}?`}
-        description={`“${h.levelDescription}” sai do nível atual e volta para o topo da escada planejada. O XP que você ganhou continua.`}
-        confirmLabel={`Voltar ao nível ${h.level - 1}`}
+        title={t('levelDownTitle', { level: h.level - 1 })}
+        description={t('levelDownDescription', { description: h.levelDescription })}
+        confirmLabel={t('backToButton', { level: h.level - 1 })}
       />
       <ConfirmDialog
         open={modal === 'archive'}
         onClose={close}
         onConfirm={() => archive.mutate()}
         loading={archive.isPending}
-        title="Arquivar hábito?"
-        description="Ele sai da tela Hoje, mas o histórico e o XP continuam. Você pode restaurar depois."
-        confirmLabel="Arquivar"
+        title={t('archiveTitle')}
+        description={t('archiveDescription')}
+        confirmLabel={t('archiveConfirm')}
       />
     </div>
   )

@@ -43,6 +43,9 @@ No Web App, abra **Settings → Environment variables → App settings → + Add
 | `Email__From` | remetente, ex.: `Arco <no-reply@seu-dominio>` (padrão `Arco <onboarding@resend.dev>`) |
 | `App__BaseUrl` | URL pública, ex.: `https://<host>`. Obrigatória em produção: fora de Development vira a origem de toda requisição (o Cloudflare faz o Azure ver ora o domínio, ora o `*.azurewebsites.net`), o que mantém estável o redirect_uri do Google e os links dos e-mails |
 | `Auth__Google__ClientId` / `Auth__Google__ClientSecret` | opcionais; habilitam "Entrar com Google". Redirect URI autorizada: `https://<host>/api/auth/google/callback` |
+| `Admin__Emails` | e-mails (separados por vírgula) que acessam o painel `/admin` e `GET /api/admin/metrics` |
+| `Stripe__SecretKey` / `Stripe__PriceId` / `Stripe__WebhookSecret` | cobrança do plano Pro. Sem elas o app roda sem cobrança (`stripeEnabled=false`) |
+| `Sentry__Dsn` | opcional; liga o Sentry no backend (sem PII, só o id do usuário). Também aceita `Sentry__Environment` e `Sentry__TracesSampleRate` |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
 
 Novos usuários se cadastram pelo app; as variáveis do dono só importam enquanto o usuário 1 ainda tem o e-mail provisório.
@@ -61,7 +64,14 @@ Novos usuários se cadastram pelo app; as variáveis do dono só importam enquan
    **Website Contributor** para a identidade: em **Members**, escolha **Managed identity** e
    selecione `arco-github`. Termine em **Review + assign**.
 
-### 4. GitHub
+### 4. Stripe (opcional)
+
+1. Em modo teste, crie o produto **Pro** com preço mensal recorrente e copie o `price_...` para `Stripe__PriceId`.
+2. Crie o webhook em `https://<host>/api/billing/webhook` com os eventos `checkout.session.completed`,
+   `customer.subscription.updated` e `customer.subscription.deleted`; copie o segredo (`whsec_...`) para `Stripe__WebhookSecret`.
+3. Ative o portal de cobrança (Billing → Customer portal) e preencha `Stripe__SecretKey`.
+
+### 5. GitHub
 
 O **Client ID** fica no **Overview** da identidade. O **Tenant ID** e o **Subscription ID** também aparecem lá:
 
@@ -71,6 +81,7 @@ gh secret set AZURE_TENANT_ID --body "<tenant id>"
 gh secret set AZURE_SUBSCRIPTION_ID --body "<subscription id>"
 gh variable set AZURE_WEBAPP_NAME --body "arco-davi"
 gh variable set AZURE_RESOURCE_GROUP --body "<grupo de recursos>"
+gh variable set VITE_SENTRY_DSN --body "<dsn do projeto web>"   # opcional: Sentry no frontend
 ```
 
 O ambiente `production` é criado no primeiro deploy. Ele também pode ser criado antes, em

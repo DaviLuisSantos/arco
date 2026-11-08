@@ -1,0 +1,18 @@
+export default {
+  title: 'Perfil público',
+  description: 'Compartilhe seu nível, ciclo e hábitos em uma página aberta a qualquer pessoa com o link.',
+  enable: 'Ativar perfil público',
+  slug: 'Endereço',
+  slugHint: 'De 3 a 30 caracteres: letras minúsculas, números e hífen.',
+  slugInvalid: 'Use de 3 a 30 caracteres: a-z, 0-9 e hífen.',
+  preview: 'Seu link: {{url}}',
+  showHabits: 'Mostrar meus hábitos',
+  theme: 'Tema',
+  themeProOnly: 'Temas além do Índigo são exclusivos do plano Pro.',
+  themes: { indigo: 'Índigo', emerald: 'Esmeralda', amber: 'Âmbar', rose: 'Rosa', sky: 'Céu' },
+  save: 'Salvar perfil',
+  saved: 'Perfil público salvo.',
+  copy: 'Copiar link',
+  copied: 'Link copiado.',
+  open: 'Abrir',
+}

@@ -61,17 +61,18 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
     {
         if (!await db.PushSubscriptions.AnyAsync(ct)) return 0;
 
+        var en = await db.Users.AsNoTracking().Select(u => u.Locale).FirstOrDefaultAsync(ct) == "en";
         var timezone = await clock.GetTimezoneAsync(ct);
         var localNow = TimeZones.LocalNow(time, timezone);
         var today = DateOnly.FromDateTime(localNow);
         var now = TimeOnly.FromDateTime(localNow);
 
-        return await SendHabitRemindersAsync(today, now, ct) + await SendWeeklyReviewReminderAsync(today, now, ct);
+        return await SendHabitRemindersAsync(today, now, en, ct) + await SendWeeklyReviewReminderAsync(today, now, en, ct);
     }
 
     internal static bool IsTime(TimeOnly at, TimeOnly now) => now >= at && now - at <= MaxDelay;
 
-    private async Task<int> SendHabitRemindersAsync(DateOnly today, TimeOnly now, CancellationToken ct)
+    private async Task<int> SendHabitRemindersAsync(DateOnly today, TimeOnly now, bool en, CancellationToken ct)
     {
         var habits = (await db.Habits.AsNoTracking()
                 .Include(h => h.Levels)
@@ -101,16 +102,20 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
 
             var title = string.IsNullOrEmpty(habit.Emoji) ? habit.Name : $"{habit.Emoji} {habit.Name}";
             var current = habit.CurrentLevel;
-            var body = current is null
-                ? "Hora do seu hábito."
-                : $"Hoje: {current.Description}. Sem tempo? O mínimo já vale: {current.MinimumDescription}.";
+            var body = (current, en) switch
+            {
+                (null, true) => "Time for your habit.",
+                (null, false) => "Hora do seu hábito.",
+                (_, true) => $"Today: {current.Description}. No time? The minimum still counts: {current.MinimumDescription}.",
+                _ => $"Hoje: {current.Description}. Sem tempo? O mínimo já vale: {current.MinimumDescription}.",
+            };
             await notifier.SendToAllAsync(new PushMessage(title, body, "/", $"habit-{habit.Id}"), ct);
             sent++;
         }
         return sent;
     }
 
-    private async Task<int> SendWeeklyReviewReminderAsync(DateOnly today, TimeOnly now, CancellationToken ct)
+    private async Task<int> SendWeeklyReviewReminderAsync(DateOnly today, TimeOnly now, bool en, CancellationToken ct)
     {
         var settings = await db.Settings.AsNoTracking().FirstOrDefaultAsync(ct);
         if (settings is not { WeeklyReviewReminderEnabled: true }) return 0;
@@ -121,8 +126,10 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
         if (await db.WeeklyReviews.AnyAsync(r => r.WeekStart == weekStart, ct)) return 0;
         if (!await TryClaimAsync($"weekly-review:{weekStart:yyyy-MM-dd}", ct)) return 0;
 
-        await notifier.SendToAllAsync(new PushMessage("Revisão da semana",
-            $"Como foi a semana? Três perguntas rápidas e +{XpRules.WeeklyReview} XP.", "/review", "weekly-review"), ct);
+        await notifier.SendToAllAsync(en
+            ? new PushMessage("Weekly review", $"How was your week? Three quick questions and +{XpRules.WeeklyReview} XP.", "/review", "weekly-review")
+            : new PushMessage("Revisão da semana",
+                $"Como foi a semana? Três perguntas rápidas e +{XpRules.WeeklyReview} XP.", "/review", "weekly-review"), ct);
         return 1;
     }
 

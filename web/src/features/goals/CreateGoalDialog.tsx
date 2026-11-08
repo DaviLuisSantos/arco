@@ -1,5 +1,6 @@
 import { Plus, X } from 'lucide-react'
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { goalsApi } from '../../api/endpoints'
 import type { Cycle, GoalInput, GoalType } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -17,9 +18,10 @@ interface CreateGoalDialogProps {
 }
 
 export function CreateGoalDialog({ cycle, open, onClose }: CreateGoalDialogProps) {
+  const { t } = useTranslation(['goals', 'common'])
   const formId = useId()
   const create = useAppMutation((input: GoalInput) => goalsApi.create(input), {
-    successMessage: 'Objetivo criado.',
+    successMessage: t('create.success'),
     onSuccess: onClose,
   })
 
@@ -27,14 +29,14 @@ export function CreateGoalDialog({ cycle, open, onClose }: CreateGoalDialogProps
     <Dialog
       open={open}
       onClose={onClose}
-      title="Novo objetivo"
+      title={t('create.title')}
       footer={
         <>
           <Button variant="secondary" block onClick={onClose}>
-            Cancelar
+            {t('common:cancel')}
           </Button>
           <Button type="submit" form={formId} block loading={create.isPending}>
-            Criar objetivo
+            {t('create.submit')}
           </Button>
         </>
       }
@@ -47,6 +49,7 @@ export function CreateGoalDialog({ cycle, open, onClose }: CreateGoalDialogProps
 type Errors = Partial<Record<'title' | 'start' | 'target' | 'deadline' | 'milestones', string>>
 
 function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; onSubmit: (input: GoalInput) => void }) {
+  const { t } = useTranslation('goals')
   const [type, setType] = useState<GoalType>('Numeric')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -79,16 +82,16 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
     // marco digitado e não adicionado também conta
     const allMilestones = draft.trim() ? [...milestones, draft.trim()] : milestones
     const next: Errors = {}
-    if (!title.trim()) next.title = 'Dê um título ao objetivo.'
-    if (!isDateOnly(deadline)) next.deadline = 'Escolha um prazo.'
+    if (!title.trim()) next.title = t('create.titleRequired')
+    if (!isDateOnly(deadline)) next.deadline = t('create.deadlineRequired')
     if (type === 'Numeric') {
-      if (start === null) next.start = 'Informe o valor inicial.'
-      if (target === null) next.target = 'Informe a meta.'
-      else if (start !== null && start === target) next.target = 'A meta precisa ser diferente do valor inicial.'
+      if (start === null) next.start = t('create.startRequired')
+      if (target === null) next.target = t('create.targetRequired')
+      else if (start !== null && start === target) next.target = t('create.targetDiffers')
     } else if (allMilestones.length === 0) {
-      next.milestones = 'Adicione ao menos um marco.'
+      next.milestones = t('create.milestoneRequired')
     } else if (allMilestones.length > 20) {
-      next.milestones = 'Use no máximo 20 marcos.'
+      next.milestones = t('create.milestoneMax')
     }
     setErrors(next)
     if (Object.keys(next).length > 0) return
@@ -108,23 +111,23 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
   return (
     <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <Segmented
-        label="Tipo de objetivo"
+        label={t('create.type')}
         value={type}
         onChange={setType}
         options={[
-          { value: 'Numeric', label: 'Numérico' },
-          { value: 'Milestones', label: 'Marcos' },
+          { value: 'Numeric', label: t('type.Numeric') },
+          { value: 'Milestones', label: t('type.Milestones') },
         ]}
       />
       <Input
-        label="Título"
+        label={t('create.titleLabel')}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder={type === 'Numeric' ? 'Correr 10 km' : 'Lançar o site'}
+        placeholder={type === 'Numeric' ? t('create.titlePlaceholderNumeric') : t('create.titlePlaceholderMilestones')}
         error={errors.title}
       />
       <Textarea
-        label="Descrição (opcional)"
+        label={t('create.description')}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
@@ -133,9 +136,9 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
 
       {type === 'Numeric' ? (
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Unidade" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="km" />
+          <Input label={t('create.unit')} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('create.unitPlaceholder')} />
           <Input
-            label="Inicial"
+            label={t('create.initial')}
             inputMode="decimal"
             value={startValue}
             onChange={(e) => setStartValue(e.target.value)}
@@ -143,7 +146,7 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
             error={errors.start}
           />
           <Input
-            label="Meta"
+            label={t('create.target')}
             inputMode="decimal"
             value={targetValue}
             onChange={(e) => setTargetValue(e.target.value)}
@@ -153,7 +156,7 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Marcos</span>
+          <span className="text-sm font-medium">{t('create.milestones')}</span>
           {milestones.length > 0 && (
             <ol className="flex flex-col gap-1.5">
               {milestones.map((m, i) => (
@@ -164,7 +167,7 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
                     type="button"
                     onClick={() => setMilestones((list) => list.filter((_, j) => j !== i))}
                     className="rounded-lg p-1.5 text-muted hover:text-danger"
-                    aria-label={`Remover marco ${m}`}
+                    aria-label={t('create.removeMilestone', { name: m })}
                   >
                     <X className="size-4" />
                   </button>
@@ -175,14 +178,14 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
           <div className="flex gap-2">
             <div className="flex-1">
               <Input
-                aria-label="Novo marco"
+                aria-label={t('create.newMilestone')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleDraftKey}
-                placeholder="Próximo marco"
+                placeholder={t('create.nextMilestone')}
               />
             </div>
-            <Button variant="secondary" onClick={addMilestone} aria-label="Adicionar marco" disabled={milestones.length >= 20}>
+            <Button variant="secondary" onClick={addMilestone} aria-label={t('create.addMilestone')} disabled={milestones.length >= 20}>
               <Plus className="size-4" />
             </Button>
           </div>
@@ -191,12 +194,12 @@ function GoalForm({ formId, cycle, onSubmit }: { formId: string; cycle: Cycle; o
       )}
 
       <Input
-        label="Prazo"
+        label={t('create.deadline')}
         type="date"
         value={deadline}
         min={cycle.startDate}
         onChange={(e) => setDeadline(e.target.value)}
-        hint="Padrão: fim do ciclo."
+        hint={t('create.deadlineHint')}
         error={errors.deadline}
       />
     </form>

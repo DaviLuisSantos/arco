@@ -35,6 +35,8 @@ jobs:
 
       - name: Web — install, lint, build
         working-directory: web
+        env:
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
         run: |
           npm ci
           npm run lint
@@ -59,8 +61,44 @@ jobs:
           path: publish
           retention-days: 7
 
-  deploy:
+  e2e:
     needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Web — install e Chromium
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # A API sobe publicada em Release, com banco temporário (web/e2e/api-server.mjs).
+      - name: E2E (Playwright)
+        working-directory: web
+        run: npm run e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results
+          retention-days: 7
+
+  deploy:
+    needs: [build, e2e]
     # Pulado até as variáveis do Azure serem configuradas (docs/DEPLOY.md).
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
     runs-on: ubuntu-latest

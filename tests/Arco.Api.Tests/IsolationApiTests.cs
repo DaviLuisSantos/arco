@@ -4,6 +4,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Arco.Api.Infrastructure.Push;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -222,11 +224,20 @@ public sealed class IsolationApiTests : IDisposable
         Assert.DoesNotContain("push.example.com", await (await a.GetAsync("/api/backup")).Content.ReadAsStringAsync());
     }
 
+    /// <summary>MCP is a Pro feature: promotes every user created so far.</summary>
+    private async Task MakeEveryoneProAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<Arco.Api.Infrastructure.AppDbContext>().Users
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.Plan, Arco.Api.Domain.UserPlan.Pro));
+    }
+
     [Fact]
     public async Task Mcp_tools_only_see_the_data_of_the_key_owner()
     {
         var (_, x) = await CreateUserAAsync();
         var b = await _factory.LoggedInClientAsync();
+        await MakeEveryoneProAsync();
         await b.PostAsJsonAsync("/api/habits", HabitBody("Correr"));
         var keyB = (string)(await (await b.PostAsJsonAsync("/api/api-keys", new { name = "MCP do B" })).JsonAsync())["key"]!;
 

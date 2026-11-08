@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Arco</title>
+  <meta name="description" content="How Arco collects, uses and protects your data.">
+  <link rel="canonical" href="https://arco.daviluis.dev/landing/en/privacy/">
+  <link rel="alternate" hreflang="pt-BR" href="https://arco.daviluis.dev/landing/privacidade/">
+  <link rel="alternate" hreflang="en" href="https://arco.daviluis.dev/landing/en/privacy/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg: #fafaf7; --fg: #14181f; --muted: #5b6573; --line: #e5e5df; --accent: #4f46e5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b0f14; --fg: #eef1f5; --muted: #98a2b3; --line: #1f2733; --accent: #818cf8; }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--fg); font: 16px/1.7 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 20px 64px; }
+    a { color: var(--accent); }
+    .back { display: inline-block; margin-bottom: 28px; text-decoration: none; color: var(--muted); font-size: .94rem; }
+    h1 { font-size: 2rem; letter-spacing: -.02em; line-height: 1.2; }
+    .updated { color: var(--muted); font-size: .9rem; margin: 6px 0 32px; }
+    h2 { font-size: 1.15rem; margin: 32px 0 8px; }
+    p, li { color: var(--fg); }
+    ul { padding-left: 1.2em; margin: 8px 0; }
+    li { margin: 4px 0; }
+    footer { border-top: 1px solid var(--line); margin-top: 48px; padding-top: 20px; color: var(--muted); font-size: .88rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/">← Back to Arco</a> <a class="back" style="float:right" href="/landing/privacidade/" hreflang="pt-BR" lang="pt-BR">Português</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: November 8, 2026</p>
+
+    <p>Arco is a habit app built on cycles. This page explains what data it stores, why, and what you can do with it.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Account:</strong> email, display name and password (stored only as a BCrypt hash, never in plain text).</li>
+      <li><strong>Google sign-in:</strong> if you use it, we receive from Google only your email, name and an account identifier. We do not access contacts, files or any other data from your Google account.</li>
+      <li><strong>Your records in the app:</strong> habits, levels, check-ins, cycles, goals, focus sessions, reviews and XP.</li>
+      <li><strong>Notifications:</strong> if you enable reminders, your browser's push subscription address.</li>
+      <li><strong>Technical:</strong> a session cookie (needed to keep you signed in) and server access logs, used for security and to fix errors.</li>
+    </ul>
+
+    <h2>How we use it</h2>
+    <ul>
+      <li>To make the app work: show your data, calculate progress and send the reminders you enabled.</li>
+      <li>To send account emails: email confirmation and password recovery. We do not send advertising.</li>
+    </ul>
+    <p>We do not sell, rent or share your data for advertising. There are no third-party trackers or ads.</p>
+
+    <h2>Who processes the data</h2>
+    <ul>
+      <li><strong>Microsoft Azure:</strong> hosting of the app and database.</li>
+      <li><strong>Resend:</strong> delivery of account emails.</li>
+      <li><strong>Google:</strong> only if you choose to sign in with Google.</li>
+      <li><strong>Browser push service</strong> (Google, Apple or Mozilla): delivery of notifications, when enabled.</li>
+    </ul>
+
+    <h2>Your data is yours alone</h2>
+    <p>Each account is isolated: no other user sees your records. At any time, in the app's Profile, you can:</p>
+    <ul>
+      <li><strong>Export</strong> all your data as JSON;</li>
+      <li><strong>Delete your account</strong>, which permanently erases the account and all records tied to it.</li>
+    </ul>
+    <p>Demo accounts and their data are automatically deleted 24 hours after creation. Server backups are kept for up to 14 days and then discarded.</p>
+
+    <h2>Security</h2>
+    <p>Access is over HTTPS only; passwords and API keys are stored as hashes; the session cookie is HttpOnly and Secure.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the date at the top will be updated.</p>
+
+    <footer>© Arco · <a href="/">arco.daviluis.dev</a></footer>
+  </main>
+</body>
+</html>

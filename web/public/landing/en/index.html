@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script>document.documentElement.classList.add("js")</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arco — habits with progression</title>
+  <meta name="description" content="Arco is a habit app built on 6-week cycles: daily check-ins, levels, goals and XP. Every day feeds something bigger.">
+  <meta name="theme-color" content="#0b0f14">
+  <link rel="canonical" href="https://arco.daviluis.dev/landing/en/">
+  <link rel="alternate" hreflang="pt-BR" href="https://arco.daviluis.dev/">
+  <link rel="alternate" hreflang="en" href="https://arco.daviluis.dev/landing/en/">
+  <link rel="alternate" hreflang="x-default" href="https://arco.daviluis.dev/">
+  <meta property="og:site_name" content="Arco">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://arco.daviluis.dev/landing/en/">
+  <meta property="og:title" content="Arco — habits with progression">
+  <meta property="og:description" content="6-week cycles, one-tap check-ins, levels and goals with deadlines.">
+  <meta property="og:image" content="https://arco.daviluis.dev/landing/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Arco: every day feeds something bigger">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Arco — habits with progression">
+  <meta name="twitter:description" content="6-week cycles, one-tap check-ins, levels and goals with deadlines.">
+  <meta name="twitter:image" content="https://arco.daviluis.dev/landing/og.png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #fafaf7; --fg: #14181f; --muted: #5b6573; --card: #ffffff;
+      --line: #e5e5df; --accent: #4f46e5; --accent-2: #0d9488; --accent-fg: #fff;
+      --ok: #16a34a; --warn: #d97706; --nav: rgba(250,250,247,.8);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f14; --fg: #eef1f5; --muted: #98a2b3; --card: #121821;
+        --line: #1f2733; --accent: #818cf8; --accent-2: #2dd4bf; --accent-fg: #0b0f14;
+        --ok: #4ade80; --warn: #fbbf24; --nav: rgba(11,15,20,.8);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg); color: var(--fg);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    a { color: inherit; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+    /* nav */
+    .top { position: sticky; top: 0; z-index: 10; background: var(--nav); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .top.scrolled { border-color: var(--line); }
+    .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; text-decoration: none; letter-spacing: -.02em; }
+    .logo svg { width: 28px; height: 28px; }
+    nav { display: flex; align-items: center; gap: 22px; }
+    nav a:not(.btn) { text-decoration: none; color: var(--muted); font-size: .94rem; }
+    nav a:not(.btn):hover { color: var(--fg); }
+    @media (max-width: 640px) { nav a:not(.btn):not(.lang) { display: none; } }
+
+    .btn {
+      display: inline-block; padding: 13px 24px; border-radius: 999px; font-weight: 600;
+      text-decoration: none; background: var(--accent); color: var(--accent-fg);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px -10px var(--accent); }
+    .btn.sm { padding: 8px 18px; font-size: .9rem; }
+    .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+    .btn.ghost:hover { box-shadow: none; border-color: var(--muted); }
+
+    /* hero */
+    .hero { display: grid; gap: 48px; align-items: center; padding: 72px 0 56px; position: relative; grid-template-columns: 1.1fr .9fr; }
+    .hero::before {
+      content: ""; position: absolute; inset: -80px -20px auto; height: 480px; z-index: -1;
+      background:
+        radial-gradient(50% 60% at 20% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+        radial-gradient(40% 50% at 85% 20%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 70%);
+    }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 48px; } .hero .cta { justify-content: center; } .hero .lead { margin-inline: auto; } }
+    .pill { display: inline-block; font-size: .8rem; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--card); margin-bottom: 22px; }
+    h1 { font-size: clamp(2.3rem, 5.5vw, 3.8rem); line-height: 1.07; letter-spacing: -.035em; margin-bottom: 20px; }
+    h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { color: var(--muted); font-size: 1.15rem; max-width: 500px; margin-bottom: 30px; }
+    .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .note { margin-top: 18px; font-size: .85rem; color: var(--muted); }
+
+    /* app mockup */
+    .phone { background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 22px; max-width: 360px; margin-inline: auto; box-shadow: 0 30px 60px -30px rgba(79,70,229,.35); width: 100%; }
+    .phone .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: .85rem; color: var(--muted); }
+    .phone .xp { font-weight: 600; color: var(--accent); }
+    .arc { width: 150px; display: block; margin: 0 auto 6px; }
+    .arc .track { stroke: var(--line); }
+    .arc .fill { stroke: url(#g); stroke-dasharray: 330; stroke-dashoffset: 330; animation: draw 2.2s .3s ease-out forwards; }
+    @keyframes draw { to { stroke-dashoffset: 105; } }
+    .arc text { fill: var(--fg); font-family: inherit; }
+    .habit { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .habit .t { flex: 1; font-size: .93rem; line-height: 1.3; }
+    .habit .t small { display: block; color: var(--muted); font-size: .78rem; }
+    .chk { display: flex; gap: 6px; }
+    .chk button { font: inherit; font-size: .72rem; font-weight: 600; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .chk button:hover { border-color: var(--muted); }
+    .chk button.on-ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .chk button.on-min { background: var(--warn); border-color: var(--warn); color: #fff; }
+    .hint { text-align: center; font-size: .75rem; color: var(--muted); margin-top: 8px; }
+
+    /* sections */
+    section { padding: 72px 0; }
+    h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); letter-spacing: -.025em; text-align: center; margin-bottom: 10px; }
+    .sub { text-align: center; color: var(--muted); max-width: 520px; margin: 0 auto 44px; }
+
+    .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; padding: 28px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); text-align: center; }
+    .strip b { display: block; font-size: 1.9rem; letter-spacing: -.03em; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .strip span { color: var(--muted); font-size: .88rem; }
+
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px; transition: transform .2s, border-color .2s; }
+    .card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+    .card .ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; font-size: 1.3rem; margin-bottom: 14px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .card h3 { font-size: 1.08rem; margin-bottom: 6px; letter-spacing: -.01em; }
+    .card p { color: var(--muted); font-size: .94rem; }
+
+    /* steps + ladder */
+    .steps { list-style: none; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); counter-reset: s; }
+    .steps li { counter-increment: s; padding: 22px; border-left: 2px solid var(--accent); background: var(--card); border-radius: 0 14px 14px 0; }
+    .steps li::before { content: "0" counter(s); display: block; font-weight: 700; color: var(--accent); font-size: .85rem; margin-bottom: 6px; }
+    .steps b { display: block; margin-bottom: 4px; }
+    .steps span { color: var(--muted); font-size: .92rem; }
+
+    .ladder { margin-top: 40px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+    .step { padding: 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); }
+    .step.cur { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+    .step small { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; }
+    .step b { display: block; font-size: 1.1rem; margin: 4px 0 2px; }
+    .step span { color: var(--muted); font-size: .85rem; }
+    .step.next { opacity: .6; border-style: dashed; }
+
+    /* faq */
+    .faq { max-width: 720px; margin: 0 auto; }
+    details { border-bottom: 1px solid var(--line); padding: 18px 4px; }
+    summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--accent); font-size: 1.3rem; line-height: 1; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { color: var(--muted); margin-top: 10px; font-size: .95rem; }
+
+    .final { text-align: center; padding: 60px 24px; border-radius: 28px; margin: 24px 0 64px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--card)), color-mix(in srgb, var(--accent-2) 14%, var(--card))); border: 1px solid var(--line); }
+    .final h2 { margin-bottom: 14px; }
+    .final p { color: var(--muted); margin-bottom: 26px; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0; color: var(--muted); font-size: .88rem; }
+    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { text-decoration: none; margin-left: 18px; }
+    footer a:hover { color: var(--fg); }
+
+    /* reveal */
+    .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s, transform .6s; }
+    .js .rv.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .arc .fill { animation: none; stroke-dashoffset: 105; }
+      html { scroll-behavior: auto; } .js .rv { opacity: 1; transform: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top" id="top">
+    <div class="wrap">
+      <a class="logo" href="#">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+          <path d="M4 26a12 12 0 0 1 24 0" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        Arco
+      </a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="/landing/" hreflang="pt-BR" lang="pt-BR" class="lang" aria-label="Português">PT</a>
+        <a class="btn sm" href="/login?lang=en">Sign in</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <main>
+      <div class="hero">
+        <div>
+          <span class="pill">Habits in 6-week cycles</span>
+          <h1>Every day feeds <em>something bigger</em></h1>
+          <p class="lead">One-tap check-ins, levels that grow with you and goals with deadlines. Less to-do list, more real progress.</p>
+          <div class="cta">
+            <a class="btn" href="/login?mode=register&amp;lang=en">Create free account</a>
+            <a class="btn ghost" href="/login?demo=1&amp;lang=en">Try the demo</a>
+            <a class="btn ghost" href="#how-it-works">See how it works</a>
+          </div>
+          <p class="note">Installs as a phone app · works offline</p>
+        </div>
+
+        <div class="phone" aria-label="Example of the Arco Today screen">
+          <div class="head"><span>Today · week 4 of 6</span><span class="xp" id="xp">+0 XP</span></div>
+          <svg class="arc" viewBox="0 0 240 140" fill="none" role="img" aria-label="Cycle progress arc at 68%">
+            <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+            <path class="track" d="M20 120a100 100 0 0 1 200 0" stroke-width="16" stroke-linecap="round"/>
+            <path class="fill" pathLength="330" d="M20 120a100 100 0 0 1 200 0" stroke-width="16" stroke-linecap="round"/>
+            <text x="120" y="104" text-anchor="middle" font-size="38" font-weight="700">68%</text>
+          </svg>
+          <div class="habit" data-xp="10,4">
+            <div class="t">Running<small>Level 2 · 20 min (minimum: 5 min)</small></div>
+            <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
+          </div>
+          <div class="habit" data-xp="8,3">
+            <div class="t">English<small>Level 1 · 15 min (minimum: 5 min)</small></div>
+            <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
+          </div>
+          <div class="habit" data-xp="6,2">
+            <div class="t">Reading<small>Level 3 · 20 pages (minimum: 2)</small></div>
+            <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
+          </div>
+          <p class="hint">Try it: tap Done or Minimum</p>
+        </div>
+      </div>
+
+      <div class="strip rv">
+        <div><b>6 weeks</b><span>per cycle, with a start, middle and end</span></div>
+        <div><b>1 tap</b><span>to log your day</span></div>
+        <div><b>3 states</b><span>Done, Minimum or Missed</span></div>
+        <div><b>100%</b><span>usable through the API</span></div>
+      </div>
+
+      <section id="features">
+        <h2 class="rv">Built for consistency</h2>
+        <p class="sub rv">Everything you need to keep your rhythm, without the noise.</p>
+        <div class="grid">
+          <div class="card rv"><div class="ic">✅</div><h3>Done, Minimum or Missed</h3><p>A bad day does not reset the game: the minimum version keeps the habit alive.</p></div>
+          <div class="card rv"><div class="ic">🪜</div><h3>Habits with levels</h3><p>Level up when the dose gets easy. The app suggests, you decide.</p></div>
+          <div class="card rv"><div class="ic">🎯</div><h3>Goals with deadlines</h3><p>“Run 10 km by Nov 30”, with a progress bar toward the target.</p></div>
+          <div class="card rv"><div class="ic">⚡</div><h3>XP and achievements</h3><p>Every action earns XP in a transparent ledger, and badges unlock on their own.</p></div>
+          <div class="card rv"><div class="ic">⏱️</div><h3>Focus sessions</h3><p>Built-in timer and a weekly target of minutes for each habit.</p></div>
+          <div class="card rv"><div class="ic">📴</div><h3>Works offline</h3><p>Install it as an app (PWA) and log check-ins even without a connection.</p></div>
+          <div class="card rv"><div class="ic">📝</div><h3>Weekly reviews</h3><p>Three short questions each week and a guided review at the end of the cycle.</p></div>
+          <div class="card rv"><div class="ic">🔔</div><h3>Reminders</h3><p>Push notifications on your phone so you never forget the day's check-in.</p></div>
+          <div class="card rv"><div class="ic">🔌</div><h3>API and MCP</h3><p>Everything works through the API with your own key, including from inside AI assistants.</p></div>
+        </div>
+      </section>
+
+      <section id="how-it-works">
+        <h2 class="rv">How it works</h2>
+        <p class="sub rv">From intention to result, in four layers.</p>
+        <ol class="steps">
+          <li class="rv"><b>Cycle</b><span>6 weeks with a start, middle and end.</span></li>
+          <li class="rv"><b>Goal</b><span>A target with a deadline for the cycle.</span></li>
+          <li class="rv"><b>Habit</b><span>Clear doses, with levels and a minimum version.</span></li>
+          <li class="rv"><b>Check-in</b><span>One tap a day, and the XP happens.</span></li>
+        </ol>
+
+        <div class="ladder">
+          <div class="step rv"><small>Level 1</small><b>10 min</b><span>minimum: 2 min</span></div>
+          <div class="step cur rv"><small>Level 2 · current</small><b>20 min</b><span>minimum: 5 min</span></div>
+          <div class="step next rv"><small>Level 3 · planned</small><b>30 min</b><span>minimum: 10 min</span></div>
+        </div>
+        <p class="sub rv" style="margin:20px auto 0">Example of a habit ladder: with 80% consistency over 14 days, Arco suggests leveling up.</p>
+      </section>
+
+      <section id="faq">
+        <h2 class="rv">FAQ</h2>
+        <p class="sub rv">The essentials, straight to the point.</p>
+        <div class="faq rv">
+          <details><summary>What happens if I miss a day?</summary><p>Mark “Minimum” to keep the habit alive or “Missed” without guilt. Arco shows your consistency over the period and does not punish a single day.</p></details>
+          <details><summary>Who decides when to level up?</summary><p>You do. The app suggests it when the habit's rule is met (for example, 80% over 14 days), but the decision is always manual.</p></details>
+          <details><summary>Do I need to be online?</summary><p>Not for check-ins. They are stored and sent when the connection returns. Other actions need a network.</p></details>
+          <details><summary>Can I use it outside the app?</summary><p>Yes. Every feature is available through the API with your own key, and there is an MCP server for use with AI assistants.</p></details>
+        </div>
+      </section>
+
+      <div class="final rv">
+        <h2>Start your first cycle</h2>
+        <p>Six weeks are enough to feel the difference.</p>
+        <a class="btn" href="/login?mode=register&amp;lang=en">Create free account</a>
+        <a class="btn ghost" href="/login?demo=1&amp;lang=en">Try the demo</a>
+      </div>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <span>© <span id="y"></span> Arco · built with consistency</span>
+      <span><a href="#features">Features</a><a href="#faq">FAQ</a><a href="/landing/en/privacy/">Privacy</a><a href="/login?lang=en">Sign in</a></span>
+    </div>
+  </footer>
+
+  <script>
+  (() => {
+    document.getElementById("y").textContent = new Date().getFullYear();
+
+    // nav com borda ao rolar
+    const topBar = document.getElementById("top");
+    const onScroll = () => topBar.classList.toggle("scrolled", scrollY > 8);
+    addEventListener("scroll", onScroll, { passive: true }); onScroll();
+
+    // revelar ao rolar
+    const els = document.querySelectorAll(".rv");
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((es) => es.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      }), { threshold: .12 });
+      els.forEach((el) => io.observe(el));
+    } else els.forEach((el) => el.classList.add("in"));
+
+    // demo interativa do check-in
+    const xpEl = document.getElementById("xp");
+    const refresh = () => {
+      let t = 0;
+      document.querySelectorAll(".habit").forEach((h) => {
+        const [full, min] = h.dataset.xp.split(",").map(Number);
+        const on = h.querySelector(".on-ok") ? full : h.querySelector(".on-min") ? min : 0;
+        t += on;
+      });
+      xpEl.textContent = "+" + t + " XP";
+    };
+    document.querySelectorAll(".chk button").forEach((b) => b.addEventListener("click", () => {
+      const cls = "on-" + b.dataset.s;
+      const was = b.classList.contains(cls);
+      b.parentElement.querySelectorAll("button").forEach((x) => x.classList.remove("on-ok", "on-min"));
+      if (!was) b.classList.add(cls);
+      refresh();
+    }));
+  })();
+  </script>
+</body>
+</html>

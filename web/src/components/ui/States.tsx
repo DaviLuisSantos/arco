@@ -1,17 +1,19 @@
 import { CircleAlert, CloudOff, LoaderCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { errorMessage } from '../../lib/errors'
 import { useOnline } from '../../lib/useOnline'
 import { Button } from './Button'
 
-export function Spinner({ label = 'Carregando…' }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  const { t } = useTranslation('layout')
   // Offline, uma tela sem dados salvos no aparelho fica esperando a conexão.
   if (!useOnline()) {
     return (
       <div role="status" className="flex flex-col items-center gap-3 py-16 text-center">
         <CloudOff className="size-8 text-muted" aria-hidden />
         <p className="max-w-xs text-sm text-muted">
-          Sem internet, e esta tela ainda não tem dados salvos neste aparelho. Ela carrega quando a conexão voltar.
+          {t('offlineNoData')}
         </p>
       </div>
     )
@@ -19,19 +21,20 @@ export function Spinner({ label = 'Carregando…' }: { label?: string }) {
   return (
     <div role="status" className="flex items-center justify-center gap-2 py-16 text-muted">
       <LoaderCircle className="size-5 animate-spin" aria-hidden />
-      <span className="text-sm">{label}</span>
+      <span className="text-sm">{label ?? t('loading')}</span>
     </div>
   )
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const { t } = useTranslation('layout')
   return (
     <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
       <CircleAlert className="size-8 text-danger" aria-hidden />
       <p className="max-w-xs text-sm text-muted">{errorMessage(error)}</p>
       {onRetry && (
         <Button variant="secondary" size="sm" onClick={onRetry}>
-          Tentar de novo
+          {t('retry')}
         </Button>
       )}
     </div>

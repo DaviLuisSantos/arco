@@ -449,6 +449,44 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.ToTable("Milestones");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.Partnership", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PartnerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("PartnerUserId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("Partnerships");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.PushDispatch", b =>
                 {
                     b.Property<int>("Id")
@@ -552,6 +590,44 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.ToTable("Settings");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.StripeEvent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StripeEvents");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.TotpRecoveryCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TotpRecoveryCodes");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.UnlockedAchievement", b =>
                 {
                     b.Property<int>("Id")
@@ -606,11 +682,72 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<bool>("IsDemo")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("pt-BR");
+
+                    b.Property<DateTime?>("OnboardedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Free");
+
+                    b.Property<bool>("PlanCancelAtPeriodEnd")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PlanRenewsAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PublicProfileEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("PublicShowHabits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("PublicSlug")
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublicTheme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("indigo");
+
                     b.Property<Guid>("SecurityStamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("TotpEnabledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TotpPendingSecretProtected")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TotpSecretProtected")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -621,7 +758,45 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasIndex("GoogleSubject")
                         .IsUnique();
 
+                    b.HasIndex("PublicSlug")
+                        .IsUnique();
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ip")
+                        .IsRequired()
+                        .HasMaxLength(45)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSessions");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.UserToken", b =>
@@ -908,6 +1083,20 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Navigation("Goal");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.Partnership", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("PartnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.PushDispatch", b =>
                 {
                     b.HasOne("Arco.Api.Domain.User", null)
@@ -935,7 +1124,25 @@ namespace Arco.Api.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.TotpRecoveryCode", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.UnlockedAchievement", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.UserSession", b =>
                 {
                     b.HasOne("Arco.Api.Domain.User", null)
                         .WithMany()

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { authApi } from '../api/endpoints'
 import { ArcoLogo } from '../components/layout/ArcoLogo'
@@ -7,6 +8,7 @@ import { Input } from '../components/ui/Input'
 import { errorMessage } from '../lib/errors'
 
 export function ForgotPasswordPage() {
+  const { t } = useTranslation('auth')
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
@@ -15,7 +17,7 @@ export function ForgotPasswordPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!email.trim()) {
-      setError('Digite o e-mail.')
+      setError(t('forgot.typeEmail'))
       return
     }
     setSubmitting(true)
@@ -35,16 +37,16 @@ export function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <ArcoLogo className="size-16" />
-          <h1 className="text-3xl font-extrabold tracking-tight">Esqueci a senha</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">{t('forgot.title')}</h1>
         </div>
         {sent ? (
           <p className="text-center text-sm text-muted">
-            Se o e-mail estiver cadastrado e verificado, enviamos um link para redefinir a senha. Ele vale por 1 hora.
+            {t('forgot.sent')}
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             <Input
-              label="E-mail"
+              label={t('email')}
               type="email"
               autoComplete="email"
               autoFocus
@@ -53,13 +55,13 @@ export function ForgotPasswordPage() {
               error={error}
             />
             <Button type="submit" size="lg" block loading={submitting}>
-              Enviar link
+              {t('forgot.submit')}
             </Button>
           </form>
         )}
         <p className="mt-6 text-center text-sm text-muted">
           <Link to="/login" className="hover:text-text">
-            Voltar para o login
+            {t('forgot.back')}
           </Link>
         </p>
       </div>

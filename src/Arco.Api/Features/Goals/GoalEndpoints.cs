@@ -27,14 +27,14 @@ public static class GoalEndpoints
 
     public static IEndpointRouteBuilder MapGoals(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/goals");
-        group.MapGet("", List);
-        group.MapPost("", Create);
-        group.MapPut("/{id:int}", Update);
-        group.MapDelete("/{id:int}", Delete);
-        group.MapPost("/{id:int}/progress", Progress);
-        group.MapPost("/{id:int}/milestones/{milestoneId:int}/toggle", ToggleMilestone);
-        group.MapPost("/{id:int}/complete", Complete);
+        var group = api.MapGroup("/goals").WithTags("Objetivos");
+        group.MapGet("", List).WithSummary("Lista objetivos");
+        group.MapPost("", Create).WithSummary("Cria um objetivo");
+        group.MapPut("/{id:int}", Update).WithSummary("Atualiza um objetivo");
+        group.MapDelete("/{id:int}", Delete).WithSummary("Exclui um objetivo");
+        group.MapPost("/{id:int}/progress", Progress).WithSummary("Registra progresso do objetivo");
+        group.MapPost("/{id:int}/milestones/{milestoneId:int}/toggle", ToggleMilestone).WithSummary("Alterna um marco do objetivo");
+        group.MapPost("/{id:int}/complete", Complete).WithSummary("Conclui o objetivo");
         return api;
     }
 

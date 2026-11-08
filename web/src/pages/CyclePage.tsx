@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Flag, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cyclesApi, goalsApi, todayApi } from '../api/endpoints'
 import type { Cycle } from '../api/types'
 import { Button } from '../components/ui/Button'
@@ -22,6 +23,7 @@ import { queryKeys } from '../lib/queryKeys'
 const RECOMMENDED_MAX_GOALS = 3
 
 export function CyclePage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'cycle' })
   const current = useQuery({ queryKey: queryKeys.currentCycle, queryFn: cyclesApi.current })
   const cycles = useQuery({ queryKey: queryKeys.cycles, queryFn: cyclesApi.list })
   const today = useQuery({ queryKey: queryKeys.today, queryFn: todayApi.get, select: (t) => t.date })
@@ -36,7 +38,7 @@ export function CyclePage() {
         <ActiveCycle cycle={current.data} today={todayDate} />
       ) : (
         <>
-          <PageHeader title="Ciclo" subtitle="Nenhum ciclo ativo" />
+          <PageHeader title={t('title')} subtitle={t('none')} />
           {today.isPending ? <Spinner /> : <CreateCycleForm today={todayDate} />}
         </>
       )}
@@ -46,6 +48,7 @@ export function CyclePage() {
 }
 
 function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'cycle' })
   const goals = useQuery({ queryKey: queryKeys.goals(cycle.id), queryFn: () => goalsApi.list(cycle.id) })
   const [modal, setModal] = useState<'goal' | 'complete' | null>(null)
   const close = () => setModal(null)
@@ -62,16 +65,16 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
       <Card>
         <div className="mb-2 flex items-baseline justify-between text-sm">
           <span className="font-semibold">
-            Dia {cycle.dayNumber} de {cycle.totalDays}
+            {t('dayOf', { day: cycle.dayNumber, total: cycle.totalDays })}
           </span>
           <span className="text-muted">{Math.round((cycle.dayNumber / Math.max(1, cycle.totalDays)) * 100)}%</span>
         </div>
-        <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label="Progresso do ciclo" />
+        <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label={t('progress')} />
       </Card>
 
       <Card aria-labelledby="cycle-arch-title">
         <h2 id="cycle-arch-title" className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          Arco do ciclo
+          {t('arch')}
         </h2>
         <ArchPanel cycleId={cycle.id} cycle={cycle} />
       </Card>
@@ -80,30 +83,30 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         <Card className="flex flex-col gap-3 border-accent/60 bg-accent/10">
           <div>
             <p className="font-semibold">
-              {diffDays(cycle.endDate, today) === 0 ? 'Último dia do ciclo' : 'O ciclo terminou'}
+              {diffDays(cycle.endDate, today) === 0 ? t('lastDay') : t('ended')}
             </p>
             <p className="mt-1 text-sm text-muted">
-              Veja os números do ciclo, responda três perguntas e encerre. <span className="font-semibold text-xp">+100 XP</span>
+              {t('endHint')} <span className="font-semibold text-xp">+100 XP</span>
             </p>
           </div>
-          <Button onClick={() => setModal('complete')}>Fazer a revisão do ciclo</Button>
+          <Button onClick={() => setModal('complete')}>{t('doReview')}</Button>
         </Card>
       )}
 
       <section aria-labelledby="cycle-goals-title" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 id="cycle-goals-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
-            Objetivos ({goalCount}/{RECOMMENDED_MAX_GOALS})
+            {t('goals', { count: goalCount, max: RECOMMENDED_MAX_GOALS })}
           </h2>
           {goalCount > 0 && (
             <Button size="sm" variant="secondary" onClick={() => setModal('goal')}>
               <Plus className="size-4" aria-hidden />
-              Objetivo
+              {t('goalBtn')}
             </Button>
           )}
         </div>
         {goalCount >= RECOMMENDED_MAX_GOALS && (
-          <p className="text-xs text-muted">Até 3 objetivos é o recomendado para manter o foco.</p>
+          <p className="text-xs text-muted">{t('goalsRecommended')}</p>
         )}
 
         {goals.isPending ? (
@@ -113,12 +116,12 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         ) : goalCount === 0 ? (
           <EmptyState
             icon={<Flag className="size-6" />}
-            title="Nenhum objetivo neste ciclo"
-            description="Defina de 1 a 3 objetivos com prazo. Seus hábitos passam a empurrar algo maior."
+            title={t('noGoalsTitle')}
+            description={t('noGoalsDescription')}
             action={
               <Button onClick={() => setModal('goal')}>
                 <Plus className="size-4" aria-hidden />
-                Criar objetivo
+                {t('createGoal')}
               </Button>
             }
           />
@@ -128,7 +131,7 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
       </section>
 
       <Button variant="secondary" size="lg" onClick={() => setModal('complete')}>
-        Encerrar ciclo
+        {t('endCycle')}
       </Button>
       <div className="flex justify-center">
         <DeleteCycleButton cycle={cycle} />

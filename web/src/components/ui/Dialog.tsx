@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
 
 interface DialogProps {
@@ -17,6 +18,7 @@ interface DialogProps {
  * O conteúdo só é montado enquanto aberto, então formulários sempre começam limpos.
  */
 export function Dialog({ open, onClose, title, description, children, footer, className }: DialogProps) {
+  const { t } = useTranslation('layout')
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const onCloseRef = useRef(onClose)
@@ -70,7 +72,7 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
               type="button"
               onClick={onClose}
               className="-mr-1 rounded-full p-2 text-muted hover:bg-surface-2 hover:text-text"
-              aria-label="Fechar"
+              aria-label={t('close')}
             >
               <X className="size-5" />
             </button>

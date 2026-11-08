@@ -14,7 +14,7 @@ public static class AchievementEndpoints
 {
     public static IEndpointRouteBuilder MapAchievements(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/achievements", List);
+        api.MapGet("/achievements", List).WithTags("Conquistas").WithSummary("Lista as conquistas");
         return api;
     }
 

@@ -1,9 +1,11 @@
 import { ChevronRight, Plus } from 'lucide-react'
 import { Link } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import type { Cycle } from '../../api/types'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 
 export function CycleStrip({ cycle }: { cycle: Cycle | null }) {
+  const { t } = useTranslation('cycle')
   if (!cycle) {
     return (
       <Link
@@ -14,8 +16,8 @@ export function CycleStrip({ cycle }: { cycle: Cycle | null }) {
           <Plus className="size-5" aria-hidden />
         </span>
         <span className="flex-1">
-          <span className="block font-semibold">Comece um ciclo de 6 semanas</span>
-          <span className="block text-sm text-muted">Defina até 3 objetivos e dê direção aos seus hábitos.</span>
+          <span className="block font-semibold">{t('strip.startTitle')}</span>
+          <span className="block text-sm text-muted">{t('strip.startHint')}</span>
         </span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
@@ -28,14 +30,14 @@ export function CycleStrip({ cycle }: { cycle: Cycle | null }) {
         <div className="min-w-0">
           <p className="truncate font-semibold">{cycle.name}</p>
           <p className="text-sm text-muted">
-            Dia {cycle.dayNumber} de {cycle.totalDays}
+            {t('strip.day', { day: cycle.dayNumber, total: cycle.totalDays })}
           </p>
         </div>
         <span className="shrink-0 text-sm text-muted">
-          {Math.max(0, cycle.totalDays - cycle.dayNumber)} dias restantes
+          {t('strip.remaining', { count: Math.max(0, cycle.totalDays - cycle.dayNumber) })}
         </span>
       </div>
-      <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} size="sm" label="Progresso do ciclo" />
+      <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} size="sm" label={t('strip.progress')} />
     </Link>
   )
 }

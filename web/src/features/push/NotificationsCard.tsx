@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, BellOff, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { pushApi, settingsApi } from '../../api/endpoints'
 import type { Settings, WeeklyReviewReminder } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -24,16 +26,19 @@ async function readDeviceState(): Promise<DeviceState> {
   return (await currentSubscription()) && Notification.permission === 'granted' ? 'on' : 'off'
 }
 
-const STATE_TEXT: Record<Exclude<DeviceState, 'loading'>, string> = {
-  on: 'Ativadas neste dispositivo.',
-  off: 'Desativadas neste dispositivo.',
-  denied: 'Bloqueadas pelo navegador. Libere as notificações do Arco nas configurações do navegador.',
-  'no-sw': 'Disponíveis só no app publicado (o modo de desenvolvimento não registra o service worker).',
-  'needs-install': 'No iPhone/iPad, instale o Arco na tela de início (Compartilhar → Adicionar à Tela de Início) e abra por lá.',
-  unsupported: 'Este navegador não suporta notificações push.',
+function stateText(t: TFunction<'push'>, state: Exclude<DeviceState, 'loading'>): string {
+  switch (state) {
+    case 'no-sw':
+      return t('state.noSw')
+    case 'needs-install':
+      return t('state.needsInstall')
+    default:
+      return t(`state.${state}`)
+  }
 }
 
 export function NotificationsCard({ settings }: { settings: Settings }) {
+  const { t } = useTranslation('push')
   const qc = useQueryClient()
   const toast = useToast()
   const [state, setState] = useState<DeviceState>('loading')
@@ -53,10 +58,10 @@ export function NotificationsCard({ settings }: { settings: Settings }) {
     try {
       if (state === 'on') {
         await disablePush()
-        toast.success('Notificações desativadas neste dispositivo.')
+        toast.success(t('disabledToast'))
       } else {
         await enablePush()
-        toast.success('Notificações ativadas.')
+        toast.success(t('enabledToast'))
       }
     } catch (e) {
       toast.error(errorMessage(e))
@@ -69,7 +74,7 @@ export function NotificationsCard({ settings }: { settings: Settings }) {
 
   const test = useAppMutation(() => pushApi.test(), {
     onSuccess: ({ sent }) =>
-      sent > 0 ? toast.success(`Teste enviado para ${sent} dispositivo${sent > 1 ? 's' : ''}.`) : toast.error('Nenhum dispositivo recebeu o teste.'),
+      sent > 0 ? toast.success(t(sent > 1 ? 'testSentMany' : 'testSent', { count: sent })) : toast.error(t('testNone')),
   })
 
   const devices = config.data?.subscriptions ?? 0
@@ -82,25 +87,25 @@ export function NotificationsCard({ settings }: { settings: Settings }) {
           <Spinner />
         ) : (
           <p className="text-sm text-muted">
-            {STATE_TEXT[state]}
-            {config.isSuccess && ` ${devices} dispositivo${devices === 1 ? '' : 's'} inscrito${devices === 1 ? '' : 's'}.`}
+            {stateText(t, state)}
+            {config.isSuccess && ` ${t(devices === 1 ? 'devices' : 'devicesMany', { count: devices })}`}
           </p>
         )}
         <div className="flex gap-2">
           {canToggle && (
             <Button variant={state === 'on' ? 'secondary' : 'primary'} block loading={busy} onClick={() => void toggle()}>
               {state === 'on' ? <BellOff className="size-4" aria-hidden /> : <Bell className="size-4" aria-hidden />}
-              {state === 'on' ? 'Desativar' : 'Ativar notificações'}
+              {state === 'on' ? t('disable') : t('enable')}
             </Button>
           )}
           {devices > 0 && (
             <Button variant="secondary" block loading={test.isPending} onClick={() => test.mutate()}>
               <Send className="size-4" aria-hidden />
-              Enviar teste
+              {t('sendTest')}
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted">O horário do lembrete de cada hábito é definido na edição do hábito.</p>
+        <p className="text-xs text-muted">{t('reminderHint')}</p>
       </div>
 
       <WeeklyReminderForm key={JSON.stringify(settings.weeklyReviewReminder)} reminder={settings.weeklyReviewReminder} />
@@ -109,9 +114,10 @@ export function NotificationsCard({ settings }: { settings: Settings }) {
 }
 
 function WeeklyReminderForm({ reminder }: { reminder: WeeklyReviewReminder }) {
+  const { t } = useTranslation('push')
   const [draft, setDraft] = useState(reminder)
   const save = useAppMutation(() => settingsApi.update({ weeklyReviewReminder: draft }), {
-    successMessage: 'Lembrete da revisão salvo.',
+    successMessage: t('reminderSaved'),
   })
   const changed = draft.enabled !== reminder.enabled || draft.day !== reminder.day || draft.time !== reminder.time
   const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time)
@@ -125,11 +131,11 @@ function WeeklyReminderForm({ reminder }: { reminder: WeeklyReviewReminder }) {
           onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
           className="size-5 accent-[var(--accent-strong)]"
         />
-        Lembrete da revisão semanal
+        {t('weeklyReminder')}
       </label>
       {draft.enabled && (
         <div className="grid grid-cols-2 gap-3">
-          <Select label="Dia" value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })}>
+          <Select label={t('day')} value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })}>
             {WEEKDAY_NAMES.map((name, day) => (
               <option key={day} value={day}>
                 {name}
@@ -137,16 +143,16 @@ function WeeklyReminderForm({ reminder }: { reminder: WeeklyReviewReminder }) {
             ))}
           </Select>
           <Input
-            label="Horário"
+            label={t('time')}
             type="time"
             value={draft.time}
             onChange={(e) => setDraft({ ...draft, time: e.target.value })}
-            error={validTime ? null : 'Use HH:mm.'}
+            error={validTime ? null : t('timeInvalid')}
           />
         </div>
       )}
       <Button variant="secondary" disabled={!changed || !validTime} loading={save.isPending} onClick={() => save.mutate()}>
-        Salvar lembrete
+        {t('saveReminder')}
       </Button>
     </div>
   )

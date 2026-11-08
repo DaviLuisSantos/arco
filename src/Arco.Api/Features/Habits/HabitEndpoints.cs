@@ -52,17 +52,17 @@ public static class HabitEndpoints
 
     public static IEndpointRouteBuilder MapHabits(this IEndpointRouteBuilder api)
     {
-        var group = api.MapGroup("/habits");
-        group.MapGet("", List);
-        group.MapGet("/{id:int}", Get);
-        group.MapPost("", Create);
-        group.MapPut("/{id:int}", Update);
-        group.MapPost("/{id:int}/level-up", LevelUp);
-        group.MapPost("/{id:int}/level-up-suggestion/dismiss", DismissSuggestion);
-        group.MapPost("/{id:int}/level-down", LevelDown);
-        group.MapPost("/{id:int}/level-down-suggestion/dismiss", DismissLevelDownSuggestion);
-        group.MapPost("/{id:int}/archive", Archive);
-        group.MapPost("/{id:int}/restore", Restore);
+        var group = api.MapGroup("/habits").WithTags("Hábitos");
+        group.MapGet("", List).WithSummary("Lista hábitos");
+        group.MapGet("/{id:int}", Get).WithSummary("Detalha um hábito");
+        group.MapPost("", Create).WithSummary("Cria um hábito");
+        group.MapPut("/{id:int}", Update).WithSummary("Atualiza um hábito");
+        group.MapPost("/{id:int}/level-up", LevelUp).WithSummary("Sobe o nível do hábito");
+        group.MapPost("/{id:int}/level-up-suggestion/dismiss", DismissSuggestion).WithSummary("Dispensa sugestão de subir nível");
+        group.MapPost("/{id:int}/level-down", LevelDown).WithSummary("Desce o nível do hábito");
+        group.MapPost("/{id:int}/level-down-suggestion/dismiss", DismissLevelDownSuggestion).WithSummary("Dispensa sugestão de descer nível");
+        group.MapPost("/{id:int}/archive", Archive).WithSummary("Arquiva um hábito");
+        group.MapPost("/{id:int}/restore", Restore).WithSummary("Restaura um hábito");
         return api;
     }
 
@@ -152,11 +152,12 @@ public static class HabitEndpoints
         return Results.Ok(new HabitDto(habit));
     }
 
-    private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
+    private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
         var error = await ValidateAsync(request, db, ct);
         if (error is not null) return ApiResults.Validation(error);
+        if (await PlanGate.CheckHabitLimitAsync(db, user, ct) is { } limit) return limit;
 
         var now = clock.UtcNow;
         var habit = new Habit { CreatedAt = now };
@@ -240,16 +241,17 @@ public static class HabitEndpoints
             await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
-    private static Task<IResult> Archive(int id, AppDbContext db, AppClock clock, CancellationToken ct) =>
-        SetArchived(id, archive: true, db, clock, ct);
+    private static Task<IResult> Archive(int id, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct) =>
+        SetArchived(id, archive: true, db, clock, user, ct);
 
-    private static Task<IResult> Restore(int id, AppDbContext db, AppClock clock, CancellationToken ct) =>
-        SetArchived(id, archive: false, db, clock, ct);
+    private static Task<IResult> Restore(int id, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct) =>
+        SetArchived(id, archive: false, db, clock, user, ct);
 
-    private static async Task<IResult> SetArchived(int id, bool archive, AppDbContext db, AppClock clock, CancellationToken ct)
+    private static async Task<IResult> SetArchived(int id, bool archive, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct)
     {
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
+        if (!archive && habit.ArchivedAt is not null && await PlanGate.CheckHabitLimitAsync(db, user, ct) is { } limit) return limit;
 
         if (archive) habit.ArchivedAt ??= clock.UtcNow;
         else habit.ArchivedAt = null;

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChartColumn, ChevronRight, Landmark, LogOut, NotebookPen, Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { authApi, playerApi, settingsApi } from '../api/endpoints'
 import type { SettingsInput, XpEvent } from '../api/types'
@@ -12,10 +13,15 @@ import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { AchievementsSection } from '../features/achievements/AchievementsSection'
 import { AccountCard } from '../features/account/AccountCard'
+import { PlanCard } from '../features/billing/PlanCard'
+import { PartnersCard } from '../features/partners/PartnersCard'
+import { PublicProfileCard } from '../features/publicProfile/PublicProfileCard'
+import { SecurityCard } from '../features/security/SecurityCard'
 import { ApiKeysCard } from '../features/apikeys/ApiKeysCard'
 import { BackupCard } from '../features/backup/BackupCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
 import { NotificationsCard } from '../features/push/NotificationsCard'
+import { LOCALES, setLocale, useLocale, type Locale } from '../i18n'
 import { formatInstant } from '../lib/dates'
 import { errorMessage } from '../lib/errors'
 import { formatNumber, formatXp, XP_SOURCE_LABELS } from '../lib/format'
@@ -24,11 +30,12 @@ import { COMMON_TIMEZONES } from '../lib/timezones'
 import { useAppMutation } from '../lib/useAppMutation'
 
 export function ProfilePage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
   const player = useQuery({ queryKey: queryKeys.player, queryFn: playerApi.get })
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Perfil" />
+      <PageHeader title={t('title')} />
 
       {player.isPending ? (
         <Spinner />
@@ -39,7 +46,7 @@ export function ProfilePage() {
           <Card className="flex flex-col gap-4">
             <PlayerProgress player={player.data} />
             <p className="text-sm text-muted">
-              Total acumulado: <span className="font-semibold text-text">{formatNumber(player.data.totalXp)} XP</span>
+              {t('total')} <span className="font-semibold text-text">{formatNumber(player.data.totalXp)} XP</span>
             </p>
           </Card>
         </>
@@ -53,7 +60,7 @@ export function ProfilePage() {
         className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
       >
         <ChartColumn className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">Estatísticas</span>
+        <span className="flex-1 font-semibold">{t('stats')}</span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
       <Link
@@ -61,7 +68,7 @@ export function ProfilePage() {
         className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
       >
         <Landmark className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">Arco do ciclo</span>
+        <span className="flex-1 font-semibold">{t('arch')}</span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
       <Link
@@ -69,11 +76,15 @@ export function ProfilePage() {
         className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
       >
         <NotebookPen className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">Revisões semanais</span>
+        <span className="flex-1 font-semibold">{t('reviews')}</span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
       <NotificationsSection />
       <SettingsCard />
+      <PlanCard />
+      <PublicProfileCard />
+      <PartnersCard />
+      <SecurityCard />
       <AccountCard />
       <BackupCard />
       <ApiKeysCard />
@@ -83,16 +94,17 @@ export function ProfilePage() {
 }
 
 function RecentEvents({ events }: { events: XpEvent[] }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
   return (
     <section aria-labelledby="events-title">
       <h2 id="events-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        XP recente
+        {t('recentXp')}
       </h2>
       {events.length === 0 ? (
         <EmptyState
           icon={<Sparkles className="size-6" />}
-          title="Nenhum XP ainda"
-          description="Faça o primeiro check-in na tela Hoje para começar a subir de nível."
+          title={t('noXpTitle')}
+          description={t('noXpDescription')}
         />
       ) : (
         <Card className="p-0">
@@ -116,11 +128,12 @@ function RecentEvents({ events }: { events: XpEvent[] }) {
 }
 
 function NotificationsSection() {
+  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
   const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
   return (
     <section aria-labelledby="notifications-title">
       <h2 id="notifications-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        Notificações
+        {t('notifications')}
       </h2>
       {settings.isPending ? (
         <Spinner />
@@ -134,23 +147,26 @@ function NotificationsSection() {
 }
 
 function SettingsCard() {
+  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
+  const { locale } = useLocale()
+  const { t: tc } = useTranslation('common')
   const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
   const [selected, setSelected] = useState<string | null>(null)
   const save = useAppMutation((input: SettingsInput) => settingsApi.update(input), {
-    successMessage: 'Fuso horário salvo.',
+    successMessage: t('timezoneSaved'),
     onSuccess: () => setSelected(null),
   })
 
   const currentTz = settings.data?.timezone ?? ''
   const value = selected ?? currentTz
-  const options = COMMON_TIMEZONES.some((t) => t.id === currentTz) || !currentTz
+  const options = COMMON_TIMEZONES.some((tz) => tz.id === currentTz) || !currentTz
     ? COMMON_TIMEZONES
     : [{ id: currentTz, label: currentTz }, ...COMMON_TIMEZONES]
 
   return (
     <section aria-labelledby="settings-title">
       <h2 id="settings-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        Configurações
+        {t('settings')}
       </h2>
       <Card className="flex flex-col gap-3">
         {settings.isPending ? (
@@ -160,14 +176,14 @@ function SettingsCard() {
         ) : (
           <>
             <Select
-              label="Fuso horário"
+              label={t('timezone')}
               value={value}
               onChange={(e) => setSelected(e.target.value)}
-              hint={`${value}. Define quando o “hoje” vira.`}
+              hint={t('timezoneHint', { value })}
             >
-              {options.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
+              {options.map((tz) => (
+                <option key={tz.id} value={tz.id}>
+                  {tz.label}
                 </option>
               ))}
             </Select>
@@ -177,8 +193,19 @@ function SettingsCard() {
               loading={save.isPending}
               onClick={() => save.mutate({ timezone: value })}
             >
-              Salvar fuso
+              {t('saveTimezone')}
             </Button>
+            <Select
+              label={t('language')}
+              value={locale}
+              onChange={(e) => void setLocale(e.target.value as Locale)}
+            >
+              {LOCALES.map((l) => (
+                <option key={l} value={l}>
+                  {tc(`locales.${l}`)}
+                </option>
+              ))}
+            </Select>
           </>
         )}
       </Card>
@@ -187,6 +214,7 @@ function SettingsCard() {
 }
 
 function LogoutButton() {
+  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
   const qc = useQueryClient()
   const navigate = useNavigate()
   const toast = useToast()
@@ -208,7 +236,7 @@ function LogoutButton() {
   return (
     <Button variant="danger" loading={pending} onClick={() => void logout()}>
       <LogOut className="size-4" aria-hidden />
-      Sair
+      {t('logout')}
     </Button>
   )
 }

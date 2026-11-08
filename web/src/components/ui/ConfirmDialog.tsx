@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './Button'
 import { Dialog } from './Dialog'
 
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   danger,
   loading,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation('layout')
   return (
     <Dialog
       open={open}
@@ -32,7 +34,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="secondary" block onClick={onClose}>
-            Cancelar
+            {t('cancel')}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} block loading={loading} onClick={onConfirm}>
             {confirmLabel}

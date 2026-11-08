@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cyclesApi } from '../../api/endpoints'
 import type { CycleInput } from '../../api/types'
 import { Button } from '../../components/ui/Button'
@@ -8,6 +9,7 @@ import { addDays, formatFullDate, isDateOnly } from '../../lib/dates'
 import { useAppMutation } from '../../lib/useAppMutation'
 
 export function CreateCycleForm({ today }: { today: string }) {
+  const { t } = useTranslation('cycle')
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(today)
   const [weeks, setWeeks] = useState(6)
@@ -15,7 +17,7 @@ export function CreateCycleForm({ today }: { today: string }) {
   const [error, setError] = useState<string | null>(null)
 
   const create = useAppMutation((input: CycleInput) => cyclesApi.create(input), {
-    successMessage: 'Ciclo iniciado. Bora!',
+    successMessage: t('create.success'),
   })
 
   const validStart = isDateOnly(startDate)
@@ -23,12 +25,12 @@ export function CreateCycleForm({ today }: { today: string }) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      setError('Dê um nome ao ciclo.')
+      setError(t('create.nameRequired'))
       return
     }
     const h = Number(hours.replace(',', '.'))
     if (!Number.isFinite(h) || h < 1 || h > 56) {
-      setError('Informe uma meta de foco semanal entre 1 e 56 horas.')
+      setError(t('create.hoursInvalid'))
       return
     }
     setError(null)
@@ -42,31 +44,31 @@ export function CreateCycleForm({ today }: { today: string }) {
 
   return (
     <Card>
-      <h2 className="text-lg font-bold">Comece um ciclo de {weeks} semanas</h2>
+      <h2 className="text-lg font-bold">{t('create.title', { weeks })}</h2>
       <p className="mt-1 mb-4 text-sm text-muted">
-        Um ciclo tem começo, meio e fim. Escolha até 3 objetivos e encerre com uma revisão.
+        {t('create.intro')}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <Input
-          label="Nome"
+          label={t('create.name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ex.: Primavera em movimento"
+          placeholder={t('create.namePlaceholder')}
           maxLength={80}
           error={error}
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Início" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Select label="Semanas" value={weeks} onChange={(e) => setWeeks(Number(e.target.value))}>
+          <Input label={t('create.start')} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <Select label={t('create.weeks')} value={weeks} onChange={(e) => setWeeks(Number(e.target.value))}>
             {[2, 4, 6, 8, 10, 12].map((n) => (
               <option key={n} value={n}>
-                {n} semanas
+                {t('create.weeksOption', { count: n })}
               </option>
             ))}
           </Select>
         </div>
         <Input
-          label="Meta de foco por semana (h)"
+          label={t('create.focusGoal')}
           type="number"
           inputMode="decimal"
           min={0.5}
@@ -76,11 +78,11 @@ export function CreateCycleForm({ today }: { today: string }) {
         />
         {validStart && (
           <p className="text-sm text-muted">
-            Termina em {formatFullDate(addDays(startDate, weeks * 7 - 1))} · {weeks * 7} dias
+            {t('create.ends', { date: formatFullDate(addDays(startDate, weeks * 7 - 1)), days: weeks * 7 })}
           </p>
         )}
         <Button type="submit" size="lg" loading={create.isPending}>
-          Começar ciclo
+          {t('create.submit')}
         </Button>
       </form>
     </Card>

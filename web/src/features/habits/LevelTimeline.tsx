@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { HabitLevel, HabitPlannedLevel } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { formatInstant } from '../../lib/dates'
@@ -11,6 +12,7 @@ export function LevelTimeline({
   planned?: HabitPlannedLevel[]
   current: number
 }) {
+  const { t } = useTranslation('habits')
   const ordered = [...levels].sort((a, b) => b.level - a.level)
   return (
     <ol className="relative ml-3 border-l-2 border-border">
@@ -20,9 +22,9 @@ export function LevelTimeline({
             className="absolute top-1 -left-[9px] size-4 rounded-full border-2 border-dashed border-border bg-surface"
             aria-hidden
           />
-          <p className="text-sm font-semibold text-muted">Nível {l.level} · planejado</p>
+          <p className="text-sm font-semibold text-muted">{t('timeline.planned', { level: l.level })}</p>
           <p className="text-sm text-muted">{l.description}</p>
-          <p className="text-xs text-muted">Mínimo: {l.minimumDescription}</p>
+          <p className="text-xs text-muted">{t('timeline.minimum', { value: l.minimumDescription })}</p>
         </li>
       ))}
       {ordered.map((l) => {
@@ -37,12 +39,12 @@ export function LevelTimeline({
               aria-hidden
             />
             <p className={cn('text-sm font-semibold', isCurrent ? 'text-accent' : 'text-text')}>
-              Nível {l.level}
-              {isCurrent && ' · atual'}
+              {t('timeline.level', { level: l.level })}
+              {isCurrent && ` · ${t('timeline.current')}`}
             </p>
             <p className="text-sm">{l.description}</p>
             <p className="text-xs text-muted">
-              Mínimo: {l.minimumDescription} · desde {formatInstant(l.reachedAt)}
+              {t('timeline.minimumSince', { value: l.minimumDescription, date: formatInstant(l.reachedAt) })}
             </p>
           </li>
         )

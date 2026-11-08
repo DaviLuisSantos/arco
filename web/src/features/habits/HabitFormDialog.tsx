@@ -1,15 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useId, useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { goalsApi, habitsApi } from '../../api/endpoints'
 import type { FrequencyType, Habit, HabitInput } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { Input, Select } from '../../components/ui/Input'
 import { Segmented } from '../../components/ui/Segmented'
+import { useToast } from '../../components/ui/toast-context'
 import { cn } from '../../lib/cn'
 import { WEEKDAY_INITIALS, WEEKDAY_NAMES } from '../../lib/dates'
+import { errorMessage } from '../../lib/errors'
 import { queryKeys } from '../../lib/queryKeys'
-import { useAppMutation } from '../../lib/useAppMutation'
+import { useInvalidateData } from '../../lib/useInvalidateData'
+import { usePlanLimitHandler } from '../billing'
 import { LevelUpRuleField, PlannedLevelsField, type LevelUpRuleDraft, type PlannedLevelDraft } from './LadderFields'
 
 interface HabitFormDialogProps {
@@ -21,20 +25,21 @@ interface HabitFormDialogProps {
 }
 
 export function HabitFormDialog({ open, onClose, habit, onSaved }: HabitFormDialogProps) {
+  const { t } = useTranslation(['habits', 'common'])
   const formId = useId()
   const [pending, setPending] = useState(false)
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title={habit ? 'Editar hábito' : 'Novo hábito'}
+      title={habit ? t('form.editTitle') : t('form.newTitle')}
       footer={
         <>
           <Button variant="secondary" block onClick={onClose}>
-            Cancelar
+            {t('common:cancel')}
           </Button>
           <Button type="submit" form={formId} block loading={pending}>
-            {habit ? 'Salvar' : 'Criar hábito'}
+            {habit ? t('common:save') : t('form.create')}
           </Button>
         </>
       }
@@ -62,6 +67,10 @@ interface HabitFormProps {
 }
 
 function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) {
+  const { t } = useTranslation('habits')
+  const toast = useToast()
+  const invalidate = useInvalidateData()
+  const handlePlanLimit = usePlanLimitHandler()
   const goals = useQuery({ queryKey: queryKeys.currentGoals, queryFn: () => goalsApi.list() })
 
   const [name, setName] = useState(habit?.name ?? '')
@@ -82,9 +91,17 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
   })
   const [errors, setErrors] = useState<Errors>({})
 
-  const save = useAppMutation((input: HabitInput) => (habit ? habitsApi.update(habit.id, input) : habitsApi.create(input)), {
-    successMessage: habit ? 'Hábito atualizado.' : 'Hábito criado.',
-    onSuccess: (h) => onSaved(h),
+  const save = useMutation({
+    mutationFn: (input: HabitInput) => (habit ? habitsApi.update(habit.id, input) : habitsApi.create(input)),
+    onSuccess: (h) => {
+      toast.success(habit ? t('form.updated') : t('form.created'))
+      onSaved(h)
+    },
+    // Limite do plano: aviso com link para o Plano; outros erros, o toast genérico.
+    onError: (err) => {
+      if (!handlePlanLimit(err)) toast.error(errorMessage(err))
+    },
+    onSettled: () => invalidate(),
   })
 
   const currentGoals = goals.data ?? []
@@ -96,17 +113,17 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
 
   function validate(): Errors {
     const e: Errors = {}
-    if (!name.trim()) e.name = 'Dê um nome ao hábito.'
-    else if (name.trim().length > 80) e.name = 'Use até 80 caracteres.'
-    if (emoji.trim().length > 8) e.emoji = 'Use até 8 caracteres.'
-    if (frequencyType === 'SpecificDays' && days.length === 0) e.days = 'Escolha ao menos um dia.'
-    if (!levelDescription.trim()) e.level = 'Descreva a dose do nível atual.'
-    else if (levelDescription.trim().length > 120) e.level = 'Use até 120 caracteres.'
-    if (!minimumDescription.trim()) e.minimum = 'Descreva a versão mínima.'
-    else if (minimumDescription.trim().length > 120) e.minimum = 'Use até 120 caracteres.'
-    if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) e.reminder = 'Use o formato HH:mm.'
+    if (!name.trim()) e.name = t('form.nameRequired')
+    else if (name.trim().length > 80) e.name = t('form.maxChars', { max: 80 })
+    if (emoji.trim().length > 8) e.emoji = t('form.maxChars', { max: 8 })
+    if (frequencyType === 'SpecificDays' && days.length === 0) e.days = t('form.daysRequired')
+    if (!levelDescription.trim()) e.level = t('form.levelRequired')
+    else if (levelDescription.trim().length > 120) e.level = t('form.maxChars', { max: 120 })
+    if (!minimumDescription.trim()) e.minimum = t('form.minimumRequired')
+    else if (minimumDescription.trim().length > 120) e.minimum = t('form.maxChars', { max: 120 })
+    if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) e.reminder = t('form.timeFormat')
     if (planned.some((l) => !l.levelDescription.trim() || !l.minimumDescription.trim())) {
-      e.planned = 'Preencha a dose e o mínimo de cada nível (ou remova os vazios).'
+      e.planned = t('form.plannedIncomplete')
     }
     return e
   }
@@ -143,7 +160,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
     <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <div className="grid grid-cols-[5rem_1fr] gap-3">
         <Input
-          label="Emoji"
+          label={t('form.emoji')}
           value={emoji}
           onChange={(e) => setEmoji(e.target.value)}
           placeholder="🏃"
@@ -152,47 +169,47 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
           error={errors.emoji}
         />
         <Input
-          label="Nome"
+          label={t('form.name')}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Correr"
+          placeholder={t('form.namePlaceholder')}
           maxLength={80}
           error={errors.name}
         />
       </div>
 
       <Select
-        label="Objetivo"
+        label={t('form.goal')}
         value={goalId}
         onChange={(e) => setGoalId(e.target.value)}
         hint={
-          goals.isSuccess && currentGoals.length === 0 ? 'Sem objetivos no ciclo atual — o vínculo é opcional.' : undefined
+          goals.isSuccess && currentGoals.length === 0 ? t('form.noGoals') : undefined
         }
       >
-        <option value="">Nenhum</option>
+        <option value="">{t('form.none')}</option>
         {currentGoals.map((g) => (
           <option key={g.id} value={g.id}>
             {g.title}
           </option>
         ))}
-        {goalFromOtherCycle && <option value={habit?.goalId ?? ''}>Objetivo de um ciclo anterior</option>}
+        {goalFromOtherCycle && <option value={habit?.goalId ?? ''}>{t('form.otherCycleGoal')}</option>}
       </Select>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-medium">Frequência</legend>
+        <legend className="mb-1.5 text-sm font-medium">{t('form.frequency')}</legend>
         <Segmented
-          label="Frequência"
+          label={t('form.frequency')}
           value={frequencyType}
           onChange={setFrequencyType}
           options={[
-            { value: 'Daily', label: 'Diário' },
-            { value: 'SpecificDays', label: 'Dias' },
-            { value: 'WeeklyTarget', label: 'X/semana' },
+            { value: 'Daily', label: t('form.freq.Daily') },
+            { value: 'SpecificDays', label: t('form.freq.SpecificDays') },
+            { value: 'WeeklyTarget', label: t('form.freq.WeeklyTarget') },
           ]}
         />
         {frequencyType === 'SpecificDays' && (
           <div>
-            <div className="flex justify-between gap-1.5" role="group" aria-label="Dias da semana">
+            <div className="flex justify-between gap-1.5" role="group" aria-label={t('form.weekdays')}>
               {WEEKDAY_INITIALS.map((initial, day) => {
                 const on = days.includes(day)
                 return (
@@ -217,14 +234,14 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         )}
         {frequencyType === 'WeeklyTarget' && (
           <Select
-            label="Vezes por semana"
+            label={t('form.timesPerWeek')}
             value={timesPerWeek}
             onChange={(e) => setTimesPerWeek(Number(e.target.value))}
-            hint="A semana começa na segunda."
+            hint={t('form.weekStartsMonday')}
           >
             {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <option key={n} value={n}>
-                {n}x por semana
+                {t('form.nTimesPerWeek', { n })}
               </option>
             ))}
           </Select>
@@ -232,21 +249,21 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
       </fieldset>
 
       <Input
-        label={habit ? `Nível ${habit.level} — dose` : 'Nível 1 — dose'}
+        label={habit ? t('form.levelDose', { level: habit.level }) : t('form.levelDose', { level: 1 })}
         value={levelDescription}
         onChange={(e) => setLevelDescription(e.target.value)}
-        placeholder="20 min"
+        placeholder={t('form.dosePlaceholder')}
         maxLength={120}
-        hint="O que conta como “Feito” neste nível."
+        hint={t('form.doseHint')}
         error={errors.level}
       />
       <Input
-        label="Versão mínima"
+        label={t('form.minimum')}
         value={minimumDescription}
         onChange={(e) => setMinimumDescription(e.target.value)}
-        placeholder="5 min"
+        placeholder={t('form.minimumPlaceholder')}
         maxLength={120}
-        hint="O mínimo para não quebrar a corrente em dias difíceis."
+        hint={t('form.minimumHint')}
         error={errors.minimum}
       />
       <PlannedLevelsField
@@ -266,7 +283,7 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <Input
-            label="Lembrete (opcional)"
+            label={t('form.reminder')}
             type="time"
             value={reminderTime}
             onChange={(e) => setReminderTime(e.target.value)}
@@ -275,12 +292,12 @@ function HabitForm({ formId, habit, onSaved, onPendingChange }: HabitFormProps) 
         </div>
         {reminderTime && (
           <Button variant="ghost" className="shrink-0" onClick={() => setReminderTime('')}>
-            Remover
+            {t('form.removeReminder')}
           </Button>
         )}
       </div>
       <p className="-mt-2 text-xs text-muted">
-        Notificação nos dias em que o hábito é devido e ainda não foi marcado. Ative as notificações no Perfil.
+        {t('form.reminderHint')}
       </p>
     </form>
   )

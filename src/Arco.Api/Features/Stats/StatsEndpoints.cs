@@ -18,7 +18,7 @@ public static class StatsEndpoints
 
     public static IEndpointRouteBuilder MapStats(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/stats", Get);
+        api.MapGet("/stats", Get).WithTags("Estatísticas").WithSummary("Estatísticas do usuário");
         return api;
     }
 

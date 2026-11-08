@@ -1,5 +1,6 @@
 import { CircleAlert, CircleCheck, Info, Sparkles, Trophy } from 'lucide-react'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import i18n from 'i18next'
 import { cn } from '../../lib/cn'
 import { formatXp } from '../../lib/format'
 import { ToastContext, type ToastApi, type ToastOptions, type ToastVariant } from './toast-context'
@@ -68,7 +69,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       error: (message) => show({ message, variant: 'error' }),
       success: (message) => show({ message, variant: 'success' }),
       xp: (amount) => show({ message: formatXp(amount), variant: 'xp' }),
-      achievement: (emoji, title) => show({ message: `Conquista desbloqueada: ${emoji} ${title}`, variant: 'achievement' }),
+      achievement: (emoji, title) => show({ message: i18n.t('layout:achievementUnlocked', { emoji, title }), variant: 'achievement' }),
     }),
     [show],
   )

@@ -33,7 +33,7 @@ public static class CycleArchEndpoints
 
     public static IEndpointRouteBuilder MapCycleArch(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/cycles/{id:int}/arch", Get);
+        api.MapGet("/cycles/{id:int}/arch", Get).WithTags("Ciclos").WithSummary("Arco narrativo do ciclo");
         return api;
     }
 

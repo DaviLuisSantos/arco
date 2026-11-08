@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { focusApi } from '../../api/endpoints'
 import type { FocusSession } from '../../api/types'
 import { useToast } from '../../components/ui/toast-context'
@@ -81,6 +82,7 @@ function elapsedSeconds(timer: RunningTimer, now: number): number {
  */
 export function useFocusTimer(habitId: number) {
   const toast = useToast()
+  const { t } = useTranslation('focus')
   const invalidate = useInvalidateData()
   const [running, setRunning] = useState<RunningTimer | null>(() =>
     read(runningKey(habitId), isRunning),
@@ -146,7 +148,7 @@ export function useFocusTimer(habitId: number) {
     const minutes = Math.min(Math.floor(elapsedSeconds(running, Date.now()) / 60), cap)
     updateRunning(null)
     if (minutes < 1) {
-      toast.show({ message: 'Menos de 1 minuto: nada foi registrado.', variant: 'info' })
+      toast.show({ message: t('lessThanMinute'), variant: 'info' })
       return
     }
     const session: PendingSession = {
@@ -157,7 +159,7 @@ export function useFocusTimer(habitId: number) {
     }
     updatePending(session)
     saveSession(session)
-  }, [habitId, running, saveSession, toast, updatePending, updateRunning])
+  }, [habitId, running, saveSession, t, toast, updatePending, updateRunning])
 
   const cancel = useCallback(() => updateRunning(null), [updateRunning])
   const retry = useCallback(() => {

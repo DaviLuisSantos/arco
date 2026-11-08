@@ -40,7 +40,7 @@ public static class TodayEndpoints
 
     public static IEndpointRouteBuilder MapToday(this IEndpointRouteBuilder api)
     {
-        api.MapGet("/today", GetToday);
+        api.MapGet("/today", GetToday).WithTags("Hoje").WithSummary("Visão do dia");
         return api;
     }
 

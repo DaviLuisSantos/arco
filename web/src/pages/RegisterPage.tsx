@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { authApi } from '../api/endpoints'
 import { ArcoLogo } from '../components/layout/ArcoLogo'
@@ -11,6 +12,7 @@ import { queryKeys } from '../lib/queryKeys'
 import { useAuthStatus } from '../lib/useAuthStatus'
 
 export function RegisterPage() {
+  const { t } = useTranslation('auth')
   const auth = useAuthStatus()
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -32,8 +34,8 @@ export function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const next: typeof errors = {}
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = 'Digite um e-mail válido.'
-    if (password.length < 8) next.password = 'A senha precisa ter ao menos 8 caracteres.'
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = t('register.invalidEmail')
+    if (password.length < 8) next.password = t('passwordTooShort')
     setErrors(next)
     if (next.email || next.password) return
     setSubmitting(true)
@@ -57,18 +59,18 @@ export function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <ArcoLogo className="size-16" />
-          <h1 className="text-3xl font-extrabold tracking-tight">Criar conta</h1>
-          <p className="text-sm text-muted">Comece seu primeiro ciclo no Arco.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">{t('register.title')}</h1>
+          <p className="text-sm text-muted">{t('register.subtitle')}</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <Input
-            label="Nome (opcional)"
+            label={t('register.name')}
             autoComplete="name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
           />
           <Input
-            label="E-mail"
+            label={t('email')}
             type="email"
             autoComplete="email"
             autoFocus
@@ -77,22 +79,22 @@ export function RegisterPage() {
             error={errors.email}
           />
           <Input
-            label="Senha"
+            label={t('password')}
             type="password"
             autoComplete="new-password"
-            hint="Mínimo de 8 caracteres."
+            hint={t('minPassword')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password ?? errors.form}
           />
           <Button type="submit" size="lg" block loading={submitting}>
-            Criar conta
+            {t('register.submit')}
           </Button>
         </form>
         <p className="mt-6 text-center text-sm text-muted">
-          Já tem conta?{' '}
+          {t('register.haveAccount')}{' '}
           <Link to="/login" className="text-text hover:underline">
-            Entrar
+            {t('register.login')}
           </Link>
         </p>
       </div>

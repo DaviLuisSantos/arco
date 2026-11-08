@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, CircleCheck, NotebookPen } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { reviewsApi } from '../api/endpoints'
 import type { WeeklyReview, WeeklySummary } from '../api/types'
@@ -24,13 +25,14 @@ function weekLabel(weekStart: string, weekEnd: string) {
 }
 
 export function ReviewPage() {
+  const { t } = useTranslation('pages', { keyPrefix: 'review' })
   const current = useQuery({ queryKey: queryKeys.weeklyReview, queryFn: reviewsApi.current })
   const past = useQuery({ queryKey: queryKeys.weeklyReviews, queryFn: reviewsApi.list })
 
   const back = (
     <Link to="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-text">
       <ArrowLeft className="size-4" aria-hidden />
-      Hoje
+      {t('back')}
     </Link>
   )
 
@@ -44,7 +46,7 @@ export function ReviewPage() {
     <div className="flex flex-col gap-5">
       <div>
         {back}
-        <PageHeader title="Revisão da semana" subtitle={weekLabel(s.weekStart, s.weekEnd)} />
+        <PageHeader title={t('title')} subtitle={weekLabel(s.weekStart, s.weekEnd)} />
       </div>
 
       {s.review ? <DoneReview review={s.review} summary={s} /> : <GuidedReview summary={s} />}
@@ -52,14 +54,14 @@ export function ReviewPage() {
       {older.length > 0 && (
         <section aria-labelledby="past-reviews-title">
           <h2 id="past-reviews-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-            Revisões anteriores
+            {t('previous')}
           </h2>
           <ul className="flex flex-col gap-2">
             {older.map((r) => (
               <li key={r.id}>
                 <details className="group rounded-2xl border border-border bg-surface p-4">
                   <summary className="cursor-pointer list-none font-semibold [&::-webkit-details-marker]:hidden">
-                    Semana de {weekLabel(r.weekStart, r.weekEnd)}
+                    {t('weekOf', { range: weekLabel(r.weekStart, r.weekEnd) })}
                   </summary>
                   <div className="mt-3">
                     <ReviewAnswersView prompts={WEEK_PROMPTS} answers={r} />
@@ -75,16 +77,17 @@ export function ReviewPage() {
 }
 
 function WeekNumbers({ summary }: { summary: WeeklySummary }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'review' })
   return (
     <section aria-labelledby="week-numbers-title" className="flex flex-col gap-3">
       <h2 id="week-numbers-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
-        A semana em números
+        {t('weekNumbers')}
       </h2>
       <PeriodStats xp={summary.xp} checkIns={summary.checkIns} habits={summary.habits} />
       {summary.goals.length > 0 && (
         <Card className="flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Objetivos{summary.cycle ? ` · ${summary.cycle.name}` : ''}
+            {t('goals')}{summary.cycle ? ` · ${summary.cycle.name}` : ''}
           </p>
           {summary.goals.map((g) => (
             <div key={g.id} className="flex flex-col gap-1">
@@ -102,18 +105,19 @@ function WeekNumbers({ summary }: { summary: WeeklySummary }) {
 }
 
 function GuidedReview({ summary }: { summary: WeeklySummary }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'review' })
   const [step, setStep] = useState<'numbers' | 'questions'>('numbers')
   const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS)
   const [error, setError] = useState<string | null>(null)
   const save = useAppMutation(
     () => reviewsApi.create({ weekStart: summary.weekStart, ...cleanAnswers(answers) }),
-    { successMessage: 'Revisão registrada. Boa semana!' },
+    { successMessage: t('saved') },
   )
 
   function submit() {
     const clean = cleanAnswers(answers)
     if (!clean.wins && !clean.obstacles && !clean.next) {
-      setError('Responda ao menos uma pergunta.')
+      setError(t('answerAtLeastOne'))
       return
     }
     setError(null)
@@ -126,7 +130,7 @@ function GuidedReview({ summary }: { summary: WeeklySummary }) {
         <WeekNumbers summary={summary} />
         <Button size="lg" onClick={() => setStep('questions')}>
           <NotebookPen className="size-4" aria-hidden />
-          Responder a revisão
+          {t('answer')}
         </Button>
       </>
     )
@@ -136,17 +140,17 @@ function GuidedReview({ summary }: { summary: WeeklySummary }) {
     <>
       <Card className="flex flex-col gap-4">
         <p className="text-sm text-muted">
-          Três perguntas rápidas. Responda o que fizer sentido.{' '}
+          {t('intro')}{' '}
           <span className="font-semibold text-xp">+{WEEKLY_REVIEW_XP} XP</span>
         </p>
         <ReviewQuestions prompts={WEEK_PROMPTS} value={answers} onChange={setAnswers} error={error} />
       </Card>
       <div className="flex gap-2">
         <Button variant="secondary" block onClick={() => setStep('numbers')}>
-          Voltar aos números
+          {t('backToNumbers')}
         </Button>
         <Button block loading={save.isPending} onClick={submit}>
-          Concluir revisão
+          {t('finish')}
         </Button>
       </div>
     </>
@@ -154,12 +158,13 @@ function GuidedReview({ summary }: { summary: WeeklySummary }) {
 }
 
 function DoneReview({ review, summary }: { review: WeeklyReview; summary: WeeklySummary }) {
+  const { t } = useTranslation('pages', { keyPrefix: 'review' })
   return (
     <>
       <Card className="flex flex-col gap-3">
         <p className="flex items-center gap-2 font-semibold text-done">
           <CircleCheck className="size-5" aria-hidden />
-          Revisão feita
+          {t('done')}
         </p>
         <ReviewAnswersView prompts={WEEK_PROMPTS} answers={review} />
       </Card>

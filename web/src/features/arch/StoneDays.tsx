@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ArchHabit, ArchStone } from '../../api/types'
 import { WEEKDAY_SHORT, dayOfWeek, localToday } from '../../lib/dates'
 import { formatDuration } from '../../lib/format'
@@ -15,10 +16,10 @@ const BASE = 106
 const PX_PER_MIN = 0.3
 const GAP = 1.5
 const MAX_H = BASE - 8
-const SOURCE_LABEL = { Timer: 'cronômetro', Manual: 'manual' } as const
 
 /** Sete colunas (dias da semana do ciclo); cada sessão de foco é um tijolo. */
 export function StoneDays({ stone, habits }: StoneDaysProps) {
+  const { t } = useTranslation('arch')
   const today = localToday()
   const names = useMemo(() => new Map(habits.map((h) => [h.habitId, h.name])), [habits])
 
@@ -40,7 +41,7 @@ export function StoneDays({ stone, habits }: StoneDaysProps) {
       className="mt-1 block h-auto w-full"
       viewBox="0 0 300 132"
       role="img"
-      aria-label={`Sessões de foco por dia na semana ${stone.week}. ${summary}`}
+      aria-label={t('stoneDays.label', { week: stone.week, summary })}
     >
       <line x1={2} x2={298} y1={BASE} y2={BASE} className="stroke-border" strokeWidth={1.5} />
       {stone.days.map((day, i) => {
@@ -56,7 +57,7 @@ export function StoneDays({ stone, habits }: StoneDaysProps) {
             {day.bricks.map((b) => {
               const h = Math.max(3, b.minutes * PX_PER_MIN) * scale - GAP
               y -= h + GAP
-              const name = names.get(b.habitId) ?? 'Hábito'
+              const name = names.get(b.habitId) ?? t('stoneDays.habit')
               return (
                 <rect
                   key={b.sessionId}
@@ -67,7 +68,7 @@ export function StoneDays({ stone, habits }: StoneDaysProps) {
                   rx={2}
                   style={{ fill: habitColor(b.habitId) }}
                 >
-                  <title>{`${name} · ${formatDuration(b.minutes)} · ${SOURCE_LABEL[b.source]}`}</title>
+                  <title>{`${name} · ${formatDuration(b.minutes)} · ${t(`stoneDays.source.${b.source}`)}`}</title>
                 </rect>
               )
             })}
@@ -77,7 +78,7 @@ export function StoneDays({ stone, habits }: StoneDaysProps) {
               textAnchor="middle"
               className={`text-[11px] ${isToday ? 'fill-accent font-bold' : 'fill-muted'} ${future ? 'opacity-60' : ''}`}
             >
-              {isToday ? 'hoje' : WEEKDAY_SHORT[dayOfWeek(day.date)]}
+              {isToday ? t('stoneDays.today') : WEEKDAY_SHORT[dayOfWeek(day.date)]}
             </text>
           </g>
         )

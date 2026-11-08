@@ -1,10 +1,9 @@
 import type { CheckInStatus, Goal, Habit, Streak, XpSource } from '../api/types'
+import i18n, { currentLocale } from '../i18n'
 import { WEEKDAY_SHORT } from './dates'
 
-const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 })
-
 export function formatNumber(value: number): string {
-  return number.format(value)
+  return new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 2 }).format(value)
 }
 
 export function formatXp(amount: number): string {
@@ -14,38 +13,40 @@ export function formatXp(amount: number): string {
 
 /** "5 dias", "1 semana"… */
 export function streakText({ current, unit }: Pick<Streak, 'current' | 'unit'>): string {
-  if (unit === 'Weeks') return `${current} semana${current === 1 ? '' : 's'}`
-  return `${current} dia${current === 1 ? '' : 's'}`
+  if (unit === 'Weeks') return i18n.t(current === 1 ? 'lib:streakWeek' : 'lib:streakWeeks', { count: current })
+  return i18n.t(current === 1 ? 'lib:streakDay' : 'lib:streakDays', { count: current })
 }
 
 export function frequencyText(habit: Pick<Habit, 'frequencyType' | 'frequencyDays' | 'timesPerWeek'>): string {
   switch (habit.frequencyType) {
     case 'Daily':
-      return 'Todo dia'
+      return i18n.t('lib:everyDay')
     case 'SpecificDays': {
       const days = [...habit.frequencyDays].sort((a, b) => a - b)
-      if (days.length === 7) return 'Todo dia'
+      if (days.length === 7) return i18n.t('lib:everyDay')
       return days.map((d) => WEEKDAY_SHORT[d]).join(', ')
     }
     case 'WeeklyTarget':
-      return `${habit.timesPerWeek ?? 1}x por semana`
+      return i18n.t('lib:timesPerWeek', { count: habit.timesPerWeek ?? 1 })
   }
 }
 
-export const STATUS_LABELS: Record<CheckInStatus, string> = {
-  Done: 'Feito',
-  Minimum: 'Mínimo',
-  Missed: 'Não fiz',
+/** Objeto que lê o idioma atual a cada acesso (usado fora de componentes). */
+function lazyRecord<K extends string>(keys: K[], label: (key: K) => string): Record<K, string> {
+  // Getters reais por chave: Object.keys/entries funcionam e o texto vem do idioma atual.
+  const record = {} as Record<K, string>
+  for (const key of keys) Object.defineProperty(record, key, { enumerable: true, get: () => label(key) })
+  return record
 }
 
-export const XP_SOURCE_LABELS: Record<XpSource, string> = {
-  CheckIn: 'Check-in',
-  HabitLevelUp: 'Hábito subiu de nível',
-  Milestone: 'Marco concluído',
-  GoalCompleted: 'Objetivo concluído',
-  CycleCompleted: 'Ciclo encerrado',
-  WeeklyReview: 'Revisão semanal',
-}
+export const STATUS_LABELS: Record<CheckInStatus, string> = lazyRecord(['Done', 'Minimum', 'Missed'], (k) =>
+  i18n.t(`lib:status.${k}`),
+)
+
+export const XP_SOURCE_LABELS: Record<XpSource, string> = lazyRecord(
+  ['CheckIn', 'HabitLevelUp', 'Milestone', 'GoalCompleted', 'CycleCompleted', 'WeeklyReview'],
+  (k) => i18n.t(`lib:xpSource.${k}`),
+)
 
 export function formatPercent(rate: number): string {
   return `${Math.round(rate * 100)}%`
@@ -62,11 +63,11 @@ export function expectedCheckInXp(status: CheckInStatus, habitLevel: number): nu
 export function goalProgressText(goal: Goal): string {
   if (goal.type === 'Milestones') {
     const done = goal.milestones.filter((m) => m.doneAt).length
-    return `${done}/${goal.milestones.length} marcos`
+    return i18n.t('lib:milestones', { done, total: goal.milestones.length })
   }
   const current = goal.currentValue ?? goal.startValue ?? 0
   const unit = goal.unit ? ` ${goal.unit}` : ''
-  return `${formatNumber(current)} de ${formatNumber(goal.targetValue ?? 0)}${unit}`
+  return i18n.t('lib:progressOf', { current: formatNumber(current), target: formatNumber(goal.targetValue ?? 0), unit })
 }
 
 /** Lê um número digitado em pt-BR ("5,5" ou "5.5"). null se inválido. */
@@ -82,6 +83,6 @@ export function formatDuration(min: number): string {
   const total = Math.max(0, Math.round(min))
   const h = Math.floor(total / 60)
   const m = total % 60
-  if (h === 0) return `${m} min`
-  return m === 0 ? `${h} h` : `${h} h ${m} min`
+  if (h === 0) return i18n.t('lib:minutes', { m })
+  return m === 0 ? i18n.t('lib:hours', { h }) : i18n.t('lib:hoursMinutes', { h, m })
 }

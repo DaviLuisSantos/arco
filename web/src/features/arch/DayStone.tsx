@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { focusApi } from '../../api/endpoints'
 import { Card } from '../../components/ui/Card'
 import { habitColor } from '../../lib/habitColor'
@@ -11,6 +12,7 @@ const BRICK_MAX_PX = 56
 
 /** Pedra do dia: um tijolo por sessão de foco de hoje, empilhados por hábito. */
 export function DayStone({ date }: { date: string }) {
+  const { t } = useTranslation('arch')
   const q = useQuery({ queryKey: queryKeys.focus(date, date), queryFn: () => focusApi.list(date, date) })
 
   if (q.isPending || q.isLoadingError) return null
@@ -28,8 +30,8 @@ export function DayStone({ date }: { date: string }) {
           role="img"
           aria-label={
             ordered.length === 0
-              ? 'Pedra do dia vazia'
-              : `Pedra do dia com ${ordered.length} tijolo${ordered.length > 1 ? 's' : ''}`
+              ? t('dayStone.empty')
+              : t('dayStone.withBricks', { count: ordered.length })
           }
         >
           {ordered.map((s) => (
@@ -46,11 +48,11 @@ export function DayStone({ date }: { date: string }) {
         </div>
         <div className="min-w-0 flex-1">
           <h2 id="day-stone-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
-            Pedra do dia
+            {t('dayStone.title')}
           </h2>
           {ordered.length === 0 ? (
             <p className="mt-1 text-sm text-muted">
-              Nenhum foco hoje ainda. Inicie o timer em um hábito para assentar o primeiro tijolo.
+              {t('dayStone.none')}
             </p>
           ) : (
             <>

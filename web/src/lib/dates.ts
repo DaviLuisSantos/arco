@@ -1,7 +1,7 @@
 // Datas de calendário ("YYYY-MM-DD") são tratadas como dias puros, em UTC,
 // para nunca sofrer deslocamento de fuso. Nunca use new Date("YYYY-MM-DD").
 
-const LOCALE = 'pt-BR'
+import i18n, { currentLocale } from '../i18n'
 
 function toUtc(date: string): Date {
   const [y, m, d] = date.split('-').map(Number)
@@ -43,7 +43,7 @@ export function formatDate(
   date: string,
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' },
 ): string {
-  return new Intl.DateTimeFormat(LOCALE, { ...options, timeZone: 'UTC' }).format(toUtc(date))
+  return new Intl.DateTimeFormat(currentLocale(), { ...options, timeZone: 'UTC' }).format(toUtc(date))
 }
 
 export function formatLongDate(date: string): string {
@@ -60,12 +60,22 @@ export function formatInstant(
   options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' },
 ): string {
   if (isDateOnly(value)) return formatDate(value, options)
-  return new Intl.DateTimeFormat(LOCALE, options).format(new Date(value))
+  return new Intl.DateTimeFormat(currentLocale(), options).format(new Date(value))
 }
 
-export const WEEKDAY_INITIALS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
-export const WEEKDAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-export const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+const DAY_KEYS = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'] as const
+
+/** Array que lê o idioma atual a cada acesso (as constantes são usadas fora de componentes). */
+function lazyList(build: () => string[]): string[] {
+  // Getters por índice: o array tem os 7 itens de verdade (map/forEach/spread funcionam) e o texto vem do idioma atual.
+  const list: string[] = []
+  DAY_KEYS.forEach((_, i) => Object.defineProperty(list, i, { enumerable: true, get: () => build()[i] }))
+  return list
+}
+
+export const WEEKDAY_INITIALS = lazyList(() => DAY_KEYS.map((k) => i18n.t(`lib:weekdayInitials.${k}`)))
+export const WEEKDAY_NAMES = lazyList(() => DAY_KEYS.map((k) => i18n.t(`lib:weekdayNames.${k}`)))
+export const WEEKDAY_SHORT = lazyList(() => DAY_KEYS.map((k) => i18n.t(`lib:weekdayShort.${k}`)))
 
 /** Primeiro dia do mês de uma data ("YYYY-MM-01"). */
 export function monthStart(date: string): string {
@@ -84,7 +94,7 @@ export function monthEnd(date: string): string {
   return addDays(addMonths(date, 1), -1)
 }
 
-/** "outubro de 2026". */
+/** "outubro de 2026" (ou "October 2026"). */
 export function formatMonth(date: string): string {
   return formatDate(monthStart(date), { month: 'long', year: 'numeric' })
 }

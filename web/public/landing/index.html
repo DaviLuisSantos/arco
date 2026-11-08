@@ -1,12 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+  <script>document.documentElement.classList.add("js")</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Arco — hábitos com progressão</title>
   <meta name="description" content="Arco é um app de hábitos em ciclos de 6 semanas: check-ins diários, níveis, objetivos e XP. Cada dia alimenta algo maior.">
   <meta name="theme-color" content="#0b0f14">
   <link rel="canonical" href="https://arco.daviluis.dev/">
+  <link rel="alternate" hreflang="pt-BR" href="https://arco.daviluis.dev/">
+  <link rel="alternate" hreflang="en" href="https://arco.daviluis.dev/landing/en/">
+  <link rel="alternate" hreflang="x-default" href="https://arco.daviluis.dev/">
   <meta property="og:site_name" content="Arco">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:type" content="website">
@@ -57,7 +61,7 @@
     nav { display: flex; align-items: center; gap: 22px; }
     nav a:not(.btn) { text-decoration: none; color: var(--muted); font-size: .94rem; }
     nav a:not(.btn):hover { color: var(--fg); }
-    @media (max-width: 640px) { nav a:not(.btn) { display: none; } }
+    @media (max-width: 640px) { nav a:not(.btn):not(.lang) { display: none; } }
 
     .btn {
       display: inline-block; padding: 13px 24px; border-radius: 999px; font-weight: 600;
@@ -154,11 +158,11 @@
     footer a:hover { color: var(--fg); }
 
     /* reveal */
-    .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s, transform .6s; }
-    .rv.in { opacity: 1; transform: none; }
+    .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s, transform .6s; }
+    .js .rv.in { opacity: 1; transform: none; }
     @media (prefers-reduced-motion: reduce) {
       .arc .fill { animation: none; stroke-dashoffset: 105; }
-      html { scroll-behavior: auto; } .rv { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; } .js .rv { opacity: 1; transform: none; transition: none; }
     }
   </style>
 </head>
@@ -176,6 +180,7 @@
         <a href="#recursos">Recursos</a>
         <a href="#como-funciona">Como funciona</a>
         <a href="#faq">Dúvidas</a>
+        <a href="/landing/en/" hreflang="en" lang="en" class="lang" aria-label="English">EN</a>
         <a class="btn sm" href="/login">Entrar</a>
       </nav>
     </div>
@@ -289,11 +294,12 @@
   </footer>
 
   <script>
+  (() => {
     document.getElementById("y").textContent = new Date().getFullYear();
 
     // nav com borda ao rolar
-    const top = document.getElementById("top");
-    const onScroll = () => top.classList.toggle("scrolled", scrollY > 8);
+    const topBar = document.getElementById("top");
+    const onScroll = () => topBar.classList.toggle("scrolled", scrollY > 8);
     addEventListener("scroll", onScroll, { passive: true }); onScroll();
 
     // revelar ao rolar
@@ -323,6 +329,7 @@
       if (!was) b.classList.add(cls);
       refresh();
     }));
+  })();
   </script>
 </body>
 </html>

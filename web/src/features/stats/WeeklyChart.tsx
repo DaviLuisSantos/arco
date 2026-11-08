@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { WeekStats } from '../../api/types'
 import { Segmented } from '../../components/ui/Segmented'
 import { cn } from '../../lib/cn'
@@ -8,9 +9,9 @@ import { formatDuration, formatPercent, formatXp } from '../../lib/format'
 type Metric = 'rate' | 'xp' | 'hours'
 
 const METRICS = {
-  rate: { bar: 'bg-accent', label: 'Consistência' },
-  xp: { bar: 'bg-xp', label: 'XP' },
-  hours: { bar: 'bg-done', label: 'Horas' },
+  rate: { bar: 'bg-accent' },
+  xp: { bar: 'bg-xp' },
+  hours: { bar: 'bg-done' },
 }
 
 /**
@@ -18,6 +19,7 @@ const METRICS = {
  * Tocar (ou passar o mouse) numa barra mostra os números daquela semana embaixo.
  */
 export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: string }) {
+  const { t } = useTranslation('stats')
   const [metric, setMetric] = useState<Metric>('rate')
   const [selected, setSelected] = useState(weeks.length - 1)
   const values = weeks.map((w) => (metric === 'rate' ? w.rate : metric === 'xp' ? w.xp : (w.minutes ?? 0)))
@@ -28,13 +30,13 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
   return (
     <div className="flex flex-col gap-3">
       <Segmented
-        label="Medida do gráfico"
+        label={t('metricLabel')}
         value={metric}
         onChange={setMetric}
         options={[
-          { value: 'rate', label: 'Consistência' },
-          { value: 'xp', label: 'XP' },
-          { value: 'hours', label: 'Horas' },
+          { value: 'rate', label: t('rate') },
+          { value: 'xp', label: t('xp') },
+          { value: 'hours', label: t('hours') },
         ]}
       />
 
@@ -46,12 +48,15 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
         <div
           className="flex h-40 items-end gap-0.5 border-b border-border"
           role="group"
-          aria-label={`${METRICS[metric].label} nas últimas ${weeks.length} semanas`}
+          aria-label={t('groupLabel', { metric: t(metric), count: weeks.length })}
         >
           {weeks.map((w, i) => {
             const value = values[i]
             const empty = metric === 'rate' && w.expected === 0
-            const label = `Semana de ${formatDate(w.weekStart)}: ${empty ? 'sem hábitos' : metric === 'rate' ? formatPercent(value) : metric === 'xp' ? formatXp(value) : formatDuration(value)}`
+            const label = t('weekOf', {
+              date: formatDate(w.weekStart),
+              value: empty ? t('noHabitsShort') : metric === 'rate' ? formatPercent(value) : metric === 'xp' ? formatXp(value) : formatDuration(value),
+            })
             return (
               <button
                 key={w.weekStart}
@@ -80,7 +85,7 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
         <div className="mt-1 flex gap-0.5 text-[10px] text-muted" aria-hidden>
           {weeks.map((w, i) => (
             <span key={w.weekStart} className="min-w-0 flex-1 text-center">
-              {i === weeks.length - 1 ? 'atual' : i % 3 === 0 ? formatDate(w.weekStart, { day: 'numeric', month: 'numeric' }) : ''}
+              {i === weeks.length - 1 ? t('current') : i % 3 === 0 ? formatDate(w.weekStart, { day: 'numeric', month: 'numeric' }) : ''}
             </span>
           ))}
         </div>
@@ -89,16 +94,16 @@ export function WeeklyChart({ weeks, today }: { weeks: WeekStats[]; today: strin
       {week && (
         <p className="rounded-xl bg-surface-2 px-3 py-2 text-sm" aria-live="polite">
           <span className="text-muted">
-            {formatDate(week.weekStart)} a {formatDate(week.weekEnd)}
-            {partial && ' (até hoje)'}:
+            {t('range', { start: formatDate(week.weekStart), end: formatDate(week.weekEnd) })}
+            {partial && t('untilToday')}:
           </span>{' '}
           {week.expected === 0 ? (
-            <span className="text-muted">sem hábitos nesta semana</span>
+            <span className="text-muted">{t('noHabitsWeek')}</span>
           ) : (
             <>
               <span className="font-semibold">{formatPercent(week.rate)}</span>{' '}
               <span className="text-muted">
-                ({week.done + week.minimum} de {week.expected})
+                {t('ofExpected', { done: week.done + week.minimum, expected: week.expected })}
               </span>
             </>
           )}

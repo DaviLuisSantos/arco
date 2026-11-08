@@ -4,6 +4,7 @@ import type { Player, PlayerDetail, Today, XpResult } from '../../api/types'
 import { useToast } from '../../components/ui/toast-context'
 import { queryKeys } from '../../lib/queryKeys'
 import { useXpFeedback } from './xp-context'
+import { achievementText } from '../achievements/achievementText'
 
 /**
  * Aplica o resultado de uma mutação que devolve { xpDelta, player }:
@@ -24,7 +25,7 @@ export function useApplyXpResult() {
 
       if (xpDelta !== 0) toast.xp(xpDelta)
       // Resposta de uma versão antiga da API pode vir sem o campo.
-      for (const a of achievements ?? []) toast.achievement(a.emoji, a.title)
+      for (const a of achievements ?? []) toast.achievement(a.emoji, achievementText(a).title)
       if (achievements?.length) void qc.invalidateQueries({ queryKey: queryKeys.achievements })
       // Sem jogador em cache: subiu de nível se o XP ganho é maior que o acumulado no nível atual.
       const leveledUp = previous ? player.level > previous.level : xpDelta > player.xpIntoLevel

@@ -1,34 +1,27 @@
 import { ApiError } from '../api/client'
+import i18n from '../i18n'
+import errorsPt from '../i18n/locales/pt-BR/errors'
 
-const MESSAGES: Record<string, string> = {
-  invalid_password: 'Senha incorreta.',
-  invalid_credentials: 'E-mail ou senha incorretos.',
-  email_taken: 'Já existe uma conta com esse e-mail.',
-  invalid_token: 'Link inválido ou expirado. Peça um novo.',
-  unauthorized: 'Sua sessão expirou. Entre novamente.',
-  rate_limited: 'Muitas tentativas. Aguarde um minuto e tente de novo.',
-  not_found: 'Não encontrado. Talvez já tenha sido removido.',
-  active_cycle_exists: 'Já existe um ciclo ativo. Encerre-o antes de começar outro.',
-  conflict: 'Essa ação já foi feita.',
-  internal_error: 'Erro no servidor. Tente novamente em instantes.',
-  network: 'Sem conexão com o servidor. Verifique sua internet.',
-  unavailable: 'Servidor indisponível no momento. Tente de novo em instantes.',
+type ErrorKey = keyof typeof errorsPt
+
+function msg(key: ErrorKey): string {
+  return i18n.t(`errors:${key}`)
 }
 
-/** Converte qualquer erro em uma mensagem pt-BR para o usuário. */
+function isKnown(code: string): code is ErrorKey {
+  return Object.prototype.hasOwnProperty.call(errorsPt, code)
+}
+
+/** Converte qualquer erro em uma mensagem no idioma atual para o usuário. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === 'network' && !navigator.onLine) {
-      return 'Você está offline. Sem internet, só o check-in funciona.'
-    }
-    // validation/conflict: o backend já devolve uma mensagem pt-BR específica.
-    if ((error.code === 'validation' || error.code === 'conflict') && error.message) {
-      return error.message
-    }
-    const known = MESSAGES[error.code]
-    if (known) return known
-    if (error.status >= 500) return MESSAGES.internal_error
-    return error.message || 'Algo deu errado.'
+    // Em pt-BR o backend já devolve mensagens específicas; em outros idiomas, valem as do namespace `errors`.
+    const pt = i18n.language.toLowerCase().startsWith('pt')
+    if (error.code === 'network' && !navigator.onLine) return msg('offline')
+    if (pt && (error.code === 'validation' || error.code === 'conflict') && error.message) return error.message
+    if (isKnown(error.code)) return msg(error.code)
+    if (error.status >= 500) return msg('internal_error')
+    return (pt && error.message) || msg('generic')
   }
-  return 'Algo deu errado. Tente novamente.'
+  return msg('genericRetry')
 }
