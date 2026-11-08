@@ -5,6 +5,7 @@
 - `src/Arco.Api/Infrastructure/Startup.cs`: `AddArco` (DI, auth, hosted services), `ApplyMigrations`, `UseArco`, `MapArco` (registra todas as rotas).
 - `web/src/main.tsx` → `web/src/app/router.tsx` (rotas: `/`, habits, habits/:id, cycle, profile, review, stats, login, register, forgot-password, reset-password, verify-email).
 - `web/src/sw.ts`: service worker (push; nunca cacheia `/api`).
+- `web/public/landing/` (estático, fora do SPA): landing e `/landing/privacidade/`. Em `/`, quem não tem sessão recebe a landing (middleware em `Startup.UseArco`; com o shell do service worker, `RequireAuth` redireciona para `/landing/`).
 
 ## Módulos
 | Onde | O quê |

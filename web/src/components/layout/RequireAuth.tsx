@@ -21,6 +21,13 @@ export function RequireAuth() {
       </div>
     )
   }
-  if (!auth.data) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!auth.data) {
+    // Na raiz, quem não tem sessão vê a landing (o servidor já faz isso; aqui cobre o shell vindo do service worker).
+    if (location.pathname === '/') {
+      window.location.replace('/landing/')
+      return null
+    }
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
   return <Outlet />
 }

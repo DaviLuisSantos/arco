@@ -267,6 +267,20 @@ public static class Startup
             await next();
         });
 
+        // "/" is the landing page for visitors without a session, and the app for whoever is signed in.
+        // (With the service worker installed, the app shell handles the same case in RequireAuth.)
+        app.Use(async (ctx, next) =>
+        {
+            if (ctx.Request.Path == "/" && (HttpMethods.IsGet(ctx.Request.Method) || HttpMethods.IsHead(ctx.Request.Method)))
+            {
+                ctx.Response.Headers.CacheControl = "no-cache";
+                ctx.Response.Headers.Vary = "Cookie";
+                var session = await ctx.AuthenticateAsync(AuthScheme);
+                if (!session.Succeeded) ctx.Request.Path = "/landing/index.html";
+            }
+            await next();
+        });
+
         app.UseDefaultFiles();
         app.UseStaticFiles();
 
