@@ -31,16 +31,21 @@ No portal, vá em **Create a resource → Web App** e preencha:
 - Aba **Deployment:** deixe a implantação contínua desativada; a esteira é a deste repositório.
 - Aba **Monitoring:** **Enable Application Insights = No**.
 
-### 2. Segredos do app
+### 2. Segredos e configuração do app
 
-No Web App, abra **Settings → Environment variables → App settings → + Add**, adicione as duas e clique em **Apply**:
+No Web App, abra **Settings → Environment variables → App settings → + Add**, adicione as variáveis e clique em **Apply**:
 
 | Nome | Valor |
 |---|---|
-| `Auth__PasswordHash` | saída de `dotnet run --project src/Arco.Api -- hash-password "sua-senha"` (sem aspas) |
+| `Auth__OwnerEmail` | e-mail do dono. Usado só no bootstrap: reivindica os dados existentes (usuário 1) na primeira subida após a migração multiusuário |
+| `Auth__PasswordHash` | só bootstrap; saída de `dotnet run --project src/Arco.Api -- hash-password "sua-senha"` (sem aspas) |
+| `Email__ResendApiKey` | chave do Resend para enviar verificação e reset. Sem ela, os links só aparecem no log (`LogEmailSender`) |
+| `Email__From` | remetente, ex.: `Arco <no-reply@seu-dominio>` (padrão `Arco <onboarding@resend.dev>`) |
+| `App__BaseUrl` | URL pública, ex.: `https://<host>`; base dos links dos e-mails |
+| `Auth__Google__ClientId` / `Auth__Google__ClientSecret` | opcionais; habilitam "Entrar com Google". Redirect URI autorizada: `https://<host>/api/auth/google/callback` |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
 
-Sem `Auth__PasswordHash` o app não sobe em produção, e o smoke test falha.
+Novos usuários se cadastram pelo app; as variáveis do dono só importam enquanto o usuário 1 ainda tem o e-mail provisório.
 
 ### 3. Identidade para o GitHub (OIDC)
 
@@ -88,9 +93,9 @@ Depois disso, rode o workflow em **Actions → CI / Deploy Azure → Run workflo
 
 - **Automático:** o próprio app grava uma cópia consistente por dia em `D:\home\data\backups\arco-AAAA-MM-DD.db`
   e guarda os últimos 14 dias. A cópia sai na primeira hora em que o app está acordado no dia; com o monitor do
-  `/api/health` ligado, sai logo depois da meia-noite. O Perfil mostra a data da última cópia.
-- **No seu aparelho:** Perfil → **Baixar backup** baixa uma cópia na hora (`GET /api/backup`). Faça de vez em
-  quando: é a única cópia fora do Azure.
+  `/api/health` ligado, sai logo depois da meia-noite.
+- **No seu aparelho:** Perfil → exportar dados baixa um JSON só com os dados do usuário (`GET /api/backup`). Não é uma cópia
+  do banco: para isso, use a cópia automática acima pelo Kudu.
 - **Restaurar:** pare o Web App; pelo Kudu (**Development Tools → Advanced Tools → Debug console**), substitua
   `D:\home\data\arco.db` pelo backup e apague `arco.db-wal` e `arco.db-shm` se existirem; inicie o Web App.
 - **Logs:** no Web App, **Monitoring → Log stream**. Para ver erros de inicialização, ative

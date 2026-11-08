@@ -216,7 +216,7 @@ public sealed class Phase3ApiTests : IDisposable
     }
 
     [Fact]
-    public async Task Backup_downloads_a_consistent_copy_and_keeps_one_automatic_copy_per_day()
+    public async Task Export_downloads_the_users_data_as_json_and_one_automatic_copy_is_kept_per_day()
     {
         var client = await _factory.LoggedInClientAsync();
         await client.PostAsJsonAsync("/api/habits",
@@ -224,38 +224,25 @@ public sealed class Phase3ApiTests : IDisposable
 
         var res = await client.GetAsync("/api/backup");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Equal("arco-2030-03-04.db", res.Content.Headers.ContentDisposition?.FileNameStar ?? res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
-        var bytes = await res.Content.ReadAsByteArrayAsync();
-        Assert.Equal("SQLite format 3\0", System.Text.Encoding.ASCII.GetString(bytes, 0, 16));
+        Assert.Equal("arco-export-2030-03-04.json", res.Content.Headers.ContentDisposition?.FileNameStar ?? res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        var export = await res.JsonAsync();
+        Assert.Equal("Ler", (string?)export["habits"]!.AsArray().Single()!["name"]);
+        Assert.NotNull((string?)export["user"]!["email"]);
+        Assert.Null(export["user"]!["passwordHash"]);
 
-        // The copy is a working database with the data.
-        var copy = Path.Combine(Path.GetTempPath(), $"arco-test-{Guid.NewGuid():N}.db");
-        await File.WriteAllBytesAsync(copy, bytes);
-        try
-        {
-            await using var conn = new SqliteConnection($"Data Source={copy};Pooling=False");
-            await conn.OpenAsync();
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Name FROM Habits";
-            Assert.Equal("Ler", (string?)await cmd.ExecuteScalarAsync());
-        }
-        finally
-        {
-            File.Delete(copy);
-        }
+        // The old list of automatic copies is gone from the API.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/backups")).StatusCode);
 
-        Assert.Empty((await client.GetJsonAsync("/api/backups")).AsArray());
+        // The daily copy of the whole database still runs, once per day.
         var backup = _factory.Services.GetRequiredService<DatabaseBackup>();
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var today = new DateOnly(2030, 3, 4);
-            Assert.NotNull(await backup.CreateDailyAsync(db, today, CancellationToken.None));
-            Assert.Null(await backup.CreateDailyAsync(db, today, CancellationToken.None)); // once a day
-        }
-        var list = (await client.GetJsonAsync("/api/backups")).AsArray();
-        Assert.Equal("2030-03-04", (string?)list.Single()!["date"]);
-        Assert.True((long)list.Single()!["sizeBytes"]! > 0);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var today = new DateOnly(2030, 3, 4);
+        Assert.NotNull(await backup.CreateDailyAsync(db, today, CancellationToken.None));
+        Assert.Null(await backup.CreateDailyAsync(db, today, CancellationToken.None));
+        var file = Assert.Single(backup.List());
+        Assert.Equal(today, file.Date);
+        Assert.True(file.SizeBytes > 0);
     }
 
     [Fact]

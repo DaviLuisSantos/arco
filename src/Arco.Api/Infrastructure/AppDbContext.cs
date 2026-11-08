@@ -1,10 +1,21 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Arco.Api.Infrastructure;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+/// <summary>
+/// Every <see cref="IUserOwned"/> entity is filtered by <see cref="CurrentUser"/> (no user = no rows) and,
+/// when added, gets its <c>UserId</c> filled in by <c>SaveChanges</c>. Jobs that span users either call
+/// <see cref="CurrentUser.Impersonate"/> or use <c>IgnoreQueryFilters()</c> and set <c>UserId</c> themselves.
+/// </summary>
+public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? currentUser = null) : DbContext(options)
 {
+    /// <summary>Read by the query filters on every query (parameterized by EF).</summary>
+    private int CurrentUserId => currentUser?.Id ?? 0;
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<UserToken> UserTokens => Set<UserToken>();
     public DbSet<Settings> Settings => Set<Settings>();
     public DbSet<Cycle> Cycles => Set<Cycle>();
     public DbSet<Goal> Goals => Set<Goal>();
@@ -28,13 +39,58 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         builder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
     }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampOwner();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampOwner();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>Fills <c>UserId</c> of new owned rows; refuses to save one that would belong to nobody.</summary>
+    private void StampOwner()
+    {
+        foreach (var entry in ChangeTracker.Entries<IUserOwned>())
+        {
+            if (entry.State != EntityState.Added || entry.Entity.UserId != 0) continue;
+            var userId = CurrentUserId;
+            if (userId == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot save a new {entry.Metadata.ClrType.Name} without a current user (CurrentUser not set).");
+            }
+            entry.Entity.UserId = userId;
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<User>(e =>
+        {
+            e.Property(x => x.Email).HasMaxLength(254);
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.PasswordHash).HasMaxLength(100);
+            e.Property(x => x.GoogleSubject).HasMaxLength(255);
+            e.HasIndex(x => x.GoogleSubject).IsUnique();
+            e.Property(x => x.DisplayName).HasMaxLength(80);
+        });
+
+        b.Entity<UserToken>(e =>
+        {
+            e.Property(x => x.Purpose).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.TokenHash).HasMaxLength(64);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         b.Entity<Settings>(e =>
         {
-            e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Timezone).HasMaxLength(64);
-            e.HasData(new Settings { Id = Domain.Settings.SingletonId, Timezone = TimeZones.Default });
+            e.HasIndex(x => x.UserId).IsUnique();
         });
 
         b.Entity<Cycle>(e =>
@@ -45,8 +101,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ReviewWins).HasMaxLength(2000);
             e.Property(x => x.ReviewObstacles).HasMaxLength(2000);
             e.Property(x => x.ReviewNext).HasMaxLength(2000);
-            // At most one active cycle.
-            e.HasIndex(x => x.Status).IsUnique().HasFilter("\"Status\" = 'Active'");
+            // At most one active cycle per user.
+            e.HasIndex(x => new { x.UserId, x.Status }).IsUnique().HasFilter("\"Status\" = 'Active'");
         });
 
         b.Entity<Goal>(e =>
@@ -119,7 +175,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         b.Entity<WeeklyReview>(e =>
         {
-            e.HasIndex(x => x.WeekStart).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.WeekStart }).IsUnique();
             e.Property(x => x.Wins).HasMaxLength(2000);
             e.Property(x => x.Obstacles).HasMaxLength(2000);
             e.Property(x => x.Next).HasMaxLength(2000);
@@ -137,7 +193,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<PushDispatch>(e =>
         {
             e.Property(x => x.Key).HasMaxLength(100);
-            e.HasIndex(x => x.Key).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.Key }).IsUnique();
         });
 
         b.Entity<ApiKey>(e =>
@@ -151,8 +207,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<UnlockedAchievement>(e =>
         {
             e.Property(x => x.Key).HasMaxLength(50);
-            e.HasIndex(x => x.Key).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.Key }).IsUnique();
         });
+
+        foreach (var type in b.Model.GetEntityTypes().Select(t => t.ClrType).Where(typeof(IUserOwned).IsAssignableFrom).ToList())
+        {
+            b.Entity(type).HasOne(typeof(User)).WithMany().HasForeignKey(nameof(IUserOwned.UserId)).OnDelete(DeleteBehavior.Cascade);
+            b.Entity(type).HasQueryFilter(OwnerFilter(type));
+        }
+    }
+
+    /// <summary>Builds <c>e => e.UserId == this.CurrentUserId</c> for the concrete entity type.</summary>
+    private LambdaExpression OwnerFilter(Type type)
+    {
+        var e = Expression.Parameter(type, "e");
+        var body = Expression.Equal(
+            Expression.Property(e, nameof(IUserOwned.UserId)),
+            Expression.Property(Expression.Constant(this), nameof(CurrentUserId)));
+        return Expression.Lambda(body, e);
     }
 }
 

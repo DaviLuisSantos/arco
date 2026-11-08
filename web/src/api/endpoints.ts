@@ -3,7 +3,7 @@ import type {
   CycleArch,
   Achievement,
   ApiKey,
-  BackupFile,
+  AuthProviders,
   CheckIn,
   CheckInInput,
   CheckInResult,
@@ -26,6 +26,7 @@ import type {
   HabitInput,
   HabitLevelUpResult,
   Health,
+  Me,
   LevelUpInput,
   PlayerDetail,
   PushConfig,
@@ -41,7 +42,9 @@ import type {
 } from './types'
 
 export const authApi = {
-  login: (password: string) => api.post<void>('/auth/login', { password }),
+  register: (input: { email: string; password: string; displayName?: string }) =>
+    api.post<void>('/auth/register', input),
+  login: (email: string, password: string) => api.post<void>('/auth/login', { email, password }),
   /** 401 (sem cookie) também conta como sessão encerrada. */
   logout: async (): Promise<void> => {
     try {
@@ -50,15 +53,40 @@ export const authApi = {
       if (!(e instanceof ApiError && e.status === 401)) throw e
     }
   },
-  /** true quando há sessão válida; 401 vira false. */
-  me: async (): Promise<boolean> => {
+  /** Usuário logado; 401 vira null. */
+  me: async (): Promise<Me | null> => {
     try {
-      await api.get<{ authenticated: boolean }>('/auth/me')
-      return true
+      return await api.get<Me>('/auth/me')
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) return false
+      if (e instanceof ApiError && e.status === 401) return null
       throw e
     }
+  },
+  providers: () => api.get<AuthProviders>('/auth/providers'),
+  demo: () => api.post<void>('/auth/demo'),
+  verifyEmail: (token: string) => api.post<void>('/auth/verify-email', { token }),
+  resendVerification: () => api.post<void>('/auth/resend-verification'),
+  forgotPassword: (email: string) => api.post<void>('/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post<void>('/auth/reset-password', { token, password }),
+  changePassword: (input: { currentPassword?: string; newPassword: string }) =>
+    api.post<void>('/auth/change-password', input),
+  deleteAccount: (password?: string) => api.delete<void>('/auth/account', { password }),
+}
+
+/** Exporta os dados do usuário (GET /api/backup) e dispara o download do JSON. */
+export const exportApi = {
+  download: async (): Promise<void> => {
+    const data = await api.get<unknown>('/backup')
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `arco-export-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   },
 }
 
@@ -122,10 +150,6 @@ export const apiKeysApi = {
   list: () => api.get<ApiKey[]>('/api-keys'),
   create: (name: string) => api.post<CreatedApiKey>('/api-keys', { name }),
   revoke: (id: number) => api.delete<void>(`/api-keys/${id}`),
-}
-
-export const backupApi = {
-  list: () => api.get<BackupFile[]>('/backups'),
 }
 
 export const statsApi = {

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.md` (conceito, regras de XP) e `docs/API.md` (contrato da API) antes de mudar comportamento. **Mantenha o API.md atualizado** a cada mudança de contrato.
+Arco: app multiusuário de hábitos com progressão. Leia `docs/PRODUCT.md` (conceito, regras de XP) e `docs/API.md` (contrato da API) antes de mudar comportamento. **Mantenha o API.md atualizado** a cada mudança de contrato.
 
 **Antes de explorar o código, leia `docs/repo_map.md`.**
 
@@ -18,17 +18,18 @@ Arco: app pessoal (single-user) de hábitos com progressão. Leia `docs/PRODUCT.
 - Produção: Azure App Service via `.github/workflows/deploy.yml` (win-x86 auto-contido; ver `docs/DEPLOY.md`). Alternativa: um container (`Dockerfile` + Caddy no `docker-compose.yml`). Nos dois casos o ASP.NET serve a API e `wwwroot` (o build do web).
 
 ## Comandos
-- API: `dotnet run --project src/Arco.Api`, em :5080. Em Development, a senha é "arco".
+- API: `dotnet run --project src/Arco.Api`, em :5080. Crie uma conta em `/register` (e-mails saem no log sem `Email:ResendApiKey`) ou use "Experimentar demo".
 - Web: `cd web && npm run dev`, em :5173, com proxy de `/api`.
 - Testes: `dotnet test`. Web: `npm run lint` (oxlint) e `npm run build`.
 - Hash de senha: `dotnet run --project src/Arco.Api -- hash-password <senha>`.
 
 ## Regras importantes
+- **Multiusuário:** toda query nova é filtrada por usuário (entidades `IUserOwned`, filtro global via `CurrentUser`). Jobs de fundo (lembretes, backup, limpeza da demo) não têm HttpContext e devem usar `CurrentUser.Impersonate(id)`; `IgnoreQueryFilters()` só quando intencional (chave de API por hash, push por endpoint).
 - **Datas:** "hoje" vem sempre do fuso em `Settings` (padrão `America/Sao_Paulo`), via o clock da Infrastructure. Nunca derive a data do usuário de `DateTime.UtcNow`. Datas de calendário usam `DateOnly` e `"YYYY-MM-DD"`; todo `DateTime` é UTC (há um converter no DbContext).
 - **Dias da semana:** 0 = domingo … 6 = sábado. A semana do `WeeklyTarget` começa na segunda.
 - **XP:** é um livro-razão (`XpEvent`). Toda ação que dá ou tira XP grava o evento na mesma transação, e as respostas devolvem `{ xpDelta, player, achievements }` (conquistas desbloqueadas pela ação: chame `AchievementService.UnlockAsync` depois de salvar). Excluir algo que deu XP (ciclo, objetivo) remove os `XpEvent` dele e chama `AchievementService.RevokeUnmetAsync`.
 - **Erros:** o formato é `{ error, code }`, com mensagens em pt-BR. `/api/*` nunca redireciona: devolve 401 em JSON.
-- **Auth:** toda rota `/api` aceita o cookie do app ou uma chave de API (`Authorization: Bearer arco_…`, `Infrastructure/ApiKeyAuthentication.cs`). Toda funcionalidade nova deve funcionar pela API, sem depender do app. Só o gerenciamento de chaves exige o cookie (`User.UsedApiKey()`).
+- **Auth:** toda rota `/api` aceita o cookie do app ou uma chave de API (`Authorization: Bearer arco_…`, `Infrastructure/ApiKeyAuthentication.cs`). Toda funcionalidade nova deve funcionar pela API, sem depender do app. Só o gerenciamento de chaves, `change-password` e `DELETE /api/auth/account` exigem o cookie (`User.UsedApiKey()`).
 - **MCP:** `Features/Mcp` expõe o servidor MCP em `/api/mcp`; as ferramentas (`ArcoTools`) chamam a própria API REST via `ArcoApiClient`, nunca o banco. Ação nova do dia a dia → ganhe também uma ferramenta. `docs/API.md` vai embutido na DLL (ferramenta `ler_documentacao_api`).
 - **Frontend:** nunca use `new Date("YYYY-MM-DD")`; use `web/src/lib/dates.ts`. O service worker (`web/src/sw.ts`, injectManifest) nunca cacheia `/api`; ele não é registrado em `npm run dev`, então push só funciona no build.
 - **Offline:** os dados offline vêm do cache do TanStack Query persistido no IndexedDB (`app/queryClient.ts`), nunca do service worker. Só o check-in funciona sem rede (`features/checkins/checkInMutation.ts`: pausa, fila ordenada via `scope`, retomada ao reabrir); as outras mutações usam `networkMode: 'always'` e falham na hora. Nas telas, use `isLoadingError` (e não `isError`) para não trocar dados em cache por um erro de refetch. Mudou o formato de uma resposta de forma incompatível? Troque o `buster`.

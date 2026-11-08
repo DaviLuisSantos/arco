@@ -12,7 +12,7 @@ import { queryKeys } from './lib/queryKeys'
 
 // 401 em qualquer rota protegida: sessão acabou → limpa o cache e volta ao login.
 setUnauthorizedHandler(() => {
-  queryClient.setQueryData(queryKeys.auth, false)
+  queryClient.setQueryData(queryKeys.auth, null)
   queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth' })
   if (window.location.pathname !== '/login') void router.navigate('/login', { replace: true })
 })

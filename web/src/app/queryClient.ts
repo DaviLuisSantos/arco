@@ -33,5 +33,5 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> = {
   persister: createAsyncStoragePersister({ storage: idbStorage, key: 'arco-query-cache', throttleTime: 1000 }),
   maxAge: MAX_AGE,
   // Trocar quando o formato das respostas mudar de um jeito incompatível.
-  buster: 'v3',
+  buster: 'v4',
 }

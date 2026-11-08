@@ -44,10 +44,15 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("KeyHash")
                         .IsUnique();
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("ApiKeys");
                 });
@@ -75,12 +80,17 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Xp")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Date");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("HabitId", "Date")
                         .IsUnique();
@@ -131,6 +141,9 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("WeeklyFocusMinutes")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -138,7 +151,7 @@ namespace Arco.Api.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Status")
+                    b.HasIndex("UserId", "Status")
                         .IsUnique()
                         .HasFilter("\"Status\" = 'Active'");
 
@@ -171,7 +184,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("HabitId", "Date");
 
@@ -222,9 +240,14 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CycleId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Goals");
                 });
@@ -244,12 +267,17 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<double>("Value")
                         .HasColumnType("REAL");
 
                     b.HasKey("Id");
 
                     b.HasIndex("GoalId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("GoalUpdates");
                 });
@@ -305,9 +333,14 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("TimesPerWeek")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GoalId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Habits");
                 });
@@ -337,7 +370,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime>("ReachedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("HabitId", "Level")
                         .IsUnique();
@@ -367,7 +405,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("HabitId", "Position");
 
@@ -394,9 +437,14 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GoalId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Milestones");
                 });
@@ -415,9 +463,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Key")
+                    b.HasIndex("UserId", "Key")
                         .IsUnique();
 
                     b.ToTable("PushDispatches");
@@ -457,10 +508,15 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Endpoint")
                         .IsUnique();
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("PushSubscriptions");
                 });
@@ -468,12 +524,16 @@ namespace Arco.Api.Infrastructure.Migrations
             modelBuilder.Entity("Arco.Api.Domain.Settings", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Timezone")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("WeeklyReviewReminderDay")
                         .HasColumnType("INTEGER");
@@ -486,17 +546,10 @@ namespace Arco.Api.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Settings");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Timezone = "America/Sao_Paulo",
-                            WeeklyReviewReminderDay = 0,
-                            WeeklyReviewReminderEnabled = true,
-                            WeeklyReviewReminderTime = new TimeOnly(18, 0, 0)
-                        });
+                    b.ToTable("Settings");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.UnlockedAchievement", b =>
@@ -513,12 +566,97 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime>("UnlockedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Key")
+                    b.HasIndex("UserId", "Key")
                         .IsUnique();
 
                     b.ToTable("Achievements");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleSubject")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDemo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SecurityStamp")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("GoogleSubject")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.UserToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserTokens");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.WeeklyReview", b =>
@@ -538,6 +676,9 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateOnly>("WeekStart")
                         .HasColumnType("TEXT");
 
@@ -547,7 +688,7 @@ namespace Arco.Api.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WeekStart")
+                    b.HasIndex("UserId", "WeekStart")
                         .IsUnique();
 
                     b.ToTable("WeeklyReviews");
@@ -593,6 +734,9 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("WeeklyReviewId")
                         .HasColumnType("INTEGER");
 
@@ -610,9 +754,20 @@ namespace Arco.Api.Infrastructure.Migrations
 
                     b.HasIndex("MilestoneId");
 
+                    b.HasIndex("UserId");
+
                     b.HasIndex("WeeklyReviewId");
 
                     b.ToTable("XpEvents");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.ApiKey", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.CheckIn", b =>
@@ -623,7 +778,22 @@ namespace Arco.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Habit");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.Cycle", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.FocusSession", b =>
@@ -631,6 +801,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasOne("Arco.Api.Domain.Habit", "Habit")
                         .WithMany()
                         .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -645,6 +821,12 @@ namespace Arco.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Cycle");
                 });
 
@@ -653,6 +835,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasOne("Arco.Api.Domain.Goal", null)
                         .WithMany("Updates")
                         .HasForeignKey("GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -664,6 +852,12 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasForeignKey("GoalId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Goal");
                 });
 
@@ -674,6 +868,12 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasForeignKey("HabitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.HabitPlannedLevel", b =>
@@ -681,6 +881,12 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasOne("Arco.Api.Domain.Habit", null)
                         .WithMany("PlannedLevels")
                         .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -693,7 +899,67 @@ namespace Arco.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Goal");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.PushDispatch", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.PushSubscription", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.Settings", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.UnlockedAchievement", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.UserToken", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.WeeklyReview", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.XpEvent", b =>
@@ -722,6 +988,12 @@ namespace Arco.Api.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("MilestoneId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Arco.Api.Domain.WeeklyReview", "WeeklyReview")
                         .WithMany()

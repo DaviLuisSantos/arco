@@ -2,6 +2,9 @@ import { ApiError } from '../api/client'
 
 const MESSAGES: Record<string, string> = {
   invalid_password: 'Senha incorreta.',
+  invalid_credentials: 'E-mail ou senha incorretos.',
+  email_taken: 'Já existe uma conta com esse e-mail.',
+  invalid_token: 'Link inválido ou expirado. Peça um novo.',
   unauthorized: 'Sua sessão expirou. Entre novamente.',
   rate_limited: 'Muitas tentativas. Aguarde um minuto e tente de novo.',
   not_found: 'Não encontrado. Talvez já tenha sido removido.',

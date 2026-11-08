@@ -1,6 +1,6 @@
 # Arco — Produto
 
-App pessoal (single-user) de hábitos com **progresso e objetivo**: cada check-in alimenta algo maior.
+App multiusuário de hábitos com **progresso e objetivo**: cada check-in alimenta algo maior.
 
 ```
 Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerramento com revisão
@@ -132,6 +132,7 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
+4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
 3. **Polimento** — streaks com tolerância (1 falha por semana), escada planejada e regra de subida por hábito, conquistas, histórico e estatísticas.
 
@@ -163,14 +164,14 @@ O app abre e funciona sem internet para **ler** e **marcar check-in**:
 **Verificar em produção e no uso real**
 - MCP: criar a chave "Claude Code" no Perfil e conectar
   (`claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_…"`).
-- Backup: o cartão do Perfil deve mostrar a cópia automática do dia; baixar a primeira cópia para fora do Azure.
+- Multiusuário: testar cadastro, link de verificação/reset (log ou Resend), Google e a conta demo; conferir que o dono antigo entra com `Auth:OwnerEmail` e vê os dados.
 - Offline: testar no celular em modo avião (check-in na fila, "Sincronizando…" ao voltar a conexão).
 - Escada do inglês: cadastrar 25/35/45/60 min com a regra "3 semanas seguidas, 5+ dias" e acompanhar as sugestões de
   subir e de voltar.
 - Histórico: navegação entre meses (só aparece com dados de mais de um mês).
 
 **Opcionais de infraestrutura**
-- Backup externo automático (ex.: cópia diária para um Blob Storage), para não depender do download manual.
+- Backup externo automático (ex.: cópia diária para um Blob Storage); a cópia diária do SQLite fica só no servidor.
 - Infraestrutura como código (Bicep ou script `az`) para recriar o ambiente do Azure com um comando.
 - Ambiente local: a porta 5080 está ocupada por outro programa nesta máquina; `NODE_ENV=production` faz o
   `npm install` pular as devDependencies (use `npm install --include=dev`).

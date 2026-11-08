@@ -13,7 +13,18 @@ export class ApiError extends Error {
 }
 
 /** Rotas cujo 401 é resposta esperada e não deve redirecionar para o login. */
-const UNAUTHORIZED_EXEMPT = ['/auth/me', '/auth/login', '/auth/logout']
+const UNAUTHORIZED_EXEMPT = [
+  '/auth/me',
+  '/auth/login',
+  '/auth/logout',
+  '/auth/register',
+  '/auth/demo',
+  '/auth/verify-email',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/change-password',
+  '/auth/account',
+]
 
 let onUnauthorized: (() => void) | null = null
 
@@ -78,5 +89,5 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
-  delete: <T>(path: string) => request<T>('DELETE', path),
+  delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, body),
 }

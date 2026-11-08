@@ -302,12 +302,6 @@ export interface CreatedApiKey extends Omit<ApiKey, 'lastUsedAt'> {
   key: string
 }
 
-/** Cópia automática do banco guardada no servidor. */
-export interface BackupFile {
-  date: string
-  sizeBytes: number
-}
-
 export interface CheckInTotals {
   done: number
   minimum: number
@@ -496,4 +490,18 @@ export interface CycleArch {
   totalMinutes: number
   habits: ArchHabit[]
   stones: ArchStone[]
+}
+
+export interface Me {
+  id: number
+  email: string
+  displayName: string
+  emailVerified: boolean
+  isDemo: boolean
+  hasPassword: boolean
+  hasGoogle: boolean
+}
+
+export interface AuthProviders {
+  google: boolean
 }

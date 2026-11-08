@@ -11,6 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { AchievementsSection } from '../features/achievements/AchievementsSection'
+import { AccountCard } from '../features/account/AccountCard'
 import { ApiKeysCard } from '../features/apikeys/ApiKeysCard'
 import { BackupCard } from '../features/backup/BackupCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
@@ -73,6 +74,7 @@ export function ProfilePage() {
       </Link>
       <NotificationsSection />
       <SettingsCard />
+      <AccountCard />
       <BackupCard />
       <ApiKeysCard />
       <LogoutButton />
@@ -195,7 +197,7 @@ function LogoutButton() {
     try {
       await authApi.logout()
       qc.clear()
-      qc.setQueryData(queryKeys.auth, false)
+      qc.setQueryData(queryKeys.auth, null)
       void navigate('/login', { replace: true })
     } catch (e) {
       toast.error(errorMessage(e))

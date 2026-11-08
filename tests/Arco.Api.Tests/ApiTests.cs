@@ -14,20 +14,21 @@ public sealed class ApiTests : IDisposable
     [Fact]
     public async Task Login_rejects_wrong_password_and_accepts_right_one()
     {
+        var email = await _factory.RegisterAsync(_factory.CreateClient());
         var client = _factory.CreateClient();
 
-        var wrong = await client.PostAsJsonAsync("/api/auth/login", new { password = "nope" });
+        var wrong = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "errada-errada" });
         Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
-        Assert.Equal("invalid_password", (string?)(await wrong.JsonAsync())["code"]);
+        Assert.Equal("invalid_credentials", (string?)(await wrong.JsonAsync())["code"]);
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/me")).StatusCode);
 
-        var right = await client.PostAsJsonAsync("/api/auth/login", new { password = "arco" });
+        var right = await client.PostAsJsonAsync("/api/auth/login", new { email, password = ApiFactory.DefaultPassword });
         Assert.Equal(HttpStatusCode.NoContent, right.StatusCode);
         Assert.Contains(right.Headers.GetValues("Set-Cookie"), c => c.StartsWith("arco_auth=") && c.Contains("httponly"));
 
         var me = await client.GetJsonAsync("/api/auth/me");
-        Assert.True((bool)me["authenticated"]!);
+        Assert.Equal(email, (string?)me["email"]);
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/logout", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/me")).StatusCode);
@@ -38,9 +39,9 @@ public sealed class ApiTests : IDisposable
     {
         var client = _factory.CreateClient();
         for (var i = 0; i < 5; i++)
-            await client.PostAsJsonAsync("/api/auth/login", new { password = "nope" });
+            await client.PostAsJsonAsync("/api/auth/login", new { email = "x@teste.arco", password = "errada-errada" });
 
-        var res = await client.PostAsJsonAsync("/api/auth/login", new { password = "arco" });
+        var res = await client.PostAsJsonAsync("/api/auth/login", new { email = "x@teste.arco", password = "errada-errada" });
         Assert.Equal(HttpStatusCode.TooManyRequests, res.StatusCode);
         Assert.Equal("rate_limited", (string?)(await res.JsonAsync())["code"]);
     }

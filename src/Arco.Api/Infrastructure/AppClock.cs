@@ -1,6 +1,6 @@
 namespace Arco.Api.Infrastructure;
 
-/// <summary>Request-scoped clock: UTC now plus "today" in Settings.Timezone.</summary>
+/// <summary>Request-scoped clock: UTC now plus "today" in the current user's Settings.Timezone.</summary>
 public sealed class AppClock(TimeProvider time, AppDbContext db)
 {
     private string? _timezone;
@@ -9,7 +9,6 @@ public sealed class AppClock(TimeProvider time, AppDbContext db)
 
     public async Task<string> GetTimezoneAsync(CancellationToken ct = default) =>
         _timezone ??= await db.Settings.AsNoTracking()
-            .Where(s => s.Id == Settings.SingletonId)
             .Select(s => s.Timezone)
             .FirstOrDefaultAsync(ct) ?? TimeZones.Default;
 

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Arco.Api.Features.Push;
 using Arco.Api.Infrastructure.Push;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Arco.Api.Tests;
 
@@ -249,7 +250,8 @@ public sealed class Phase2ApiTests : IDisposable
     }
 
     private Task<int> DispatchAsync() =>
-        _factory.WithScopeAsync<ReminderDispatcher, int>(d => d.RunAsync(CancellationToken.None));
+        ReminderDispatcher.RunForAllUsersAsync(
+            _factory.Services.GetRequiredService<IServiceScopeFactory>(), null, CancellationToken.None);
 
     private static object Subscription(string endpoint)
     {

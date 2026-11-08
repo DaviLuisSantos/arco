@@ -56,7 +56,7 @@ public sealed class ApiKeyAuthenticationHandler(
         if (!key.StartsWith(ApiKeys.KeyPrefix, StringComparison.Ordinal)) return AuthenticateResult.Fail("Invalid API key.");
 
         var hash = ApiKeys.Hash(key);
-        var apiKey = await db.ApiKeys.FirstOrDefaultAsync(k => k.KeyHash == hash, Context.RequestAborted);
+        var apiKey = await db.ApiKeys.IgnoreQueryFilters().FirstOrDefaultAsync(k => k.KeyHash == hash, Context.RequestAborted);
         if (apiKey is null) return AuthenticateResult.Fail("Invalid API key.");
 
         var now = time.GetUtcNow().UtcDateTime;
@@ -70,7 +70,7 @@ public sealed class ApiKeyAuthenticationHandler(
 
         var identity = new ClaimsIdentity(
         [
-            new Claim(ClaimTypes.Name, "owner"),
+            new Claim(ClaimTypes.NameIdentifier, apiKey.UserId.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             new Claim(ApiKeys.AuthMethodClaim, ApiKeys.AuthMethodApiKey),
             new Claim("api_key_id", apiKey.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         ], ApiKeys.Scheme);

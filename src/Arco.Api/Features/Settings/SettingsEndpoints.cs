@@ -22,7 +22,7 @@ public static class SettingsEndpoints
     }
 
     private static async Task<SettingsDto> Get(AppDbContext db, CancellationToken ct) =>
-        ToDto(await db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == Domain.Settings.SingletonId, ct)
+        ToDto(await db.Settings.AsNoTracking().FirstOrDefaultAsync(ct)
               ?? new Domain.Settings());
 
     private static async Task<IResult> Update(UpdateSettingsRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -44,7 +44,7 @@ public static class SettingsEndpoints
             time = parsed;
         }
 
-        var settings = await db.Settings.FirstOrDefaultAsync(s => s.Id == Domain.Settings.SingletonId, ct);
+        var settings = await db.Settings.FirstOrDefaultAsync(ct);
         if (settings is null)
         {
             settings = new Domain.Settings();

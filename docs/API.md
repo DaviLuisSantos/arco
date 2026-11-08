@@ -5,21 +5,22 @@
 - Todas as rotas ficam sob `/api`. JSON em camelCase e enums como string.
 - Datas de calendário são `"YYYY-MM-DD"` (DateOnly). Instantes são ISO-8601 UTC com `Z`.
 - Ids são `int` (autoincremento).
+- Multiusuário: cada usuário só vê e altera os próprios dados (filtro global por usuário). Recurso de outro usuário → 404.
 - Autenticação, de um destes jeitos (toda rota `/api/*` aceita os dois):
   - **Cookie** HttpOnly `arco_auth` (o app): SameSite=Lax, Secure fora de Development, sliding de 30 dias.
   - **Chave de API**: cabeçalho `Authorization: Bearer arco_…`. Criada e revogada no app (Perfil → Acesso pela API);
     dá acesso total, exceto gerenciar chaves. Ver "Chaves de API".
 
-  Sem credencial válida, toda rota `/api/*`, exceto `/api/auth/login`, `/api/auth/me` e `/api/health`, devolve
+  Sem credencial válida, toda rota `/api/*`, exceto as rotas anônimas de `/api/auth/*` (ver "Auth") e `/api/health`, devolve
   **401** (nunca redirect). Chave inválida ou revogada → 401 `unauthorized`.
 - Erros: `{ "error": "mensagem pt-BR", "code": "snake_case" }`.
 
 | Status | Codes |
 |---|---|
-| 400 | `validation` |
-| 401 | `unauthorized`, `invalid_password` |
+| 400 | `validation`, `invalid_token` |
+| 401 | `unauthorized`, `invalid_credentials` |
 | 404 | `not_found` |
-| 409 | `active_cycle_exists`, `conflict` |
+| 409 | `active_cycle_exists`, `conflict`, `email_taken` |
 | 429 | `rate_limited` |
 | 500 | `internal_error` |
 
@@ -128,9 +129,32 @@ interface CheckInTotals { done: number; minimum: number; missed: number; }
 
 ## Auth
 
-- `POST /api/auth/login` `{ password }` → **204** e define o cookie. Senha errada → 401 `invalid_password`. Rate limit de 5/min por IP → 429.
-- `POST /api/auth/logout` → **204**.
-- `GET /api/auth/me` → **200** `{ authenticated: true }` ou **401**.
+Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 a 72 caracteres.
+
+| Rota | Corpo | Resposta |
+|---|---|---|
+| `POST /api/auth/register` | `{ email, password, displayName? }` | **201** + cookie + e-mail de verificação; 409 `email_taken`; 400 `validation` |
+| `POST /api/auth/login` | `{ email, password }` | **204** + cookie; 401 `invalid_credentials` |
+| `POST /api/auth/logout` | — | **204** |
+| `GET /api/auth/me` | — | **200** `Me` ou **401** |
+| `GET /api/auth/providers` | — | **200** `{ google: boolean }` |
+| `POST /api/auth/demo` | — | **201** + cookie de uma conta demo com dados de exemplo |
+| `POST /api/auth/verify-email` | `{ token }` | **204**; 400 `invalid_token` (o token vale 48h) |
+| `POST /api/auth/resend-verification` | (autenticado) | **204** |
+| `POST /api/auth/forgot-password` | `{ email }` | sempre **204**; só envia para e-mail verificado; token de 1h |
+| `POST /api/auth/reset-password` | `{ token, password }` | **204**; troca o stamp de segurança (derruba as outras sessões) e também verifica o e-mail |
+| `POST /api/auth/change-password` | `{ currentPassword?, newPassword }` | **204**; 401 `invalid_credentials`; só com o cookie |
+| `DELETE /api/auth/account` | `{ password? }` | **204**; apaga o usuário e todos os dados em cascata; só com o cookie |
+| `GET /api/auth/google?returnUrl=` | — | challenge OAuth; falha → redireciona a `/login?error=google` |
+| `/api/auth/google/callback` | — | redireciona para `returnUrl` ou `/` |
+
+- `Me` = `{ id, email, displayName, emailVerified, isDemo, hasPassword, hasGoogle }`.
+- Rotas anônimas: todas, exceto `logout`, `resend-verification`, `change-password` e `account`.
+- Rate limit por IP: `login` (`Auth:LoginAttemptsPerMinute`, padrão 5) e `register`, `demo`, `forgot-password`, `resend-verification` (`Auth:ActionsPerMinute`, padrão 10) → 429 `rate_limited`.
+- Conta demo (`isDemo`): apagada automaticamente após 24h; não pode definir senha (403).
+- Vincular o Google a uma conta com e-mail não verificado apaga a senha dela e troca o stamp.
+- `change-password` e `account` com chave de API → 403 `forbidden`.
+- Chaves de API pertencem ao usuário que as criou e acessam apenas os dados dele.
 
 ## Chaves de API
 
@@ -362,12 +386,12 @@ Sessões de foco (tempo dedicado a um hábito). Não dão XP. Os minutos enchem 
 - Estatísticas: `minutes` (soma de todas as sessões) em `weeks[]` e `recent` de `/api/stats`, em `HabitPeriodStats`, e também no ciclo e na revisão semanal.
 - Ferramentas MCP: `registrar_foco(habitId, minutos, data?)`, `ver_arco(cicloId?)` e `fazer_checkin` com `minutos?`.
 
-## Backup
+## Exportação
 
-- `GET /api/backup` → arquivo SQLite (`application/vnd.sqlite3`, `arco-AAAA-MM-DD.db`): cópia consistente do banco
-  feita na hora (`VACUUM INTO`).
-- `GET /api/backups` → `Array<{ date: string; sizeBytes: number }>`: as cópias automáticas diárias guardadas no
-  servidor (últimos 14 dias), da mais recente à mais antiga.
+- `GET /api/backup` → JSON (`arco-export-AAAA-MM-DD.json`) com tudo o que o usuário atual possui (ciclos, objetivos,
+  hábitos, check-ins, foco, XP, conquistas, revisões, configurações). Não inclui hashes de chaves de API nem chaves de push.
+- O servidor continua fazendo a cópia diária do SQLite inteiro (14 dias), mas ela não é exposta pela API;
+  `GET /api/backups` foi removido.
 
 ## Conquistas
 

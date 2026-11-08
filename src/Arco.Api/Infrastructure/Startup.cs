@@ -9,6 +9,9 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Arco.Api.Features.Auth;
+using Arco.Api.Features.Demo;
+using Arco.Api.Infrastructure.Email;
+using Microsoft.AspNetCore.Authentication.Google;
 using Arco.Api.Features.CheckIns;
 using Arco.Api.Features.Cycles;
 using Arco.Api.Features.Goals;
@@ -45,6 +48,10 @@ public static class Startup
     public const string DefaultScheme = "arco-or-api-key";
     public const string AuthCookieName = "arco_auth";
     public const string LoginRateLimitPolicy = "login";
+    /// <summary>Register, forgot-password, resend-verification and demo.</summary>
+    public const string AuthActionsRateLimitPolicy = "auth-actions";
+    /// <summary>Temporary cookie that holds the Google identity between the provider callback and our own.</summary>
+    public const string ExternalScheme = "arco-external";
 
     public static void AddArco(this WebApplicationBuilder builder)
     {
@@ -64,6 +71,9 @@ public static class Startup
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<AppClock>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<CurrentUser>();
+        services.AddArcoEmail(config);
 
         // Web Push: VAPID keys (generated into the data dir when not configured) and the reminder loop.
         services.AddSingleton(VapidKeys.Load(config, dataDir));
@@ -72,13 +82,15 @@ public static class Startup
         services.AddScoped<ReminderDispatcher>();
         if (config.GetValue("Push:SchedulerEnabled", true)) services.AddHostedService<ReminderService>();
 
+        // Demo accounts are deleted after 24 hours.
+        if (config.GetValue("Demo:CleanupEnabled", true)) services.AddHostedService<DemoCleanupService>();
+
         // Backups: one automatic copy per day next to the database, plus downloads on demand.
         services.AddSingleton(new DatabaseBackup(Path.Combine(dataDir, "backups")));
         if (config.GetValue("Backup:Enabled", true)) services.AddHostedService<DatabaseBackupService>();
 
         // MCP server at /api/mcp (Streamable HTTP, stateless), authenticated like the rest of /api. Its tools call the
         // REST API itself with the caller's key, so both always behave the same.
-        services.AddHttpContextAccessor();
         services.AddHttpClient(ArcoApiClient.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(30));
         services.AddScoped<ArcoApiClient>();
         services.AddMcpServer(o =>
@@ -95,10 +107,9 @@ public static class Startup
         services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
 
         // Auth
-        services.AddSingleton(PasswordVerifier.FromConfiguration(config, env));
         // Requests with "Authorization: Bearer …" use an API key; everything else, the app's cookie.
-        services.AddAuthentication(DefaultScheme)
-            .AddPolicyScheme(DefaultScheme, "Cookie ou chave de API", o =>
+        var auth = services.AddAuthentication(DefaultScheme);
+        auth.AddPolicyScheme(DefaultScheme, "Cookie ou chave de API", o =>
                 o.ForwardDefaultSelector = ctx => ApiKeys.IsApiKeyRequest(ctx.Request) ? ApiKeys.Scheme : AuthScheme)
             .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeys.Scheme, null)
             .AddCookie(AuthScheme, o =>
@@ -112,30 +123,44 @@ public static class Startup
             o.SlidingExpiration = true;
             o.Events = new CookieAuthenticationEvents
             {
+                // A password change or reset (new stamp) or a deleted account ends the session.
+                OnValidatePrincipal = AuthSession.ValidateAsync,
                 OnRedirectToLogin = ctx => ApiResults.WriteErrorAsync(ctx.HttpContext,
                     StatusCodes.Status401Unauthorized, ErrorCodes.Unauthorized, "Não autenticado."),
                 OnRedirectToAccessDenied = ctx => ApiResults.WriteErrorAsync(ctx.HttpContext,
                     StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, "Acesso negado."),
             };
         });
+        if (GoogleAuth.IsConfigured(config))
+        {
+            auth.AddCookie(ExternalScheme, o =>
+            {
+                o.Cookie.Name = "arco_ext";
+                o.Cookie.HttpOnly = true;
+                o.Cookie.SecurePolicy = env.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+                o.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+            });
+            auth.AddGoogle(GoogleDefaults.AuthenticationScheme, o =>
+            {
+                o.ClientId = config["Auth:Google:ClientId"]!;
+                o.ClientSecret = config["Auth:Google:ClientSecret"]!;
+                o.SignInScheme = ExternalScheme;
+                o.ClaimActions.MapJsonKey("email_verified", "email_verified");
+            });
+        }
         services.AddAuthorization();
 
-        // Login rate limit: N per minute per client IP (fixed window).
-        var permitLimit = config.GetValue("Auth:LoginAttemptsPerMinute", 5);
+        // Rate limits per client IP (fixed window, per minute): login attempts, and the other account actions.
+        var loginLimit = config.GetValue("Auth:LoginAttemptsPerMinute", 5);
+        var actionsLimit = config.GetValue("Auth:ActionsPerMinute", 10);
         services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             o.OnRejected = (ctx, ct) => new ValueTask(ApiResults.WriteErrorAsync(ctx.HttpContext,
                 StatusCodes.Status429TooManyRequests, ErrorCodes.RateLimited,
-                "Muitas tentativas de login. Aguarde um minuto e tente novamente.", ct));
-            o.AddPolicy(LoginRateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
-                http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = permitLimit,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueLimit = 0,
-                }));
+                "Muitas tentativas. Aguarde um minuto e tente novamente.", ct));
+            o.AddPolicy(LoginRateLimitPolicy, http => PerIpPerMinute(http, loginLimit));
+            o.AddPolicy(AuthActionsRateLimitPolicy, http => PerIpPerMinute(http, actionsLimit));
         });
 
         // Runs behind Caddy.
@@ -146,6 +171,16 @@ public static class Startup
             o.KnownProxies.Clear();
         });
     }
+
+    private static RateLimitPartition<string> PerIpPerMinute(HttpContext http, int permitLimit) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            });
 
     /// <summary>
     /// Reads ConnectionStrings:Arco (default "Data Source=data/arco.db"), resolves a relative path
@@ -170,14 +205,17 @@ public static class Startup
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.Migrate();
-        // Achievements already earned (e.g. before they existed) unlock silently.
-        AchievementService.UnlockAsync(db, scope.ServiceProvider.GetRequiredService<AppClock>(), CancellationToken.None)
-            .GetAwaiter().GetResult();
+        OwnerBootstrap.Run(app);
 
-        if (app.Services.GetRequiredService<PasswordVerifier>().UsingDevelopmentDefault)
+        // Achievements already earned before they existed unlock silently, for the pre-existing data (user 1).
+        if (db.Users.AsNoTracking().Any(u => u.Id == OwnerBootstrap.OwnerId))
         {
-            app.Logger.LogWarning("Auth:PasswordHash is not configured; accepting the development password \"{Password}\".",
-                PasswordVerifier.DevelopmentPassword);
+            using var ownerScope = app.Services.CreateScope();
+            ownerScope.ServiceProvider.GetRequiredService<CurrentUser>().Impersonate(OwnerBootstrap.OwnerId);
+            AchievementService.UnlockAsync(
+                    ownerScope.ServiceProvider.GetRequiredService<AppDbContext>(),
+                    ownerScope.ServiceProvider.GetRequiredService<AppClock>(), CancellationToken.None)
+                .GetAwaiter().GetResult();
         }
     }
 

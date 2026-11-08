@@ -1,10 +1,45 @@
 namespace Arco.Api.Domain;
 
-/// <summary>Single-row table (Id = 1) with user preferences.</summary>
-public class Settings
+/// <summary>An entity that belongs to one <see cref="User"/>. Queries are filtered by the current user.</summary>
+public interface IUserOwned
 {
-    public const int SingletonId = 1;
-    public int Id { get; set; } = SingletonId;
+    int UserId { get; set; }
+}
+
+/// <summary>An account. Owns every <see cref="IUserOwned"/> row (cascade delete).</summary>
+public class User
+{
+    public int Id { get; set; }
+    /// <summary>Always lower-case; unique.</summary>
+    public string Email { get; set; } = "";
+    /// <summary>BCrypt hash, or null for accounts that only sign in with Google.</summary>
+    public string? PasswordHash { get; set; }
+    /// <summary>Google "sub" claim; unique.</summary>
+    public string? GoogleSubject { get; set; }
+    public string DisplayName { get; set; } = "";
+    public DateTime? EmailVerifiedAt { get; set; }
+    public bool IsDemo { get; set; }
+    /// <summary>Changes on password reset/change; sessions carrying an older stamp are rejected.</summary>
+    public Guid SecurityStamp { get; set; } = Guid.NewGuid();
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Single-use token sent by e-mail. Only its SHA-256 is stored.</summary>
+public class UserToken
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public UserTokenPurpose Purpose { get; set; }
+    public string TokenHash { get; set; } = "";
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? UsedAt { get; set; }
+}
+
+/// <summary>One row per user with their preferences. Find-or-create via <c>db.Settings.FirstOrDefaultAsync()</c>.</summary>
+public class Settings : IUserOwned
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
     public string Timezone { get; set; } = TimeZones.Default;
 
     /// <summary>Push reminder for the weekly review (local day and time in <see cref="Timezone"/>).</summary>
@@ -17,9 +52,10 @@ public class Settings
     public static readonly TimeOnly DefaultWeeklyReviewReminderTime = new(18, 0);
 }
 
-public class Cycle
+public class Cycle : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Name { get; set; } = "";
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
@@ -39,9 +75,10 @@ public class Cycle
     public List<Goal> Goals { get; set; } = [];
 }
 
-public class Goal
+public class Goal : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int CycleId { get; set; }
     public Cycle? Cycle { get; set; }
     public string Title { get; set; } = "";
@@ -59,9 +96,10 @@ public class Goal
     public List<GoalUpdate> Updates { get; set; } = [];
 }
 
-public class Milestone
+public class Milestone : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int GoalId { get; set; }
     public Goal? Goal { get; set; }
     public string Title { get; set; } = "";
@@ -69,18 +107,20 @@ public class Milestone
     public DateTime? DoneAt { get; set; }
 }
 
-public class GoalUpdate
+public class GoalUpdate : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int GoalId { get; set; }
     public double Value { get; set; }
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
-public class Habit
+public class Habit : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Name { get; set; } = "";
     public string? Emoji { get; set; }
     public int? GoalId { get; set; }
@@ -110,18 +150,20 @@ public class Habit
     public int CurrentLevelNumber => CurrentLevel?.Level ?? 1;
 }
 
-public class HabitPlannedLevel
+public class HabitPlannedLevel : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int HabitId { get; set; }
     public int Position { get; set; }
     public string Description { get; set; } = "";
     public string MinimumDescription { get; set; } = "";
 }
 
-public class HabitLevel
+public class HabitLevel : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int HabitId { get; set; }
     public int Level { get; set; }
     public string Description { get; set; } = "";
@@ -129,9 +171,10 @@ public class HabitLevel
     public DateTime ReachedAt { get; set; }
 }
 
-public class CheckIn
+public class CheckIn : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int HabitId { get; set; }
     public Habit? Habit { get; set; }
     public DateOnly Date { get; set; }
@@ -143,9 +186,10 @@ public class CheckIn
 }
 
 /// <summary>Time spent on a habit on a given local day (timer or manual minutes). No XP.</summary>
-public class FocusSession
+public class FocusSession : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public int HabitId { get; set; }
     public Habit? Habit { get; set; }
     public DateOnly Date { get; set; }
@@ -156,9 +200,10 @@ public class FocusSession
 }
 
 /// <summary>XP ledger entry. The player's total XP is the sum of all events.</summary>
-public class XpEvent
+public class XpEvent : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     /// <summary>Calendar date the XP belongs to (check-in date for check-ins, "today" otherwise).</summary>
     public DateOnly Date { get; set; }
     public int Amount { get; set; }
@@ -177,9 +222,10 @@ public class XpEvent
 }
 
 /// <summary>Guided review of a Monday–Sunday week. At most one per week.</summary>
-public class WeeklyReview
+public class WeeklyReview : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public DateOnly WeekStart { get; set; }
     public string? Wins { get; set; }
     public string? Obstacles { get; set; }
@@ -188,9 +234,10 @@ public class WeeklyReview
 }
 
 /// <summary>A browser/device subscribed to Web Push.</summary>
-public class PushSubscription
+public class PushSubscription : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Endpoint { get; set; } = "";
     /// <summary>Client public key (base64url, uncompressed P-256 point).</summary>
     public string P256dh { get; set; } = "";
@@ -203,9 +250,10 @@ public class PushSubscription
 }
 
 /// <summary>A key for the API (<c>Authorization: Bearer arco_…</c>). Only its SHA-256 is stored.</summary>
-public class ApiKey
+public class ApiKey : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Name { get; set; } = "";
     /// <summary>First characters of the key, shown so the owner can recognize it.</summary>
     public string Prefix { get; set; } = "";
@@ -215,17 +263,19 @@ public class ApiKey
 }
 
 /// <summary>An achievement of <see cref="AchievementCatalog"/> already unlocked (never revoked).</summary>
-public class UnlockedAchievement
+public class UnlockedAchievement : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Key { get; set; } = "";
     public DateTime UnlockedAt { get; set; }
 }
 
 /// <summary>Records a reminder that was already sent, so it is sent at most once (e.g. "habit:5:2026-10-21").</summary>
-public class PushDispatch
+public class PushDispatch : IUserOwned
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string Key { get; set; } = "";
     public DateTime SentAt { get; set; }
 }

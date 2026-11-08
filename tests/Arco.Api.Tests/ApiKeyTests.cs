@@ -48,7 +48,7 @@ public sealed class ApiKeyTests : IDisposable
         Assert.Null(listed["lastUsedAt"]);
 
         var api = KeyClient(key);
-        Assert.True((bool)(await api.GetJsonAsync("/api/auth/me"))["authenticated"]!);
+        Assert.NotNull((string?)(await api.GetJsonAsync("/api/auth/me"))["email"]);
         var habit = await api.PostAsJsonAsync("/api/habits",
             new { name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
         Assert.Equal(HttpStatusCode.Created, habit.StatusCode);

@@ -1,9 +1,12 @@
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Hosting;
+using System.Text.RegularExpressions;
 using Arco.Api.Domain;
+using Arco.Api.Infrastructure.Email;
 using Arco.Api.Infrastructure.Push;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +15,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Arco.Api.Tests;
 
 /// <summary>
-/// Runs the real app (Development env, password "arco") against a temp SQLite file.
+/// Runs the real app (Development env) against a temp SQLite file. Users sign up through the API
+/// (<see cref="LoggedInClientAsync"/>); e-mails go to <see cref="Email"/> instead of the network.
 /// With <paramref name="now"/>, the app runs on a <see cref="MutableTime"/> clock that tests can advance.
 /// Push messages go to <see cref="Push"/> instead of the network; the reminder loop is off.
 /// </summary>
@@ -22,6 +26,9 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
 
     public MutableTime? Time { get; } = now is { } n ? new MutableTime(n) : null;
     public FakePushSender Push { get; } = new();
+    public FakeEmailSender Email { get; } = new();
+
+    public const string DefaultPassword = "senha-segura-1";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -29,30 +36,65 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
         builder.UseSetting("ConnectionStrings:Arco", $"Data Source={Path.Combine(_dir, "arco.db")}");
         builder.UseSetting("Push:SchedulerEnabled", "false");
         builder.UseSetting("Backup:Enabled", "false");
+        builder.UseSetting("Demo:CleanupEnabled", "false");
+        builder.UseSetting("Auth:ActionsPerMinute", "1000");
         builder.ConfigureTestServices(services =>
         {
             if (Time is not null) services.Replace(ServiceDescriptor.Singleton<TimeProvider>(Time));
             services.RemoveAll<IPushSender>();
             services.AddSingleton<IPushSender>(Push);
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Email);
             // The MCP tools call the API over HTTP: route those calls into the test server.
             services.AddHttpClient(Arco.Api.Features.Mcp.ArcoApiClient.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler());
         });
     }
 
-    /// <summary>Runs an action with a scoped service (e.g. the reminder dispatcher).</summary>
+    private int _firstUserId;
+
+    /// <summary>
+    /// Runs an action with a scoped service (e.g. a DbContext), acting as the first user registered through
+    /// <see cref="RegisterAsync"/> (like a request would); use <see cref="AsUserAsync"/> to pick another.
+    /// </summary>
     public async Task<T> WithScopeAsync<TService, T>(Func<TService, Task<T>> action) where TService : notnull
     {
         using var scope = Services.CreateScope();
+        if (_firstUserId > 0) scope.ServiceProvider.GetRequiredService<Arco.Api.Infrastructure.CurrentUser>().Impersonate(_firstUserId);
         return await action(scope.ServiceProvider.GetRequiredService<TService>());
     }
 
-    public async Task<HttpClient> LoggedInClientAsync()
+    /// <summary>A new client, signed up (and so logged in) as a unique user; pass an e-mail to choose it.</summary>
+    public async Task<HttpClient> LoggedInClientAsync(string? email = null)
     {
         var client = CreateClient();
-        var res = await client.PostAsJsonAsync("/api/auth/login", new { password = "arco" });
-        res.EnsureSuccessStatusCode();
+        await RegisterAsync(client, email);
         return client;
+    }
+
+    public async Task<string> RegisterAsync(HttpClient client, string? email = null, string password = DefaultPassword)
+    {
+        email ??= $"user-{Guid.NewGuid():N}@teste.arco";
+        var res = await client.PostAsJsonAsync("/api/auth/register", new { email, password });
+        Assert.Equal(System.Net.HttpStatusCode.Created, res.StatusCode);
+        if (_firstUserId == 0) _firstUserId = await UserIdAsync(email);
+        return email;
+    }
+
+    /// <summary>Runs an action with a scope acting as the given user (like a background job).</summary>
+    public async Task<T> AsUserAsync<T>(int userId, Func<IServiceProvider, Task<T>> action)
+    {
+        using var scope = Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<Arco.Api.Infrastructure.CurrentUser>().Impersonate(userId);
+        return await action(scope.ServiceProvider);
+    }
+
+    public async Task<int> UserIdAsync(string email)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Arco.Api.Infrastructure.AppDbContext>();
+        var lower = email.ToLowerInvariant();
+        return await db.Users.Where(u => u.Email == lower).Select(u => u.Id).SingleAsync();
     }
 
     protected override void Dispose(bool disposing)
@@ -60,6 +102,28 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
         base.Dispose(disposing);
         SqliteConnection.ClearAllPools();
         try { Directory.Delete(_dir, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+}
+
+public sealed class FakeEmailSender : IEmailSender
+{
+    public sealed record Mail(string To, string Subject, string Html)
+    {
+        /// <summary>The token of the link in the e-mail (<c>?token=...</c>).</summary>
+        public string Token => Regex.Match(Html, "token=([A-Za-z0-9_-]+)").Groups[1].Value;
+        public string Link => System.Net.WebUtility.HtmlDecode(Regex.Match(Html, "href=\"([^\"]+)\"").Groups[1].Value);
+    }
+
+    private readonly List<Mail> _sent = [];
+
+    public IReadOnlyList<Mail> Sent { get { lock (_sent) return [.. _sent]; } }
+
+    public Mail Last(string to) => Sent.Last(m => m.To == to.ToLowerInvariant());
+
+    public Task SendAsync(string to, string subject, string html, CancellationToken ct)
+    {
+        lock (_sent) _sent.Add(new Mail(to, subject, html));
+        return Task.CompletedTask;
     }
 }
 

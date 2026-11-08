@@ -6,6 +6,8 @@ namespace Arco.Api.Features.Push;
 /// Sends the reminders that are due right now: one per habit (at its ReminderTime, on days it is due
 /// and still has no check-in) and the weekly review (at the configured day/time while the review is pending).
 /// Each reminder is claimed in PushDispatches first, so it goes out at most once.
+/// <see cref="RunAsync"/> works for the current user of its scope (query filters apply); the job that spans users
+/// is <see cref="RunForAllUsersAsync"/>.
 /// </summary>
 public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNotifier notifier, TimeProvider time)
 {
@@ -14,6 +16,46 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
 
     private static readonly TimeSpan DispatchRetention = TimeSpan.FromDays(60);
 
+    /// <summary>
+    /// Runs the reminders of every user that has a push subscription, each in its own scope acting as that user
+    /// (so the timezone and data are the user's own), then prunes old dispatch records globally.
+    /// </summary>
+    /// <returns>Number of reminders sent.</returns>
+    public static async Task<int> RunForAllUsersAsync(IServiceScopeFactory scopes, ILogger? log, CancellationToken ct)
+    {
+        List<int> userIds;
+        using (var scope = scopes.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            userIds = await db.PushSubscriptions.IgnoreQueryFilters().Select(s => s.UserId).Distinct().ToListAsync(ct);
+        }
+
+        var sent = 0;
+        foreach (var userId in userIds)
+        {
+            try
+            {
+                using var scope = scopes.CreateScope();
+                scope.ServiceProvider.GetRequiredService<CurrentUser>().Impersonate(userId);
+                sent += await scope.ServiceProvider.GetRequiredService<ReminderDispatcher>().RunAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log?.LogError(ex, "Reminder dispatch failed for user {UserId}", userId);
+            }
+        }
+
+        using (var scope = scopes.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var clock = scope.ServiceProvider.GetRequiredService<AppClock>();
+            var cutoff = clock.UtcNow - DispatchRetention;
+            await db.PushDispatches.IgnoreQueryFilters().Where(d => d.SentAt < cutoff).ExecuteDeleteAsync(ct);
+        }
+        return sent;
+    }
+
+    /// <summary>Reminders due right now for the current user.</summary>
     /// <returns>Number of reminders sent.</returns>
     public async Task<int> RunAsync(CancellationToken ct)
     {
@@ -24,11 +66,7 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
         var today = DateOnly.FromDateTime(localNow);
         var now = TimeOnly.FromDateTime(localNow);
 
-        var sent = await SendHabitRemindersAsync(today, now, ct) + await SendWeeklyReviewReminderAsync(today, now, ct);
-
-        var cutoff = clock.UtcNow - DispatchRetention;
-        await db.PushDispatches.Where(d => d.SentAt < cutoff).ExecuteDeleteAsync(ct);
-        return sent;
+        return await SendHabitRemindersAsync(today, now, ct) + await SendWeeklyReviewReminderAsync(today, now, ct);
     }
 
     internal static bool IsTime(TimeOnly at, TimeOnly now) => now >= at && now - at <= MaxDelay;
@@ -74,7 +112,7 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
 
     private async Task<int> SendWeeklyReviewReminderAsync(DateOnly today, TimeOnly now, CancellationToken ct)
     {
-        var settings = await db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == Domain.Settings.SingletonId, ct);
+        var settings = await db.Settings.AsNoTracking().FirstOrDefaultAsync(ct);
         if (settings is not { WeeklyReviewReminderEnabled: true }) return 0;
         if ((int)today.DayOfWeek != settings.WeeklyReviewReminderDay || !IsTime(settings.WeeklyReviewReminderTime, now))
             return 0;
@@ -117,8 +155,7 @@ public sealed class ReminderService(IServiceScopeFactory scopes, TimeProvider ti
         {
             try
             {
-                using var scope = scopes.CreateScope();
-                await scope.ServiceProvider.GetRequiredService<ReminderDispatcher>().RunAsync(stoppingToken);
+                await ReminderDispatcher.RunForAllUsersAsync(scopes, log, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

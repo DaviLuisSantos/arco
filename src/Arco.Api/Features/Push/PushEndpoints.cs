@@ -28,7 +28,7 @@ public static class PushEndpoints
         new(keys.PublicKeyBase64Url, await db.PushSubscriptions.CountAsync(ct));
 
     private static async Task<IResult> Subscribe(SubscribeRequest? request, HttpContext http, AppDbContext db,
-        AppClock clock, CancellationToken ct)
+        AppClock clock, CurrentUser currentUser, CancellationToken ct)
     {
         var endpoint = request?.Endpoint?.Trim();
         if (string.IsNullOrEmpty(endpoint) || endpoint.Length > MaxEndpointLength
@@ -41,11 +41,17 @@ public static class PushEndpoints
             return ApiResults.Validation("Inscrição inválida: chaves p256dh/auth ausentes ou malformadas.");
 
         var userAgent = http.Request.Headers.UserAgent.ToString();
-        var subscription = await db.PushSubscriptions.FirstOrDefaultAsync(s => s.Endpoint == endpoint, ct);
+        // The endpoint is unique across users: a device that changes accounts is reassigned to the current user.
+        var userId = currentUser.Id;
+        var subscription = await db.PushSubscriptions.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Endpoint == endpoint, ct);
         if (subscription is null)
         {
             subscription = new PushSubscription { Endpoint = endpoint, CreatedAt = clock.UtcNow };
             db.PushSubscriptions.Add(subscription);
+        }
+        else
+        {
+            subscription.UserId = userId;
         }
         subscription.P256dh = p256dh!;
         subscription.Auth = auth!;
