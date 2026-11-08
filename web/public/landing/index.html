@@ -81,11 +81,12 @@
         radial-gradient(50% 60% at 20% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
         radial-gradient(40% 50% at 85% 20%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 70%);
     }
-    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 48px; } .hero .cta { justify-content: center; } .hero .lead { margin-inline: auto; } }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; text-align: center; padding-top: 48px; } .hero .cta { justify-content: center; } .hero .lead { margin-inline: auto; } .hero .areas { margin-inline: auto; } }
     .pill { display: inline-block; font-size: .8rem; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--card); margin-bottom: 22px; }
     h1 { font-size: clamp(2.3rem, 5.5vw, 3.8rem); line-height: 1.07; letter-spacing: -.035em; margin-bottom: 20px; }
     h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .lead { color: var(--muted); font-size: 1.15rem; max-width: 500px; margin-bottom: 30px; }
+    .areas { max-width: 500px; margin: -18px 0 30px; color: var(--muted); font-size: .95rem; }
     .cta { display: flex; gap: 12px; flex-wrap: wrap; }
     .note { margin-top: 18px; font-size: .85rem; color: var(--muted); }
 
@@ -193,6 +194,7 @@
           <span class="pill">Hábitos em ciclos de 6 semanas</span>
           <h1>Cada dia alimenta <em>algo maior</em></h1>
           <p class="lead">Check-ins de um toque, níveis que crescem com você e objetivos com prazo. Menos lista de tarefas, mais progresso de verdade.</p>
+          <p class="areas">Saúde, mente, estudo, trabalho, finanças: qualquer hábito que você queira levar a sério.</p>
           <div class="cta">
             <a class="btn" href="/login?mode=register">Criar conta grátis</a>
             <a class="btn ghost" href="/login?demo=1">Experimentar demo</a>
@@ -210,11 +212,11 @@
             <text x="120" y="104" text-anchor="middle" font-size="38" font-weight="700">68%</text>
           </svg>
           <div class="habit" data-xp="10,4">
-            <div class="t">Correr<small>Nível 2 · 20 min (mínimo: 5 min)</small></div>
+            <div class="t">Meditar<small>Nível 1 · 10 min (mínimo: 2 min)</small></div>
             <div class="chk"><button data-s="ok">Feito</button><button data-s="min">Mínimo</button></div>
           </div>
           <div class="habit" data-xp="8,3">
-            <div class="t">Inglês<small>Nível 1 · 15 min (mínimo: 5 min)</small></div>
+            <div class="t">Beber água<small>Nível 2 · 2 L (mínimo: 1 L)</small></div>
             <div class="chk"><button data-s="ok">Feito</button><button data-s="min">Mínimo</button></div>
           </div>
           <div class="habit" data-xp="6,2">
@@ -238,7 +240,7 @@
         <div class="grid">
           <div class="card rv"><div class="ic">✅</div><h3>Feito, Mínimo ou Não fiz</h3><p>Dia ruim não zera o jogo: a versão mínima mantém o hábito vivo.</p></div>
           <div class="card rv"><div class="ic">🪜</div><h3>Hábitos com níveis</h3><p>Suba de nível quando a dose ficar fácil. O app sugere, você decide.</p></div>
-          <div class="card rv"><div class="ic">🎯</div><h3>Objetivos com prazo</h3><p>“Correr 10 km até 30/11”, com barra de progresso até a meta.</p></div>
+          <div class="card rv"><div class="ic">🎯</div><h3>Objetivos com prazo</h3><p>“Guardar R$ 1.000 até 30/11”, com barra de progresso até a meta.</p></div>
           <div class="card rv"><div class="ic">⚡</div><h3>XP e conquistas</h3><p>Cada ação rende XP em um livro-razão transparente, e medalhas surgem sozinhas.</p></div>
           <div class="card rv"><div class="ic">⏱️</div><h3>Sessões de foco</h3><p>Timer integrado e meta semanal de minutos dedicados a cada hábito.</p></div>
           <div class="card rv"><div class="ic">📴</div><h3>Funciona offline</h3><p>Instale como app (PWA) e registre check-ins mesmo sem rede.</p></div>
@@ -259,9 +261,9 @@
         </ol>
 
         <div class="ladder">
-          <div class="step rv"><small>Nível 1</small><b>10 min</b><span>mínimo: 2 min</span></div>
-          <div class="step cur rv"><small>Nível 2 · atual</small><b>20 min</b><span>mínimo: 5 min</span></div>
-          <div class="step next rv"><small>Nível 3 · planejado</small><b>30 min</b><span>mínimo: 10 min</span></div>
+          <div class="step rv"><small>Nível 1</small><b>1,5 L</b><span>mínimo: 500 ml</span></div>
+          <div class="step cur rv"><small>Nível 2 · atual</small><b>2 L</b><span>mínimo: 1 L</span></div>
+          <div class="step next rv"><small>Nível 3 · planejado</small><b>2,5 L</b><span>mínimo: 1,5 L</span></div>
         </div>
         <p class="sub rv" style="margin:20px auto 0">Exemplo de escada de um hábito: com 80% de consistência em 14 dias, o Arco sugere subir.</p>
       </section>
