@@ -2,6 +2,7 @@
 subscription_id   = "<subscription id>"
 service_plan_name = "<nome do plano F1 no portal>"
 key_vault_name    = "<nome-unico-do-cofre>"
+application_insights_workspace_id = "<ID do workspace: properties.WorkspaceResourceId do arco-insights>"
 
 # Subjects do OIDC (formato com IDs imutáveis; veja docs/RELATO-AZURE.md)
 github_oidc_subject_production   = "repo:DaviLuisSantos@83884291/arco@1429116785:environment:production"

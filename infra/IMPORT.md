@@ -47,8 +47,8 @@ IDs de exemplo (substitua `<sub>`). Rode da pasta `infra/`:
 ```bash
 SUB=<subscription id>; RG=arco_group
 terraform import azurerm_resource_group.this /subscriptions/$SUB/resourceGroups/$RG
-terraform import azurerm_service_plan.this /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Web/serverFarms/<plano>
 terraform import azurerm_windows_web_app.this /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Web/sites/arco
+terraform import azurerm_application_insights.this /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Insights/components/arco-insights
 terraform import azurerm_user_assigned_identity.github /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/arco-github
 terraform import azurerm_federated_identity_credential.production /subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/arco-github/federatedIdentityCredentials/arco-production
 terraform import azurerm_role_assignment.github_website_contributor <id do role assignment existente>
@@ -62,6 +62,12 @@ az role assignment list --assignee <client id da arco-github> --scope /subscript
 
 **Não importe** (o Terraform cria): o Key Vault e seus role assignments, a credencial `arco-pull-request`,
 o role `Reader` e os role assignments do Key Vault. A identidade do Web App (`SystemAssigned`) também é criada no primeiro apply.
+
+**O plano F1 não é importado:** ele fica no grupo `HabitSystem`, é compartilhado com outro site e entra só como `data source`.
+
+**No Git Bash**, rode `export MSYS_NO_PATHCONV=1` antes: sem isso, os IDs que começam com `/subscriptions` são corrompidos.
+
+**Se o Web App ainda não tiver identidade**, o import falha com `Invalid index`: troque temporariamente `identity[0].principal_id` por `try(..., null)` no `outputs.tf`. Depois do import, aplique primeiro `-target=azurerm_windows_web_app.this`, para a identidade existir antes do papel que depende dela.
 
 ## 4. Conferir o plan (obrigatório antes de qualquer apply)
 

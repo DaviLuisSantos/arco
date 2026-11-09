@@ -20,6 +20,24 @@ variable "service_plan_name" {
   type        = string
 }
 
+variable "service_plan_resource_group_name" {
+  description = "Grupo de recursos do plano, que não é gerenciado aqui."
+  type        = string
+  default     = "HabitSystem"
+}
+
+variable "application_insights_name" {
+  description = "Nome do recurso do Application Insights."
+  type        = string
+  default     = "arco-insights"
+}
+
+variable "application_insights_workspace_id" {
+  description = "ID do Log Analytics Workspace ligado ao Application Insights."
+  type        = string
+  default     = null
+}
+
 variable "web_app_name" {
   description = "Nome do Web App."
   type        = string
@@ -78,10 +96,8 @@ variable "key_vault_secret_settings" {
     "Stripe__SecretKey",
     "Stripe__WebhookSecret",
     "Auth__Google__ClientSecret",
-    "Push__VapidPrivateKey",
     "Sentry__Dsn",
     "APPLICATIONINSIGHTS_CONNECTION_STRING",
-    "ServiceBus__ConnectionString",
   ]
 }
 

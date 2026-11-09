@@ -140,3 +140,5 @@ a managed identity `arco-github` com as credenciais OIDC e os role assignments.
   [`infra/IMPORT.md`](../infra/IMPORT.md).
 
 Validação local (sem falar com o Azure): `cd infra && terraform fmt -check && terraform init -backend=false && terraform validate`.
+
+**Estado atual:** o ambiente já foi importado. Os segredos (`Auth__PasswordHash`, `Email__ResendApiKey`, `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Auth__Google__ClientSecret`, `Sentry__Dsn`, `APPLICATIONINSIGHTS_CONNECTION_STRING`) ficam no Key Vault `arco-kv-davizaun`, e o portal mostra só a referência: para trocar um valor, use `az keyvault secret set` e reinicie o app. Setting nova precisa entrar também no Terraform, senão o próximo `apply` a remove.

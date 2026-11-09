@@ -8,7 +8,6 @@ locals {
     ASPNETCORE_ENVIRONMENT    = "Production"
     "ConnectionStrings__Arco" = "Data Source=D:\\home\\data\\arco.db"
     App__BaseUrl              = local.base_url
-    Mcp__SelfBaseUrl          = local.base_url
   }
 
   optional_settings = {
@@ -38,20 +37,31 @@ resource "azurerm_resource_group" "this" {
   location = var.location
 }
 
-resource "azurerm_service_plan" "this" {
+# O plano Free fica em outro grupo e é compartilhado com o Habit-System: só leitura, nunca gerenciado aqui.
+data "azurerm_service_plan" "this" {
   name                = var.service_plan_name
+  resource_group_name = var.service_plan_resource_group_name
+}
+
+resource "azurerm_application_insights" "this" {
+  name                = var.application_insights_name
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
-  os_type             = "Windows"
-  sku_name            = "F1"
+  application_type    = "web"
+  workspace_id        = var.application_insights_workspace_id
 }
 
 resource "azurerm_windows_web_app" "this" {
   name                = var.web_app_name
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
-  service_plan_id     = azurerm_service_plan.this.id
+  service_plan_id     = data.azurerm_service_plan.this.id
   https_only          = true
+
+  # Mantém o que já vale no portal: o deploy usa OIDC, sem usuário e senha de publicação.
+  client_affinity_enabled                        = true
+  ftp_publish_basic_authentication_enabled       = false
+  webdeploy_publish_basic_authentication_enabled = false
 
   # Esse mapa é a lista inteira de settings: o que não estiver aqui é removido no apply.
   app_settings = merge(local.plain_settings, local.secret_settings)
@@ -68,6 +78,7 @@ resource "azurerm_windows_web_app" "this" {
     ftps_state          = "Disabled"
   }
 
+  # O zip deploy pode acrescentar settings WEBSITE_*; não brigamos com isso.
   # O zip deploy pode acrescentar settings WEBSITE_*; não brigamos com isso.
   lifecycle {
     ignore_changes = [
