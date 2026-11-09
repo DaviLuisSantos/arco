@@ -144,8 +144,9 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
   com temas). Quem passa do limite recebe `plan_limit` e o app mostra um aviso com link para o Plano; nada é apagado no
   downgrade. A cobrança é por assinatura mensal no Stripe (checkout e portal); sem configuração do Stripe o app roda
   sem cobrança. Contas demo e a do dono nascem Pro.
-- **Onboarding:** contas novas passam por "Primeiros passos" (`/welcome`): idioma, primeiro hábito e lembretes. Dá para pular
-  cada passo.
+- **Onboarding:** contas novas passam por "Primeiros passos" (`/welcome`): idioma, primeiro hábito e lembretes, e dá para pular
+  cada passo. Em Hoje, o estado vazio oferece atalhos de modelo (hábitos prontos com um toque), há um checklist de primeira
+  sessão, e depois do primeiro check-in o app convida a ativar lembretes (o push só é pedido nesse momento) e a instalar o PWA.
 - **Segurança da conta:** 2FA por app autenticador (TOTP) com 10 códigos de recuperação, e lista de sessões por aparelho,
   com revogação de uma ou de todas as outras.
 - **Perfil público:** opcional, em `/u/<slug>`: nome, nível, XP, arco do ciclo e (se o usuário quiser) hábitos com nível

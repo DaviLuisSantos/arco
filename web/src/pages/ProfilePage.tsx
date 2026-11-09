@@ -1,36 +1,30 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChartColumn, ChevronRight, Landmark, LogOut, NotebookPen, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, Settings, ShieldCheck, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
-import { authApi, playerApi, settingsApi } from '../api/endpoints'
-import type { SettingsInput, XpEvent } from '../api/types'
+import { authApi, playerApi } from '../api/endpoints'
+import type { XpEvent } from '../api/types'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
-import { Select } from '../components/ui/Input'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { AchievementsSection } from '../features/achievements/AchievementsSection'
-import { AccountCard } from '../features/account/AccountCard'
 import { PlanCard } from '../features/billing/PlanCard'
 import { PartnersCard } from '../features/partners/PartnersCard'
 import { PublicProfileCard } from '../features/publicProfile/PublicProfileCard'
-import { SecurityCard } from '../features/security/SecurityCard'
-import { ApiKeysCard } from '../features/apikeys/ApiKeysCard'
-import { BackupCard } from '../features/backup/BackupCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
-import { NotificationsCard } from '../features/push/NotificationsCard'
-import { LOCALES, setLocale, useLocale, type Locale } from '../i18n'
 import { formatInstant } from '../lib/dates'
 import { errorMessage } from '../lib/errors'
 import { formatNumber, formatXp, XP_SOURCE_LABELS } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
-import { COMMON_TIMEZONES } from '../lib/timezones'
-import { useAppMutation } from '../lib/useAppMutation'
+import { useAuthStatus } from '../lib/useAuthStatus'
 
 export function ProfilePage() {
   const { t } = useTranslation('pages', { keyPrefix: 'profile' })
+  const { t: ts } = useTranslation('settings')
+  const isAdmin = useAuthStatus().data?.isAdmin ?? false
   const player = useQuery({ queryKey: queryKeys.player, queryFn: playerApi.get })
 
   return (
@@ -56,38 +50,26 @@ export function ProfilePage() {
       {player.data && <RecentEvents events={player.data.recentEvents} />}
 
       <Link
-        to="/stats"
-        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
+        to="/settings"
+        className="flex min-h-11 items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
       >
-        <ChartColumn className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">{t('stats')}</span>
+        <Settings className="size-5 text-accent" aria-hidden />
+        <span className="flex-1 font-semibold">{ts('openSettings')}</span>
         <ChevronRight className="size-5 text-muted" aria-hidden />
       </Link>
-      <Link
-        to="/cycle"
-        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
-      >
-        <Landmark className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">{t('arch')}</span>
-        <ChevronRight className="size-5 text-muted" aria-hidden />
-      </Link>
-      <Link
-        to="/review"
-        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
-      >
-        <NotebookPen className="size-5 text-accent" aria-hidden />
-        <span className="flex-1 font-semibold">{t('reviews')}</span>
-        <ChevronRight className="size-5 text-muted" aria-hidden />
-      </Link>
-      <NotificationsSection />
-      <SettingsCard />
+      {isAdmin && (
+        <Link
+          to="/admin"
+          className="flex min-h-11 items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition hover:border-accent/60"
+        >
+          <ShieldCheck className="size-5 text-accent" aria-hidden />
+          <span className="flex-1 font-semibold">{ts('openAdmin')}</span>
+          <ChevronRight className="size-5 text-muted" aria-hidden />
+        </Link>
+      )}
       <PlanCard />
       <PublicProfileCard />
       <PartnersCard />
-      <SecurityCard />
-      <AccountCard />
-      <BackupCard />
-      <ApiKeysCard />
       <LogoutButton />
     </div>
   )
@@ -123,92 +105,6 @@ function RecentEvents({ events }: { events: XpEvent[] }) {
           </ul>
         </Card>
       )}
-    </section>
-  )
-}
-
-function NotificationsSection() {
-  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
-  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
-  return (
-    <section aria-labelledby="notifications-title">
-      <h2 id="notifications-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        {t('notifications')}
-      </h2>
-      {settings.isPending ? (
-        <Spinner />
-      ) : settings.isLoadingError ? (
-        <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
-      ) : (
-        <NotificationsCard settings={settings.data} />
-      )}
-    </section>
-  )
-}
-
-function SettingsCard() {
-  const { t } = useTranslation('pages', { keyPrefix: 'profile' })
-  const { locale } = useLocale()
-  const { t: tc } = useTranslation('common')
-  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: settingsApi.get })
-  const [selected, setSelected] = useState<string | null>(null)
-  const save = useAppMutation((input: SettingsInput) => settingsApi.update(input), {
-    successMessage: t('timezoneSaved'),
-    onSuccess: () => setSelected(null),
-  })
-
-  const currentTz = settings.data?.timezone ?? ''
-  const value = selected ?? currentTz
-  const options = COMMON_TIMEZONES.some((tz) => tz.id === currentTz) || !currentTz
-    ? COMMON_TIMEZONES
-    : [{ id: currentTz, label: currentTz }, ...COMMON_TIMEZONES]
-
-  return (
-    <section aria-labelledby="settings-title">
-      <h2 id="settings-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        {t('settings')}
-      </h2>
-      <Card className="flex flex-col gap-3">
-        {settings.isPending ? (
-          <Spinner />
-        ) : settings.isLoadingError ? (
-          <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
-        ) : (
-          <>
-            <Select
-              label={t('timezone')}
-              value={value}
-              onChange={(e) => setSelected(e.target.value)}
-              hint={t('timezoneHint', { value })}
-            >
-              {options.map((tz) => (
-                <option key={tz.id} value={tz.id}>
-                  {tz.label}
-                </option>
-              ))}
-            </Select>
-            <Button
-              variant="secondary"
-              disabled={value === currentTz}
-              loading={save.isPending}
-              onClick={() => save.mutate({ timezone: value })}
-            >
-              {t('saveTimezone')}
-            </Button>
-            <Select
-              label={t('language')}
-              value={locale}
-              onChange={(e) => void setLocale(e.target.value as Locale)}
-            >
-              {LOCALES.map((l) => (
-                <option key={l} value={l}>
-                  {tc(`locales.${l}`)}
-                </option>
-              ))}
-            </Select>
-          </>
-        )}
-      </Card>
     </section>
   )
 }

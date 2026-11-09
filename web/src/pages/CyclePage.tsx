@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ProgressBar } from '../components/ui/ProgressBar'
+import { Skeleton } from '../components/ui/Skeleton'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { CompleteCycleDialog } from '../features/cycle/CompleteCycleDialog'
 import { DeleteCycleButton } from '../features/cycle/DeleteCycleButton'
@@ -24,6 +25,7 @@ const RECOMMENDED_MAX_GOALS = 3
 
 export function CyclePage() {
   const { t } = useTranslation('pages', { keyPrefix: 'cycle' })
+  const { t: tp } = useTranslation('progress')
   const current = useQuery({ queryKey: queryKeys.currentCycle, queryFn: cyclesApi.current })
   const cycles = useQuery({ queryKey: queryKeys.cycles, queryFn: cyclesApi.list })
   const today = useQuery({ queryKey: queryKeys.today, queryFn: todayApi.get, select: (t) => t.date })
@@ -41,6 +43,14 @@ export function CyclePage() {
           <PageHeader title={t('title')} subtitle={t('none')} />
           {today.isPending ? <Spinner /> : <CreateCycleForm today={todayDate} />}
         </>
+      )}
+      {cycles.isLoadingError && (
+        <div role="alert" className="flex items-center justify-between gap-2 rounded-2xl border border-danger/40 bg-danger/10 p-3 text-sm">
+          <span>{tp('secondaryError', { what: tp('what.cycles') })}</span>
+          <Button size="sm" variant="secondary" onClick={() => void cycles.refetch()}>
+            {tp('retry')}
+          </Button>
+        </div>
       )}
       {cycles.data && <PastCycles cycles={cycles.data} />}
     </div>
@@ -72,7 +82,7 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label={t('progress')} />
       </Card>
 
-      <Card aria-labelledby="cycle-arch-title">
+      <Card>
         <h2 id="cycle-arch-title" className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
           {t('arch')}
         </h2>
@@ -110,7 +120,7 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         )}
 
         {goals.isPending ? (
-          <Spinner />
+          <Skeleton className="h-24 w-full" />
         ) : goals.isLoadingError ? (
           <ErrorState error={goals.error} onRetry={() => void goals.refetch()} />
         ) : goalCount === 0 ? (

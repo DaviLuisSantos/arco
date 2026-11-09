@@ -13,6 +13,8 @@ const en: typeof ns = {
     createHabit: 'Create habit',
     nothingScheduled: 'Nothing scheduled for today. Enjoy the rest, or get ahead on something below.',
     outsideToday: 'Not today ({{count}})',
+    dayProgressAria: 'Day progress: {{done}} of {{total}}',
+    dayCount: '{{done}} of {{total}}',
   },
   habits: {
     title: 'Habits',

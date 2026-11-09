@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { PASSWORD, gotoProfile, pinLocale, reachToday, register } from './helpers'
+import { PASSWORD, gotoProfile, gotoSettings, pinLocale, reachToday, register } from './helpers'
 import { totp } from './totp'
 
 test.beforeEach(async ({ page }) => {
@@ -19,7 +19,7 @@ async function login(page: import('@playwright/test').Page, email: string) {
 
 test('2FA: ativa com QR, sai, entra com código e com código de recuperação', async ({ page }) => {
   const email = await register(page)
-  await gotoProfile(page)
+  await gotoSettings(page)
 
   await page.getByRole('button', { name: 'Ativar' }).click()
   const setup = page.getByRole('dialog', { name: 'Verificação em duas etapas' })
@@ -36,7 +36,8 @@ test('2FA: ativa com QR, sai, entra com código e com código de recuperação',
   await recoveryDialog.getByRole('button', { name: 'Já guardei os códigos' }).click()
   await expect(page.getByText(/^Ativada\./)).toBeVisible()
 
-  // Sai e entra com o código do app.
+  // Sai (o botão fica em Perfil) e entra com o código do app.
+  await page.getByRole('link', { name: 'Voltar' }).click()
   await page.getByRole('button', { name: 'Sair' }).click()
   await expect(page).toHaveURL(/\/login$/)
   await fillLogin(page, email)
@@ -65,7 +66,7 @@ test('sessões: encerra a sessão de outro dispositivo', async ({ page, browser 
   await login(otherPage, email)
   await reachToday(otherPage)
 
-  await gotoProfile(page)
+  await gotoSettings(page)
   const revoke = page.getByRole('button', { name: /^Encerrar sessão/ })
   await expect(revoke).toHaveCount(1)
   await revoke.click()

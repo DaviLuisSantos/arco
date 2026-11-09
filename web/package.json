@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
-    "e2e": "playwright test --project=e2e",
+    "e2e": "playwright test --project=e2e --project=e2e-mobile",
     "screenshots": "playwright test --project=screenshots"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
     "react-router": "7.18.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.19.2",

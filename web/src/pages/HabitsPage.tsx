@@ -3,7 +3,7 @@ import { Archive, ChevronRight, Plus, Sprout } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
-import { habitsApi } from '../api/endpoints'
+import { billingApi, habitsApi } from '../api/endpoints'
 import type { Habit } from '../api/types'
 import { Button } from '../components/ui/Button'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -20,6 +20,11 @@ export function HabitsPage() {
   const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<Tab>('active')
   const habits = useQuery({ queryKey: queryKeys.habits, queryFn: () => habitsApi.list(true) })
+
+  const { t: tb } = useTranslation('billing')
+  const billing = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const limit = billing.data?.limits.habits
+  const activeCount = billing.data?.usage.habits ?? 0
 
   const creating = params.get('new') === '1'
   const setCreating = (open: boolean) =>
@@ -56,6 +61,12 @@ export function HabitsPage() {
         ]}
         className="mb-4"
       />
+
+      {limit !== null && limit !== undefined && activeCount >= Math.max(1, limit - 1) && (
+        <p className="mb-3 text-sm text-muted">
+          {tb(activeCount >= limit ? 'habitsUsage' : 'habitsUsageNear', { used: activeCount, limit })}
+        </p>
+      )}
 
       {habits.isPending ? (
         <Spinner />

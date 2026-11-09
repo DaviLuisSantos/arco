@@ -5,6 +5,10 @@ export type ToastVariant = 'info' | 'success' | 'error' | 'xp' | 'achievement'
 export interface ToastOptions {
   message: string
   variant?: ToastVariant
+  /** Ação opcional (ex.: Desfazer). Clicar nela não dispensa o toast por propagação. */
+  action?: { label: string; onClick: () => void }
+  /** Duração em ms; padrão por variante. */
+  duration?: number
 }
 
 export interface ToastApi {

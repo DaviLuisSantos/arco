@@ -114,7 +114,7 @@ function Form({ me }: { me: Me }) {
           </Select>
         </>
       )}
-      {limit && <PlanLimitNotice />}
+      {limit && <PlanLimitNotice feature="profileTheme" />}
       <Button loading={save.isPending} disabled={slugInvalid} onClick={() => save.mutate()}>
         {t('save')}
       </Button>

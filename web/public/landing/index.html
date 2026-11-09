@@ -166,6 +166,7 @@
       html { scroll-behavior: auto; } .js .rv { opacity: 1; transform: none; transition: none; }
     }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Arco","applicationCategory":"LifestyleApplication","operatingSystem":"Web","inLanguage":"pt-BR","url":"https://arco.daviluis.dev/","description":"Arco é um app de hábitos em ciclos de 6 semanas: check-ins diários, níveis, objetivos e XP.","offers":{"@type":"Offer","price":"0","priceCurrency":"BRL"}}</script>
 </head>
 <body>
   <div class="top" id="top">
@@ -180,6 +181,7 @@
       <nav>
         <a href="#recursos">Recursos</a>
         <a href="#como-funciona">Como funciona</a>
+        <a href="#planos">Planos</a>
         <a href="#faq">Dúvidas</a>
         <a href="/landing/en/" hreflang="en" lang="en" class="lang" aria-label="English">EN</a>
         <a class="btn sm" href="/login">Entrar</a>
@@ -194,7 +196,7 @@
           <span class="pill">Hábitos em ciclos de 6 semanas</span>
           <h1>Cada dia alimenta <em>algo maior</em></h1>
           <p class="lead">Check-ins de um toque, níveis que crescem com você e objetivos com prazo. Menos lista de tarefas, mais progresso de verdade.</p>
-          <p class="areas">Saúde, mente, estudo, trabalho, finanças: qualquer hábito que você queira levar a sério.</p>
+          <p class="areas">Saúde, mente, estudo, trabalho, finanças: qualquer hábito que você queira levar a sério. Revisar gastos, escrever 300 palavras, ligar para alguém querido, entregar o foco do dia.</p>
           <div class="cta">
             <a class="btn" href="/login?mode=register">Criar conta grátis</a>
             <a class="btn ghost" href="/login?demo=1">Experimentar demo</a>
@@ -203,7 +205,7 @@
           <p class="note">Instala como app no celular · funciona offline</p>
         </div>
 
-        <div class="phone" aria-label="Exemplo da tela Hoje do Arco">
+        <div class="phone">
           <div class="head"><span>Hoje · semana 4 de 6</span><span class="xp" id="xp">+0 XP</span></div>
           <svg class="arc" viewBox="0 0 240 140" fill="none" role="img" aria-label="Arco de progresso do ciclo em 68%">
             <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
@@ -211,16 +213,16 @@
             <path class="fill" pathLength="330" d="M20 120a100 100 0 0 1 200 0" stroke-width="16" stroke-linecap="round"/>
             <text x="120" y="104" text-anchor="middle" font-size="38" font-weight="700">68%</text>
           </svg>
-          <div class="habit" data-xp="10,4">
+          <div class="habit" data-xp="10,5">
             <div class="t">Meditar<small>Nível 1 · 10 min (mínimo: 2 min)</small></div>
             <div class="chk"><button data-s="ok">Feito</button><button data-s="min">Mínimo</button></div>
           </div>
-          <div class="habit" data-xp="8,3">
-            <div class="t">Beber água<small>Nível 2 · 2 L (mínimo: 1 L)</small></div>
+          <div class="habit" data-xp="12,6">
+            <div class="t">Revisar gastos<small>Nível 2 · 15 min (mínimo: 5 min)</small></div>
             <div class="chk"><button data-s="ok">Feito</button><button data-s="min">Mínimo</button></div>
           </div>
-          <div class="habit" data-xp="6,2">
-            <div class="t">Ler<small>Nível 3 · 20 páginas (mínimo: 2)</small></div>
+          <div class="habit" data-xp="14,7">
+            <div class="t">Escrever<small>Nível 3 · 300 palavras (mínimo: 50)</small></div>
             <div class="chk"><button data-s="ok">Feito</button><button data-s="min">Mínimo</button></div>
           </div>
           <p class="hint">Experimente: toque em Feito ou Mínimo</p>
@@ -265,7 +267,16 @@
           <div class="step cur rv"><small>Nível 2 · atual</small><b>2 L</b><span>mínimo: 1 L</span></div>
           <div class="step next rv"><small>Nível 3 · planejado</small><b>2,5 L</b><span>mínimo: 1,5 L</span></div>
         </div>
-        <p class="sub rv" style="margin:20px auto 0">Exemplo de escada de um hábito: com 80% de consistência em 14 dias, o Arco sugere subir.</p>
+        <p class="sub rv" style="margin:20px auto 0">Exemplo de escada de um hábito (água): com 80% de consistência em 14 dias, o Arco sugere subir.</p>
+      </section>
+
+      <section id="planos">
+        <h2 class="rv">Grátis e Pro</h2>
+        <p class="sub rv">Comece grátis e assine o Pro só se precisar de mais espaço.</p>
+        <div class="grid">
+          <div class="card rv"><h3>Grátis</h3><p>Check-ins, ciclos, níveis, objetivos, XP e conquistas, com limites de hábitos e de chaves de API.</p></div>
+          <div class="card rv"><h3>Pro</h3><p>Limites maiores, mais chaves de API e o servidor MCP para usar o Arco dentro de assistentes de IA.</p></div>
+        </div>
       </section>
 
       <section id="faq">
@@ -275,7 +286,8 @@
           <details><summary>O que acontece se eu falhar um dia?</summary><p>Marque “Mínimo” para manter o hábito vivo ou “Não fiz” sem culpa. O Arco mostra a consistência do período, não pune um dia isolado.</p></details>
           <details><summary>Quem decide quando subir de nível?</summary><p>Você. O app sugere quando a regra do hábito é cumprida (por exemplo, 80% em 14 dias), mas a decisão é sempre manual.</p></details>
           <details><summary>Preciso estar online?</summary><p>Não para o check-in. Ele é guardado e enviado quando a conexão voltar. As demais ações precisam de rede.</p></details>
-          <details><summary>Posso usar fora do app?</summary><p>Sim. Toda funcionalidade está disponível pela API com chave própria, e há um servidor MCP para usar com assistentes de IA.</p></details>
+          <details><summary>Posso usar fora do app?</summary><p>Sim. Toda funcionalidade está disponível pela API com chave própria. O servidor MCP, para usar com assistentes de IA, é exclusivo do plano Pro.</p></details>
+          <details><summary>Os lembretes funcionam no iPhone?</summary><p>Só depois de instalar o Arco na tela de início (Compartilhar, Adicionar à Tela de Início). No Safari comum o iOS não entrega notificações push.</p></details>
         </div>
       </section>
 

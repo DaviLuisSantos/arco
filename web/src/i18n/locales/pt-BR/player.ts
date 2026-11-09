@@ -1,5 +1,4 @@
 const ns = {
-  levelAria: 'Nível {{level}}',
   level: 'Nível',
   xpToday: '{{xp}} hoje',
   zeroToday: '0 XP hoje',

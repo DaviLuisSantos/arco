@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Tokens de cor: tema escuro por padrão, claro via prefers-color-scheme. */
+/* Tokens de cor: escuro por padrão; claro via prefers-color-scheme ou forçado por [data-theme] (lib/theme.ts). */
 :root {
   color-scheme: dark;
   --bg: #0f1117;
@@ -22,7 +22,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme='dark']) {
     color-scheme: light;
     --bg: #f5f6fa;
     --surface: #ffffff;
@@ -33,14 +33,38 @@
     --accent: #5b4bd6;
     --accent-strong: #5b4bd6;
     --on-accent: #ffffff;
-    --xp: #b86e00;
-    --done: #047857;
+    --xp: #965800;
+    --done: #036a4a;
     --minimum: #a16207;
-    --missed: #c02626;
-    --danger: #c02626;
+    --missed: #a81f1f;
+    --danger: #a81f1f;
     --habit-s: 55%;
     --habit-l: 42%;
   }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-2: #eef0f6;
+  --border: #d9dce6;
+  --text: #151821;
+  --muted: #5b6275;
+  --accent: #5b4bd6;
+  --accent-strong: #5b4bd6;
+  --on-accent: #ffffff;
+  --xp: #965800;
+  --done: #036a4a;
+  --minimum: #a16207;
+  --missed: #a81f1f;
+  --danger: #a81f1f;
+  --habit-s: 55%;
+  --habit-l: 42%;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -64,6 +88,14 @@
 @theme {
   --animate-float-up: float-up 1.6s ease-out forwards;
   --animate-pop: pop 0.35s ease-out;
+
+  /* Escala semântica de texto (ainda sem migrar telas). */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
 
   @keyframes float-up {
     0% { opacity: 0; transform: translateY(12px) scale(0.9); }
@@ -92,6 +124,7 @@ html {
 
 body {
   margin: 0;
+  min-height: 100vh;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -140,5 +173,15 @@ input::-webkit-datetime-edit {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

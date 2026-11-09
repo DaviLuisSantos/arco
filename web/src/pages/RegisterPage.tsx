@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate } from 'react-router'
@@ -7,6 +7,7 @@ import { ArcoLogo } from '../components/layout/ArcoLogo'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Spinner } from '../components/ui/States'
+import { currentLocale } from '../i18n'
 import { errorMessage } from '../lib/errors'
 import { queryKeys } from '../lib/queryKeys'
 import { useAuthStatus } from '../lib/useAuthStatus'
@@ -15,6 +16,13 @@ export function RegisterPage() {
   const { t } = useTranslation('auth')
   const auth = useAuthStatus()
   const qc = useQueryClient()
+  // Mesma consulta do login (cache compartilhado): o botão do Google só aparece se o servidor tiver o provedor.
+  const providers = useQuery({
+    queryKey: ['auth', 'providers'],
+    queryFn: authApi.providers,
+    staleTime: Infinity,
+    retry: false,
+  })
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -91,6 +99,28 @@ export function RegisterPage() {
             {t('register.submit')}
           </Button>
         </form>
+        {providers.data?.google && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            block
+            className="mt-3"
+            onClick={() => {
+              window.location.href = `/api/auth/google?returnUrl=${encodeURIComponent('/')}`
+            }}
+          >
+            {t('register.google')}
+          </Button>
+        )}
+        <p className="mt-4 text-center text-xs text-muted">
+          {t('register.privacyPrefix')}{' '}
+          {/* Página estática fora do SPA: <a> comum, não <Link>. */}
+          <a href={currentLocale() === 'en' ? '/landing/en/privacy/' : '/landing/privacidade/'} className="text-text underline">
+            {t('register.privacyLink')}
+          </a>
+          .
+        </p>
         <p className="mt-6 text-center text-sm text-muted">
           {t('register.haveAccount')}{' '}
           <Link to="/login" className="text-text hover:underline">

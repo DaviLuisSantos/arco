@@ -1,29 +1,53 @@
-import { CircleUser, ListChecks, Shield, Sun, Target, type LucideIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { CircleUser, ListChecks, Sun, Target, TrendingUp, type LucideIcon } from 'lucide-react'
+import { useEffect, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 import { cn } from '../../lib/cn'
 import { AccountBanners } from '../../features/account/AccountBanners'
-import { useAuthStatus } from '../../lib/useAuthStatus'
 import { syncPushSubscription } from '../../lib/push'
 import { ArcoLogo } from './ArcoLogo'
 import { ConnectionBanner } from './ConnectionBanner'
 
-const NAV: { to: string; key: 'nav.today' | 'nav.habits' | 'nav.cycle' | 'nav.profile' | 'nav.admin'; icon: LucideIcon; end: boolean }[] = [
-  { to: '/', key: 'nav.today', icon: Sun, end: true },
-  { to: '/habits', key: 'nav.habits', icon: ListChecks, end: false },
-  { to: '/cycle', key: 'nav.cycle', icon: Target, end: false },
-  { to: '/profile', key: 'nav.profile', icon: CircleUser, end: false },
+interface NavItem {
+  to: string
+  key: 'nav.today' | 'nav.habits' | 'nav.cycle' | 'nav.progress' | 'nav.profile'
+  icon: LucideIcon
+  // Rotas que deixam a aba ativa (prefixos; '/' só casa exato).
+  paths: string[]
+}
+
+const NAV: NavItem[] = [
+  { to: '/', key: 'nav.today', icon: Sun, paths: ['/'] },
+  { to: '/habits', key: 'nav.habits', icon: ListChecks, paths: ['/habits'] },
+  { to: '/cycle', key: 'nav.cycle', icon: Target, paths: ['/cycle'] },
+  { to: '/progress', key: 'nav.progress', icon: TrendingUp, paths: ['/progress', '/stats', '/review'] },
+  { to: '/profile', key: 'nav.profile', icon: CircleUser, paths: ['/profile', '/settings'] },
 ]
+
+function isActivePath(pathname: string, paths: string[]) {
+  return paths.some((p) => (p === '/' ? pathname === '/' : pathname === p || pathname.startsWith(`${p}/`)))
+}
+
+function scrollToTop() {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
+}
 
 export function AppLayout() {
   const { t } = useTranslation('layout')
-  const me = useAuthStatus().data
-  const nav: typeof NAV = me?.isAdmin ? [...NAV, { to: '/admin', key: 'nav.admin', icon: Shield, end: false }] : NAV
+  const { pathname } = useLocation()
   // Mantém a inscrição push deste dispositivo registrada no servidor.
   useEffect(() => {
     void syncPushSubscription()
   }, [])
+
+  // Retoque na aba ativa, já na raiz dela: só volta ao topo.
+  const onNavClick = (e: MouseEvent, to: string) => {
+    if (pathname === to) {
+      e.preventDefault()
+      scrollToTop()
+    }
+  }
 
   return (
     <div className="min-h-dvh">
@@ -34,22 +58,25 @@ export function AppLayout() {
           <span className="text-xl font-extrabold tracking-tight">Arco</span>
         </div>
         <nav aria-label={t('nav.main')} className="flex flex-col gap-1">
-          {nav.map(({ to, key, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
+          {NAV.map(({ to, key, icon: Icon, paths }) => {
+            const active = isActivePath(pathname, paths)
+            return (
+              <Link
+                key={to}
+                to={to}
+                viewTransition
+                aria-current={active ? 'page' : undefined}
+                onClick={(e) => onNavClick(e, to)}
+                className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium transition',
-                  isActive ? 'bg-surface-2 text-text' : 'text-muted hover:bg-surface-2 hover:text-text',
-                )
-              }
-            >
-              <Icon className="size-5" aria-hidden />
-              {t(key)}
-            </NavLink>
-          ))}
+                  active ? 'bg-surface-2 text-text' : 'text-muted hover:bg-surface-2 hover:text-text',
+                )}
+              >
+                <Icon className="size-5" aria-hidden />
+                {t(key)}
+              </Link>
+            )
+          })}
         </nav>
       </aside>
 
@@ -66,35 +93,34 @@ export function AppLayout() {
         aria-label={t('nav.main')}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <ul className={cn('grid', nav.length > 4 ? 'grid-cols-5' : 'grid-cols-4')}>
-          {nav.map(({ to, key, icon: Icon, end }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  cn(
+        <ul className="grid grid-cols-5">
+          {NAV.map(({ to, key, icon: Icon, paths }) => {
+            const active = isActivePath(pathname, paths)
+            return (
+              <li key={to}>
+                <Link
+                  to={to}
+                  viewTransition
+                  aria-current={active ? 'page' : undefined}
+                  onClick={(e) => onNavClick(e, to)}
+                  className={cn(
                     'group flex flex-col items-center gap-1 py-2 text-xs font-medium',
-                    isActive ? 'text-accent' : 'text-muted',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={cn(
-                        'grid h-8 w-14 place-items-center rounded-full transition',
-                        isActive ? 'bg-accent/15' : 'group-active:bg-surface-2',
-                      )}
-                    >
-                      <Icon className="size-6" aria-hidden />
-                    </span>
-                    {t(key)}
-                  </>
-                )}
-              </NavLink>
-            </li>
-          ))}
+                    active ? 'text-accent' : 'text-muted',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'grid h-8 w-14 place-items-center rounded-full transition',
+                      active ? 'bg-accent/15' : 'group-active:bg-surface-2',
+                    )}
+                  >
+                    <Icon className="size-6" aria-hidden />
+                  </span>
+                  {t(key)}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       </nav>
     </div>

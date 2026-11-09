@@ -26,7 +26,7 @@
 | `web/src/lib/` | Datas, erros, mutações, IndexedDB, push |
 | `web/src/i18n/` | i18next: `locales/{pt-BR,en}/<ns>.ts`, `setLocale`, detecção de idioma |
 | `web/src/features/{billing,security,publicProfile,partners}` | Plano, 2FA e sessões, perfil público, parceiros |
-| `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`). Specs de produto: `public-profile`, `security`, `partners`, `plan-limit`, `locale`; helper `totp.ts` |
+| `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`). Specs de produto: `public-profile`, `security`, `partners`, `plan-limit`, `locale`, `a11y` (axe nas telas principais); projetos `e2e` (desktop) e `e2e-mobile` (Pixel, sem `public-profile`); helper `totp.ts` |
 | `infra/` | Terraform do Azure (o job `terraform-plan` roda em PR no `deploy.yml`) |
 | `azure-pipelines.yml` | Pipeline do Azure DevOps: build e testes, sem deploy |
 | `Infrastructure/Outbox/` | Outbox transacional (`OutboxMessage`, `Outbox.Enqueue` na mesma transação da ação, `OutboxProcessor`, worker com `Outbox:WorkerEnabled`; handlers `email` e `week_closed`) |

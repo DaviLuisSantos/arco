@@ -9,6 +9,7 @@ interface ToastItem {
   id: number
   message: string
   variant: ToastVariant
+  action?: ToastOptions['action']
 }
 
 const DURATION: Record<ToastVariant, number> = { info: 3500, success: 3000, error: 5000, xp: 1600, achievement: 5000 }
@@ -55,10 +56,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback((id: number) => setItems((list) => list.filter((t) => t.id !== id)), [])
 
   const show = useCallback(
-    ({ message, variant = 'info' }: ToastOptions) => {
+    ({ message, variant = 'info', action, duration }: ToastOptions) => {
       const id = nextId++
-      setItems((list) => [...list.slice(-3), { id, message, variant }])
-      window.setTimeout(() => dismiss(id), DURATION[variant])
+      setItems((list) => [...list.slice(-3), { id, message, variant, action }])
+      window.setTimeout(() => dismiss(id), duration ?? DURATION[variant])
     },
     [dismiss],
   )
@@ -140,7 +141,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 )}
                 aria-hidden
               />
-              <span>{t.message}</span>
+              <span className="flex-1">{t.message}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    t.action?.onClick()
+                    dismiss(t.id)
+                  }}
+                  className="-my-1 -mr-2 shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-accent hover:bg-surface-2"
+                >
+                  {t.action.label}
+                </button>
+              )}
             </div>
           )
         })}

@@ -1,5 +1,5 @@
 import { Check, Flag, Minus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { CheckInStatus, TodayHabit } from '../../api/types'
@@ -14,7 +14,7 @@ const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string
 ]
 
 export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: string }) {
-  const { t } = useTranslation(['checkins', 'common'])
+  const { t } = useTranslation('checkins')
   const checkIn = useCheckIn()
   const current = habit.checkIn?.status ?? null
   const savedMinutes = habit.checkIn?.minutes ?? null
@@ -24,17 +24,26 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   const parsed = text.trim() === '' ? 0 : Number(text)
   const validMinutes = Number.isInteger(parsed) && parsed >= 0 && parsed <= 480
   const changed = validMinutes && parsed !== (savedMinutes ?? 0)
+  const statusGroup = useRef<HTMLDivElement>(null)
 
   function handleTap(status: CheckInStatus) {
     // tocar no status atual desfaz
+    const next = current === status ? null : status
+    // Minutos digitados vão junto com a troca de status: uma só mutação, sem disputa com o blur.
+    const withMinutes = next !== null && changed ? { minutes: parsed } : {}
     setDraft(null)
-    checkIn.mutate({ habit, date, status: current === status ? null : status })
+    checkIn.mutate({ habit, date, status: next, ...withMinutes })
   }
 
-  function saveMinutes(e: React.FormEvent) {
-    e.preventDefault()
+  function saveMinutes() {
     if (!current || !changed) return
     checkIn.mutate({ habit, date, status: current, minutes: parsed }, { onSuccess: () => setDraft(null) })
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    // Indo para um botão de status, o toque dele já leva os minutos.
+    if (e.relatedTarget instanceof Node && statusGroup.current?.contains(e.relatedTarget)) return
+    saveMinutes()
   }
 
   return (
@@ -85,7 +94,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
+      <div ref={statusGroup} className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
         {OPTIONS.map(({ status, icon: Icon, active }) => {
           const selected = current === status
           return (
@@ -110,7 +119,13 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
       </div>
 
       {(current === 'Done' || current === 'Minimum') && (
-        <form onSubmit={saveMinutes} className="mt-2 flex items-center gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            saveMinutes()
+          }}
+          className="mt-2 flex items-center gap-2"
+        >
           <label htmlFor={`minutes-${habit.id}`} className="shrink-0 text-sm text-muted">
             {t('card.minutesQuestion')}
           </label>
@@ -118,24 +133,21 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
             id={`minutes-${habit.id}`}
             type="number"
             inputMode="numeric"
+            enterKeyHint="done"
             min={0}
             max={480}
             step={1}
             placeholder={t('card.optional')}
             value={text}
             onChange={(e) => setDraft(e.target.value)}
+            onBlur={handleBlur}
             aria-invalid={!validMinutes}
+            aria-describedby={`minutes-hint-${habit.id}`}
             className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 text-sm"
           />
-          {changed && (
-            <button
-              type="submit"
-              disabled={checkIn.isPending && !checkIn.isPaused}
-              className="h-10 shrink-0 rounded-xl border border-border bg-surface-2 px-3 text-sm font-semibold hover:text-text"
-            >
-              {t('common:save')}
-            </button>
-          )}
+          <span id={`minutes-hint-${habit.id}`} className="sr-only">
+            {t('card.minutesHint')}
+          </span>
           {!changed && savedMinutes ? (
             <span className="shrink-0 text-xs text-muted">{formatDuration(savedMinutes)}</span>
           ) : null}

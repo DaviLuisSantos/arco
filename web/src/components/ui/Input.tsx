@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 
 // text-base (16px) evita o zoom automático do iOS ao focar; min-w-0 deixa o campo encolher em grids e linhas flex.
 const FIELD =
-  'w-full min-w-0 rounded-xl border border-border bg-surface-2 px-3 text-base text-text placeholder:text-muted/70 ' +
+  'w-full min-w-0 rounded-xl border border-border bg-surface-2 px-3 text-base text-text placeholder:text-muted ' +
   'focus:border-accent focus:outline-none disabled:opacity-60'
 
 interface FieldProps {

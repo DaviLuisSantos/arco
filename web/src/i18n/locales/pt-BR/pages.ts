@@ -11,6 +11,8 @@ const ns = {
     createHabit: 'Criar hábito',
     nothingScheduled: 'Nada programado para hoje. Aproveite o descanso — ou adiante algo abaixo.',
     outsideToday: 'Fora de hoje ({{count}})',
+    dayProgressAria: 'Progresso do dia: {{done}} de {{total}}',
+    dayCount: '{{done}} de {{total}}',
   },
   habits: {
     title: 'Hábitos',

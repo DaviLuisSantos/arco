@@ -4,11 +4,11 @@ import { pushApi } from '../api/endpoints'
 
 export type PushSupport = 'supported' | 'needs-install' | 'unsupported'
 
-function isIos(): boolean {
+export function isIos(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
-function isStandalone(): boolean {
+export function isStandalone(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
 }
 
@@ -77,6 +77,20 @@ export async function disablePush(): Promise<void> {
   if (!subscription) return
   await pushApi.unsubscribe(subscription.endpoint)
   await subscription.unsubscribe()
+}
+
+/**
+ * Vale mostrar o cartão de priming? Só com push suportado, service worker ativo, permissão ainda não
+ * decidida e nenhuma inscrição neste dispositivo. O prompt do navegador nunca aparece antes do priming.
+ */
+export async function canPrimePush(): Promise<boolean> {
+  try {
+    if (pushSupport() !== 'supported' || Notification.permission !== 'default') return false
+    if (!(await hasServiceWorker())) return false
+    return (await currentSubscription()) === null
+  } catch {
+    return false
+  }
 }
 
 /** Reenvia a inscrição existente ao servidor (ex.: banco recriado). Silencioso em caso de erro. */

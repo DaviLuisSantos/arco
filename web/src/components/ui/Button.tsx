@@ -13,7 +13,8 @@ const VARIANTS: Record<Variant, string> = {
 }
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-9 px-3 text-sm gap-1.5',
+  // h-9 visual; a área de toque chega a 46px pelo pseudo-elemento
+  sm: "relative h-9 px-3 text-sm gap-1.5 before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-['']",
   md: 'h-11 px-4 text-sm gap-2',
   lg: 'h-12 px-5 text-base gap-2',
 }

@@ -7,19 +7,23 @@ import { formatNumber, formatXp } from '../../lib/format'
 interface PlayerProgressProps {
   player: Player
   xpToday?: number
+  compact?: boolean
 }
 
-export function PlayerProgress({ player, xpToday }: PlayerProgressProps) {
+export function PlayerProgress({ player, xpToday, compact = false }: PlayerProgressProps) {
   const { t } = useTranslation('player')
   const ratio = player.xpForNextLevel > 0 ? player.xpIntoLevel / player.xpForNextLevel : 0
   return (
-    <div className="flex items-center gap-4">
+    <div className={compact ? 'flex items-center gap-3' : 'flex items-center gap-4'}>
       <div
-        className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent-strong to-xp text-bg shadow"
-        aria-label={t('levelAria', { level: player.level })}
+        className={
+          compact
+            ? 'grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent-strong to-xp text-bg shadow'
+            : 'grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent-strong to-xp text-bg shadow'
+        }
       >
         <span className="text-[0.6rem] font-bold uppercase leading-none tracking-wider opacity-80">{t('level')}</span>
-        <span className="-mt-2 text-2xl font-extrabold leading-none">{player.level}</span>
+        <span className={compact ? '-mt-1.5 text-xl font-extrabold leading-none' : '-mt-2 text-2xl font-extrabold leading-none'}>{player.level}</span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1.5 flex items-baseline justify-between gap-2 text-sm">
@@ -35,9 +39,11 @@ export function PlayerProgress({ player, xpToday }: PlayerProgressProps) {
           )}
         </div>
         <ProgressBar value={ratio} tone="xp" label={t('progressAria', { level: player.level + 1 })} />
-        <p className="mt-1 text-xs text-muted">
-          {t('remaining', { xp: formatNumber(Math.max(0, player.xpForNextLevel - player.xpIntoLevel)), level: player.level + 1 })}
-        </p>
+        {!compact && (
+          <p className="mt-1 text-xs text-muted">
+            {t('remaining', { xp: formatNumber(Math.max(0, player.xpForNextLevel - player.xpIntoLevel)), level: player.level + 1 })}
+          </p>
+        )}
       </div>
     </div>
   )

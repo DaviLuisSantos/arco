@@ -22,6 +22,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'e2e', testIgnore: /screenshots\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'e2e-mobile',
+      testIgnore: [/screenshots\.spec\.ts/, /public-profile\.spec\.ts/],
+      use: { ...devices['Pixel 7'] },
+    },
     { name: 'screenshots', testMatch: /screenshots\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: [

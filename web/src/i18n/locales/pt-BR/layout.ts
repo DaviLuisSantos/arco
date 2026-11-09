@@ -1,5 +1,12 @@
 const ns = {
-  nav: { today: 'Hoje', habits: 'Hábitos', cycle: 'Ciclo', profile: 'Perfil', admin: 'Admin', main: 'Principal' },
+  nav: { today: 'Hoje', habits: 'Hábitos', cycle: 'Ciclo', progress: 'Progresso', profile: 'Perfil', admin: 'Admin', main: 'Principal' },
+  routeError: {
+    title: 'Algo deu errado',
+    body: 'Não foi possível abrir esta tela. Tente recarregar a página.',
+    staleTitle: 'Há uma versão nova do Arco',
+    staleBody: 'Recarregue a página para continuar usando o app.',
+    reload: 'Recarregar',
+  },
   close: 'Fechar',
   cancel: 'Cancelar',
   loading: 'Carregando…',

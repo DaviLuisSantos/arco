@@ -64,12 +64,12 @@ function Nudge({ to, icon, title, description }: { to: string; icon: ReactNode; 
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-2xl border border-accent/50 bg-accent/10 p-4 transition hover:bg-accent/15"
+      className="flex items-center gap-3 rounded-xl border border-accent/50 bg-accent/10 px-3 py-2 transition hover:bg-accent/15"
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/20 text-accent">{icon}</span>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{title}</span>
-        <span className="block text-sm text-muted">{description}</span>
+        <span className="block truncate text-sm font-semibold">{title}</span>
+        <span className="block truncate text-xs text-muted">{description}</span>
       </span>
       <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
     </Link>

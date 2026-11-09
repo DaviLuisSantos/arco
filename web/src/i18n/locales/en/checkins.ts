@@ -9,5 +9,14 @@ export default {
     checkInOf: 'Check-in for {{name}}',
     minutesQuestion: 'How many minutes?',
     optional: 'optional',
+    minutesHint: 'Saved when you leave the field',
+  },
+  feedback: {
+    undo: 'Undo',
+    Done: '{{name}}: done ✅',
+    Minimum: '{{name}}: the minimum counts too',
+    Missed: '{{name}}: no worries, tomorrow is another day',
+    removed: 'Check-in for {{name}} removed',
+    dayComplete: 'Day complete! Everything checked 🎉',
   },
 }

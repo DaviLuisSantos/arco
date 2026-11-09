@@ -64,3 +64,9 @@ export async function gotoProfile(page: Page) {
   await page.getByRole('link', { name: 'Perfil' }).click()
   await expect(page.getByRole('heading', { name: 'Perfil', level: 1 })).toBeVisible()
 }
+
+export async function gotoSettings(page: Page) {
+  await gotoProfile(page)
+  await page.getByRole('link', { name: 'Configurações' }).click()
+  await expect(page.getByRole('heading', { name: 'Configurações', level: 1 })).toBeVisible()
+}

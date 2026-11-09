@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, CircleCheck, NotebookPen } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { reviewsApi } from '../api/endpoints'
@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ProgressBar } from '../components/ui/ProgressBar'
+import { Skeleton } from '../components/ui/Skeleton'
 import { ErrorState, Spinner } from '../components/ui/States'
 import { PeriodStats } from '../features/reviews/PeriodStats'
 import { cleanAnswers, EMPTY_ANSWERS, WEEK_PROMPTS, type Answers } from '../features/reviews/review-answers'
@@ -16,6 +17,8 @@ import { ReviewAnswersView, ReviewQuestions } from '../features/reviews/ReviewQu
 import { formatDate } from '../lib/dates'
 import { goalProgressText } from '../lib/format'
 import { queryKeys } from '../lib/queryKeys'
+import { useAuthStatus } from '../lib/useAuthStatus'
+import { useOnline } from '../lib/useOnline'
 import { useAppMutation } from '../lib/useAppMutation'
 
 const WEEKLY_REVIEW_XP = 30
@@ -24,8 +27,10 @@ function weekLabel(weekStart: string, weekEnd: string) {
   return `${formatDate(weekStart)} – ${formatDate(weekEnd)}`
 }
 
-export function ReviewPage() {
+export function ReviewPage({ embedded = false }: { embedded?: boolean }) {
   const { t } = useTranslation('pages', { keyPrefix: 'review' })
+  const { t: tp } = useTranslation('progress')
+  const online = useOnline()
   const current = useQuery({ queryKey: queryKeys.weeklyReview, queryFn: reviewsApi.current })
   const past = useQuery({ queryKey: queryKeys.weeklyReviews, queryFn: reviewsApi.list })
 
@@ -36,7 +41,17 @@ export function ReviewPage() {
     </Link>
   )
 
-  if (current.isPending) return <Spinner />
+  if (current.isPending) {
+    return online ? (
+      <div className="flex flex-col gap-3" role="status" aria-label={tp('title')}>
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    ) : (
+      <Spinner />
+    )
+  }
   if (current.isLoadingError) return <ErrorState error={current.error} onRetry={() => void current.refetch()} />
 
   const s = current.data
@@ -44,12 +59,25 @@ export function ReviewPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        {back}
-        <PageHeader title={t('title')} subtitle={weekLabel(s.weekStart, s.weekEnd)} />
-      </div>
+      {embedded ? (
+        <p className="text-sm text-muted">{weekLabel(s.weekStart, s.weekEnd)}</p>
+      ) : (
+        <div>
+          {back}
+          <PageHeader title={t('title')} subtitle={weekLabel(s.weekStart, s.weekEnd)} />
+        </div>
+      )}
 
       {s.review ? <DoneReview review={s.review} summary={s} /> : <GuidedReview summary={s} />}
+
+      {past.isLoadingError && (
+        <div role="alert" className="flex items-center justify-between gap-2 rounded-2xl border border-danger/40 bg-danger/10 p-3 text-sm">
+          <span>{tp('secondaryError', { what: tp('what.pastReviews') })}</span>
+          <Button size="sm" variant="secondary" onClick={() => void past.refetch()}>
+            {tp('retry')}
+          </Button>
+        </div>
+      )}
 
       {older.length > 0 && (
         <section aria-labelledby="past-reviews-title">
@@ -74,6 +102,21 @@ export function ReviewPage() {
       )}
     </div>
   )
+}
+
+function readDraft(key: string): Answers {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return EMPTY_ANSWERS
+    const d = JSON.parse(raw) as Partial<Answers>
+    return {
+      wins: typeof d.wins === 'string' ? d.wins : '',
+      obstacles: typeof d.obstacles === 'string' ? d.obstacles : '',
+      next: typeof d.next === 'string' ? d.next : '',
+    }
+  } catch {
+    return EMPTY_ANSWERS
+  }
 }
 
 function WeekNumbers({ summary }: { summary: WeeklySummary }) {
@@ -107,12 +150,32 @@ function WeekNumbers({ summary }: { summary: WeeklySummary }) {
 function GuidedReview({ summary }: { summary: WeeklySummary }) {
   const { t } = useTranslation('pages', { keyPrefix: 'review' })
   const [step, setStep] = useState<'numbers' | 'questions'>('numbers')
-  const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS)
+  const me = useAuthStatus()
+  const draftKey = `arco-review-draft:${me.data?.id ?? 'anon'}:${summary.weekStart}`
+  const [answers, setAnswers] = useState<Answers>(() => readDraft(draftKey))
   const [error, setError] = useState<string | null>(null)
   const save = useAppMutation(
     () => reviewsApi.create({ weekStart: summary.weekStart, ...cleanAnswers(answers) }),
-    { successMessage: t('saved') },
+    {
+      successMessage: t('saved'),
+      onSuccess: () => {
+        try {
+          sessionStorage.removeItem(draftKey)
+        } catch {
+          // sessionStorage indisponivel: nada a limpar.
+        }
+      },
+    },
   )
+
+  useEffect(() => {
+    try {
+      if (answers.wins || answers.obstacles || answers.next) sessionStorage.setItem(draftKey, JSON.stringify(answers))
+      else sessionStorage.removeItem(draftKey)
+    } catch {
+      // Sem sessionStorage o rascunho so vive na tela.
+    }
+  }, [answers, draftKey])
 
   function submit() {
     const clean = cleanAnswers(answers)

@@ -1,5 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Crown } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { billingApi } from '../../api/endpoints'
 import { Button } from '../../components/ui/Button'
@@ -18,13 +20,56 @@ export function PlanCard() {
   const language = i18n.language
   const toast = useToast()
   const online = useOnline()
-  const { data } = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const { data, refetch } = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
 
   const redirect = useMutation({
     mutationFn: (kind: 'checkout' | 'portal') => (kind === 'checkout' ? billingApi.checkout() : billingApi.portal()),
     onSuccess: ({ url }) => window.location.assign(url),
     onError: (e) => toast.error(errorMessage(e)),
   })
+
+  const [params, setParams] = useSearchParams()
+  const checkout = params.get('checkout')
+  const handled = useRef(false)
+  const [polling, setPolling] = useState(false)
+  const queryClient = useQueryClient()
+  const refetchBilling = refetch
+
+  useEffect(() => {
+    if (!checkout || handled.current) return
+    handled.current = true
+    setParams(
+      (p) => {
+        p.delete('checkout')
+        return p
+      },
+      { replace: true },
+    )
+    if (checkout === 'cancel' || checkout === 'canceled') {
+      toast.show({ message: t('checkoutCancel'), variant: 'info' })
+      return
+    }
+    if (checkout !== 'success') return
+    toast.success(t('checkoutSuccess'))
+    setPolling(true)
+    void refetchBilling()
+  }, [checkout, setParams, toast, t, refetchBilling])
+
+  // O webhook do Stripe pode atrasar: consulta de novo algumas vezes, parando ao sair da tela ou ao virar Pro.
+  const isPro = data?.plan === 'pro'
+  useEffect(() => {
+    if (!polling || isPro) return
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      void queryClient.invalidateQueries({ queryKey: ['billing'] })
+      if (tries >= 5) {
+        window.clearInterval(timer)
+        setPolling(false)
+      }
+    }, 2500)
+    return () => window.clearInterval(timer)
+  }, [polling, isPro, queryClient])
 
   if (!data) return null
   const pro = data.plan === 'pro'
@@ -59,6 +104,40 @@ export function PlanCard() {
           <dd>{data.limits.mcp ? t('mcpYes') : t('mcpNo')}</dd>
         </div>
       </dl>
+      {!pro && (
+        <table className="w-full text-left text-xs">
+          <caption className="mb-1 text-left text-sm font-semibold">{t('compareTitle')}</caption>
+          <thead>
+            <tr className="text-muted">
+              <th scope="col" className="py-1 font-medium">{t('compareFeature')}</th>
+              <th scope="col" className="py-1 font-medium">{t('free')}</th>
+              <th scope="col" className="py-1 font-medium">{t('pro')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-t border-border">
+              <th scope="row" className="py-1 font-normal">{t('compareHabits')}</th>
+              <td>{data.limits.habits === null ? t('compareUnlimited') : data.limits.habits}</td>
+              <td>{t('compareUnlimited')}</td>
+            </tr>
+            <tr className="border-t border-border">
+              <th scope="row" className="py-1 font-normal">{t('compareApiKeys')}</th>
+              <td>{data.limits.apiKeys === null ? t('compareUnlimited') : data.limits.apiKeys}</td>
+              <td>{t('compareMore')}</td>
+            </tr>
+            <tr className="border-t border-border">
+              <th scope="row" className="py-1 font-normal">{t('compareMcp')}</th>
+              <td>{data.limits.mcp ? t('compareYes') : t('compareNo')}</td>
+              <td>{t('compareYes')}</td>
+            </tr>
+            <tr className="border-t border-border">
+              <th scope="row" className="py-1 font-normal">{t('compareTheme')}</th>
+              <td>{data.limits.profileTheme ? t('compareYes') : t('compareNo')}</td>
+              <td>{t('compareYes')}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
       {data.stripeEnabled && (
         <>
           {!pro ? (

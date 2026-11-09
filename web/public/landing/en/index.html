@@ -166,6 +166,7 @@
       html { scroll-behavior: auto; } .js .rv { opacity: 1; transform: none; transition: none; }
     }
   </style>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Arco","applicationCategory":"LifestyleApplication","operatingSystem":"Web","inLanguage":"en","url":"https://arco.daviluis.dev/landing/en/","description":"Arco is a habit app built on 6-week cycles: daily check-ins, levels, goals and XP.","offers":{"@type":"Offer","price":"0","priceCurrency":"BRL"}}</script>
 </head>
 <body>
   <div class="top" id="top">
@@ -180,6 +181,7 @@
       <nav>
         <a href="#features">Features</a>
         <a href="#how-it-works">How it works</a>
+        <a href="#plans">Plans</a>
         <a href="#faq">FAQ</a>
         <a href="/landing/" hreflang="pt-BR" lang="pt-BR" class="lang" aria-label="Português">PT</a>
         <a class="btn sm" href="/login?lang=en">Sign in</a>
@@ -194,7 +196,7 @@
           <span class="pill">Habits in 6-week cycles</span>
           <h1>Every day feeds <em>something bigger</em></h1>
           <p class="lead">One-tap check-ins, levels that grow with you and goals with deadlines. Less to-do list, more real progress.</p>
-          <p class="areas">Health, mind, study, work, money: any habit you want to take seriously.</p>
+          <p class="areas">Health, mind, study, work, money: any habit you want to take seriously. Review spending, write 300 words, call someone you love, ship the day's focus.</p>
           <div class="cta">
             <a class="btn" href="/login?mode=register&amp;lang=en">Create free account</a>
             <a class="btn ghost" href="/login?demo=1&amp;lang=en">Try the demo</a>
@@ -203,7 +205,7 @@
           <p class="note">Installs as a phone app · works offline</p>
         </div>
 
-        <div class="phone" aria-label="Example of the Arco Today screen">
+        <div class="phone">
           <div class="head"><span>Today · week 4 of 6</span><span class="xp" id="xp">+0 XP</span></div>
           <svg class="arc" viewBox="0 0 240 140" fill="none" role="img" aria-label="Cycle progress arc at 68%">
             <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
@@ -211,16 +213,16 @@
             <path class="fill" pathLength="330" d="M20 120a100 100 0 0 1 200 0" stroke-width="16" stroke-linecap="round"/>
             <text x="120" y="104" text-anchor="middle" font-size="38" font-weight="700">68%</text>
           </svg>
-          <div class="habit" data-xp="10,4">
+          <div class="habit" data-xp="10,5">
             <div class="t">Meditate<small>Level 1 · 10 min (minimum: 2 min)</small></div>
             <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
           </div>
-          <div class="habit" data-xp="8,3">
-            <div class="t">Drink water<small>Level 2 · 2 L (minimum: 1 L)</small></div>
+          <div class="habit" data-xp="12,6">
+            <div class="t">Review spending<small>Level 2 · 15 min (minimum: 5 min)</small></div>
             <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
           </div>
-          <div class="habit" data-xp="6,2">
-            <div class="t">Reading<small>Level 3 · 20 pages (minimum: 2)</small></div>
+          <div class="habit" data-xp="14,7">
+            <div class="t">Write<small>Level 3 · 300 words (minimum: 50)</small></div>
             <div class="chk"><button data-s="ok">Done</button><button data-s="min">Minimum</button></div>
           </div>
           <p class="hint">Try it: tap Done or Minimum</p>
@@ -268,6 +270,15 @@
         <p class="sub rv" style="margin:20px auto 0">Example of a habit ladder: with 80% consistency over 14 days, Arco suggests leveling up.</p>
       </section>
 
+      <section id="plans">
+        <h2 class="rv">Free and Pro</h2>
+        <p class="sub rv">Start free and upgrade to Pro only if you need more room.</p>
+        <div class="grid">
+          <div class="card rv"><h3>Free</h3><p>Check-ins, cycles, levels, goals, XP and achievements, with limits on habits and API keys.</p></div>
+          <div class="card rv"><h3>Pro</h3><p>Higher limits, more API keys and the MCP server to use Arco from inside AI assistants.</p></div>
+        </div>
+      </section>
+
       <section id="faq">
         <h2 class="rv">FAQ</h2>
         <p class="sub rv">The essentials, straight to the point.</p>
@@ -275,7 +286,8 @@
           <details><summary>What happens if I miss a day?</summary><p>Mark “Minimum” to keep the habit alive or “Missed” without guilt. Arco shows your consistency over the period and does not punish a single day.</p></details>
           <details><summary>Who decides when to level up?</summary><p>You do. The app suggests it when the habit's rule is met (for example, 80% over 14 days), but the decision is always manual.</p></details>
           <details><summary>Do I need to be online?</summary><p>Not for check-ins. They are stored and sent when the connection returns. Other actions need a network.</p></details>
-          <details><summary>Can I use it outside the app?</summary><p>Yes. Every feature is available through the API with your own key, and there is an MCP server for use with AI assistants.</p></details>
+          <details><summary>Can I use it outside the app?</summary><p>Yes. Every feature is available through the API with your own key. The MCP server, for use with AI assistants, is Pro only.</p></details>
+          <details><summary>Do reminders work on iPhone?</summary><p>Only after you add Arco to the Home Screen (Share, Add to Home Screen). In regular Safari, iOS does not deliver push notifications.</p></details>
         </div>
       </section>
 
