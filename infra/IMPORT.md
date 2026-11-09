@@ -63,7 +63,7 @@ az role assignment list --assignee <client id da arco-github> --scope /subscript
 **Não importe** (o Terraform cria): o Key Vault e seus role assignments, a credencial `arco-pull-request`,
 o role `Reader` e os role assignments do Key Vault. A identidade do Web App (`SystemAssigned`) também é criada no primeiro apply.
 
-**O plano F1 não é importado:** ele fica no grupo `HabitSystem`, é compartilhado com outro site e entra só como `data source`.
+**O plano F1 não é importado:** ele fica no grupo `HabitSystem`, é compartilhado com outro site e o Web App só referencia o ID dele.
 
 **No Git Bash**, rode `export MSYS_NO_PATHCONV=1` antes: sem isso, os IDs que começam com `/subscriptions` são corrompidos.
 
