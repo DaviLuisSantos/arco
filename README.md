@@ -18,6 +18,31 @@ multiusuário e operável inteiro pela API e por assistentes de IA via MCP.
 |---|---|---|
 | <img src="docs/images/hoje-mobile.png" width="220" alt="Hoje no celular"> | ![Perfil](docs/images/perfil-desktop.png) | ![Landing](docs/images/landing-desktop.png) |
 
+## Visão técnica
+
+Projeto full-stack de ponta a ponta, em produção, feito para exercitar problemas que aparecem em sistemas reais: isolamento
+multi-tenant, autenticação forte, cobrança recorrente, entrega assíncrona confiável, operação offline, observabilidade e
+infraestrutura como código.
+
+| Área | O que foi implementado |
+|---|---|
+| **Backend** | .NET 10, Minimal APIs em *vertical slices*, EF Core 10 com SQLite em modo WAL, regras de negócio em funções puras |
+| **Multi-tenancy** | Isolamento por linha com *global query filters* do EF Core e `CurrentUser` por requisição |
+| **Autenticação** | Cookie com sessão revogável por aparelho, Google OAuth, 2FA TOTP (RFC 6238), chaves de API, *rate limiting* por IP |
+| **Pagamentos** | Stripe Checkout e Customer Portal, com webhook assinado e idempotente |
+| **Confiabilidade** | *Transactional outbox*, retry com *exponential backoff* e *jitter*, *circuit breaker* por host, consumidor idempotente |
+| **Mensageria** | `IEventBus` com implementação em memória e Azure Service Bus |
+| **Frontend** | React 19, TypeScript, TanStack Query, PWA com Workbox, cache em IndexedDB e fila de mutações offline |
+| **Web Push** | VAPID (RFC 8292) e criptografia `aes128gcm` (RFC 8291) implementados sem biblioteca externa |
+| **Integração com IA** | Servidor MCP (*Model Context Protocol*) com 24 ferramentas sobre a própria API REST |
+| **Observabilidade** | Sentry, OpenTelemetry e Application Insights: traces, métricas customizadas e logs, sem dados pessoais |
+| **Infraestrutura** | Terraform (azurerm), state remoto, Key Vault com RBAC e managed identity, GitHub Actions com OIDC, sem segredos de longa duração |
+| **Qualidade** | 243 testes de domínio e integração, 11 cenários E2E com Playwright, E2E como condição para o deploy |
+
+Em números: cerca de 8 mil linhas de C# na API, 12 mil de TypeScript no web e 5 mil de testes; 23 entidades, 11 migrations e
+23 fatias de funcionalidade.
+
+
 ## Funcionalidades
 
 - **Hábitos com níveis:** cada nível tem uma dose ("25 min") e uma versão mínima ("5 min"). Dá para planejar a
@@ -37,6 +62,34 @@ multiusuário e operável inteiro pela API e por assistentes de IA via MCP.
 - **API e MCP:** tudo pela API REST com chave de API, mais um servidor MCP para assistentes de IA.
 
 O conceito e as regras (XP, sugestões, sequências, planos) estão em [docs/PRODUCT.md](docs/PRODUCT.md).
+
+## Regras de domínio
+
+As regras ficam em `src/Arco.Api/Domain`, como funções puras sem acesso a banco ou relógio, o que permite testá-las
+isoladamente. A especificação completa está em [docs/PRODUCT.md](docs/PRODUCT.md).
+
+**Hierarquia:** Ciclo (2 a 12 semanas, padrão 6) → Objetivo (numérico ou por marcos, com prazo) → Hábito (com níveis) → Check-in diário.
+
+| Evento | XP |
+|---|---|
+| Check-in "Feito" | `10 + 2 × (nível do hábito − 1)` |
+| Check-in "Mínimo" | Metade do "Feito", arredondada para baixo |
+| Subir de nível um hábito | 50 |
+| Concluir um marco | 25 |
+| Concluir um objetivo | 150 |
+| Encerrar um ciclo | 100 |
+| Fazer a revisão semanal | 30 |
+
+- **Nível do jogador:** o custo para avançar é `100 + 50 × (nível − 1)`, e o nível é sempre derivado da soma do livro-razão.
+- **Sugestão de subir:** por padrão, consistência de pelo menos 80% em 14 dias, contando só "Feito", porque o "Mínimo" mantém o
+  hábito vivo, mas não prova que a dose ficou fácil. A alternativa configurável por hábito é "N semanas seguidas com X dias".
+  A decisão é sempre manual; "Agora não" adia por 7 dias.
+- **Sugestão de voltar:** duas semanas terminadas seguidas abaixo da metade da meta semanal.
+- **Sequências com tolerância:** calculadas a partir do histórico, nunca armazenadas. Uma falha isolada por semana é perdoada;
+  duas seguidas, ou duas na mesma semana, zeram a sequência.
+- **Conquistas:** catálogo de 16 medalhas, desbloqueadas pelo próprio uso. Desfazer um check-in não as retira; excluir um ciclo ou objetivo retira as que deixaram de valer.
+- **Tempo:** "hoje" é calculado no fuso do usuário. A semana da meta semanal começa na segunda, e os dias da semana seguem 0 = domingo.
+
 
 ## Arquitetura
 
@@ -76,14 +129,75 @@ flowchart LR
   API --- Static
 ```
 
+O sistema é um **monólito modular**, em um único processo, de propósito: para o volume do projeto, um deploy simples e transações
+locais valem mais do que a complexidade operacional de serviços distribuídos. As fronteiras internas, como `IEventBus`, `IEmailSender` e
+`IPushSender`, permitem trocar implementações sem mudar as regras de negócio.
+
+### Fluxo de um check-in
+
+```mermaid
+sequenceDiagram
+  participant U as PWA
+  participant Q as TanStack Query
+  participant A as API
+  participant D as SQLite
+  U->>Q: toca em "Feito"
+  Q->>Q: atualização otimista
+  alt sem conexão
+    Q->>Q: pausa na fila ordenada (persistida no IndexedDB)
+  end
+  Q->>A: PUT /api/checkins
+  A->>D: upsert do CheckIn + XpEvent na mesma transação
+  A->>D: avalia e grava conquistas desbloqueadas
+  A-->>Q: { xpDelta, player, achievements }
+  Q-->>U: animação de XP e conquista
+```
+
+O XP é sempre recalculado no servidor, então um check-in reenviado pela fila não concede pontos em dobro: há um índice único por `(HabitId, Date)`.
+
+### Modelo de dados (principais entidades)
+
+```mermaid
+erDiagram
+  USER ||--o{ CYCLE : possui
+  USER ||--o{ HABIT : possui
+  USER ||--o{ XP_EVENT : acumula
+  USER ||--o{ USER_SESSION : abre
+  USER ||--o{ API_KEY : cria
+  USER ||--o{ PUSH_SUBSCRIPTION : registra
+  USER ||--o{ PARTNERSHIP : compartilha
+  USER ||--o{ WEEKLY_REVIEW : escreve
+  CYCLE ||--o{ GOAL : contem
+  GOAL ||--o{ MILESTONE : divide
+  GOAL ||--o{ GOAL_UPDATE : registra
+  GOAL |o--o{ HABIT : orienta
+  HABIT ||--o{ HABIT_LEVEL : sobe
+  HABIT ||--o{ HABIT_PLANNED_LEVEL : planeja
+  HABIT ||--o{ CHECK_IN : recebe
+```
+
+Restrições importantes ficam no próprio banco: um **índice único parcial** garante no máximo um ciclo ativo por usuário, e índices
+únicos evitam revisão semanal, lembrete ou check-in duplicados mesmo sob concorrência.
+
+
 ## Stack
 
-- **Backend:** .NET 10 (Minimal APIs organizadas em fatias, EF Core 10, SQLite), em `src/Arco.Api`.
-- **Frontend:** React 19, Vite, TypeScript, TanStack Query, React Router 7, Tailwind v4, i18next e vite-plugin-pwa, em `web/`.
-- **Integrações:** Stripe (cobrança), Resend (e-mail), Google OAuth, SkiaSharp (imagem OG) e Azure Service Bus (opcional).
-- **Observabilidade e resiliência:** Sentry, OpenTelemetry com Application Insights e `Microsoft.Extensions.Http.Resilience`.
-- **Infraestrutura:** Terraform (azurerm), Key Vault, GitHub Actions com OIDC e Azure DevOps (só build e testes).
-- **Produção:** um único processo. O ASP.NET serve a API (`/api/*`) e o build do frontend (`wwwroot`).
+| Camada | Tecnologia | Por quê |
+|---|---|---|
+| API | .NET 10, Minimal APIs, *vertical slices* | Cada funcionalidade fica em uma pasta, sem camadas de repositório ou mediator sem necessidade |
+| Dados | EF Core 10, SQLite (WAL), Dapper nos relatórios | Banco embutido, com backup consistente por `VACUUM INTO`; SQL à mão só onde agrega |
+| Frontend | React 19, TypeScript, Vite, React Router 7, Tailwind v4 | Tipagem de ponta a ponta com um cliente espelho do contrato |
+| Estado remoto | TanStack Query | Cache, atualização otimista e persistência offline em uma só camada |
+| PWA | vite-plugin-pwa, Workbox (`injectManifest`) | Service worker próprio para push e precache controlado |
+| i18n | i18next, pt-BR e en | Inclui e-mails e notificações, no idioma de cada usuário |
+| Integrações | Stripe, Resend, Google OAuth, SkiaSharp | Cobrança, e-mail, login social e imagem Open Graph no servidor |
+| Observabilidade | Sentry, OpenTelemetry, Application Insights | Erros no back e no front, com traces e métricas da API |
+| Resiliência | `Microsoft.Extensions.Http.Resilience` (Polly) | Retry, timeout e circuit breaker declarativos |
+| Mensageria | Azure Service Bus (opcional) | Ativado só com connection string |
+| Infraestrutura | Azure App Service, Terraform, Key Vault, Cloudflare | Ambiente reproduzível, com segredos fora do código |
+| CI/CD | GitHub Actions com OIDC, Azure Pipelines | Deploy sem credencial armazenada |
+
+Em produção há um único processo: o ASP.NET serve a API (`/api/*`) e o build do frontend (`wwwroot`).
 
 ```
 src/Arco.Api/
@@ -100,6 +214,61 @@ web/src/
 infra/              Terraform do Azure
 docs/               produto, contrato da API e deploy
 ```
+
+## Segurança
+
+- **Isolamento entre contas:** entidades `IUserOwned` recebem um *global query filter* do EF Core, e novas linhas são carimbadas com o dono
+  ao salvar. Esquecer um `Where` não vaza dados. `IgnoreQueryFilters()` só aparece em consultas intencionalmente globais.
+- **Senhas:** bcrypt com fator de custo 11. O login verifica um hash fictício quando o e-mail não existe, para que o tempo de resposta não revele quais contas existem.
+- **Sessões:** cookie `HttpOnly`, `Secure` e `SameSite=Lax`, ligado a uma linha em `UserSessions`. Isso permite listar aparelhos e encerrar
+  sessões remotamente, e trocar a senha invalida as demais.
+- **2FA:** TOTP (RFC 6238, HMAC-SHA1, 6 dígitos, janela de ±1 passo), com segredo cifrado por ASP.NET DataProtection e 10 códigos de recuperação guardados apenas como SHA-256.
+- **Chaves de API:** exibidas uma única vez e guardadas só como SHA-256; ações sensíveis, como trocar a senha e excluir a conta, exigem o cookie.
+- ***Rate limiting*:** janela fixa por IP, 5 tentativas de login e 10 ações de conta por minuto, respondendo `429` no formato padrão de erro.
+- **Stripe:** webhook com verificação de assinatura e deduplicação por `event.id` na mesma transação da mudança de plano.
+- **Tokens de e-mail** (verificação e redefinição) são guardados apenas como hash.
+- **Headers:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` e `Referrer-Policy: strict-origin-when-cross-origin`.
+- **Segredos de produção:** ficam no Azure Key Vault, lidos pela managed identity do App Service. O GitHub Actions autentica no Azure com
+  *federated credentials* (OIDC), sem senha armazenada, e cada identidade tem o menor escopo necessário.
+
+## Confiabilidade
+
+**Transactional outbox.** Enviar um e-mail depois de salvar no banco tem duas falhas clássicas: o e-mail sai e o `SaveChanges` falha, ou o
+oposto. Aqui, a mensagem é gravada em `OutboxMessages` **na mesma transação** da ação, e a entrega acontece depois.
+
+- E-mails são tentados logo após o `SaveChanges`, para o usuário não esperar; um *hosted service* varre o que ficou pendente a cada 30 s.
+- *Claim* atômico com `UPDATE ... WHERE LockedUntil IS NULL OR LockedUntil < now` e *lease* de 5 minutos, que impede envio duplo.
+- *Backoff* de 1 min, 5 min, 30 min, 2 h e 12 h, com desistência após 6 tentativas.
+- O payload é apagado após o envio, porque pode conter o link de redefinição de senha. Os registros são removidos depois de 30 dias.
+- O `Idempotency-Key` enviado ao Resend evita duplicidade se a resposta se perder depois de o e-mail ter sido aceito.
+
+**Evento de domínio.** Concluir a revisão semanal grava `WeekClosed` no outbox; o worker publica no `IEventBus` e o consumidor avisa cada
+parceiro aceito, sem atrasar a resposta da revisão. A deduplicação usa uma chave única por parceiro e semana, tornando a reentrega segura, o que é necessário porque filas garantem entrega *at-least-once*.
+
+**Clientes HTTP resilientes.** Push e e-mail usam `AddStandardResilienceHandler` com timeout de 8 s por tentativa e 25 s no total, 3 retentativas
+com *exponential backoff* e *jitter*, e um *circuit breaker* **por host** (janela de 60 s, mínimo de 8 chamadas, 50% de falha, 30 s aberto), já que FCM,
+Apple e Mozilla falham de forma independente. Respostas 404/410 indicam inscrição morta: removem a inscrição, sem retentar nem contar para o circuito.
+
+**Jobs de fundo** não têm `HttpContext`: cada usuário é processado em um escopo próprio com `CurrentUser.Impersonate(id)`, de modo que a falha de um não afeta os demais.
+
+**Backup:** cópia diária com `VACUUM INTO`, consistente mesmo com o app em uso, com retenção de 14 dias.
+
+## Observabilidade
+
+- **Sentry** no backend e no React para erros, com `BeforeSend` removendo cookies, headers e outros dados da requisição.
+- **OpenTelemetry com Application Insights:** ativado apenas com `APPLICATIONINSIGHTS_CONNECTION_STRING`. Traces de requisição, HttpClient e EF Core, além de
+  spans próprios em lembretes e envio de e-mail.
+- **Métricas de negócio:** `arco.checkins.created`, `arco.push.sent`, `arco.push.failed` e `arco.plan_limit.blocked`.
+- **Privacidade por padrão:** um `BaseProcessor<Activity>` remove `url.query`, `client.address`, `user_agent.original`, `enduser.*` e o texto de SQL antes da exportação. A ausência desses dados foi conferida em consultas KQL sobre a telemetria de produção.
+
+## PWA e offline
+
+- O cache do TanStack Query é persistido no **IndexedDB**, e as telas abrem com os últimos dados sem rede. O service worker **nunca** cacheia `/api`, evitando duas fontes de verdade.
+- **Check-in offline:** a mutação pausa sem rede, em uma fila ordenada por `scope`; ao reabrir o app, as mutações são retomadas na ordem. As demais ações usam `networkMode: 'always'` e falham na hora, com mensagem clara.
+- O app distingue `isLoadingError` de `isError`, para que uma falha de atualização não substitua dados em cache por uma tela de erro.
+- **Push:** VAPID e criptografia `aes128gcm` feitos sobre `System.Security.Cryptography`. Uma tabela de despacho com chave única garante no máximo um envio por lembrete, e inscrições com 10 falhas seguidas são removidas.
+- Uma mudança incompatível no formato das respostas troca o `buster`, invalidando o cache persistido.
+
 
 ## Desenvolvimento
 
@@ -129,6 +298,14 @@ Os testes de integração usam `WebApplicationFactory` com SQLite temporário e 
 numa pasta temporária (porta 5199) e o preview do web (porta 4199); `E2E_API_PORT` e `E2E_WEB_PORT` trocam as portas, para
 rodar execuções simultâneas.
 
+**Estratégia de testes:**
+
+- **Domínio:** testes unitários sobre as funções puras (XP, níveis, sequências, sugestões, calendário).
+- **Integração:** a API real sobre `WebApplicationFactory`, com SQLite descartável por teste, relógio controlável (`TimeProvider`) e fakes apenas nas fronteiras externas (e-mail e push). Incluem isolamento entre contas, webhooks do Stripe assinados, MCP de ponta a ponta e resiliência com handler HTTP falso.
+- **E2E:** Playwright sobre o build de produção, cobrindo cadastro, onboarding, 2FA com TOTP gerado no teste, sessões em navegadores separados, convite de parceiro, limite de plano e troca de idioma.
+- O deploy depende de build, testes e E2E passarem.
+
+
 Nova migration (aplicada sozinha na inicialização; se falhar, o app não sobe):
 
 ```bash
@@ -156,6 +333,18 @@ Hash da senha de produção: `dotnet run --project src/Arco.Api -- hash-password
 - **Telemetria sem dados pessoais:** só liga com a connection string; query string, IP, user agent e texto de SQL são removidos antes de exportar.
 - **Datas:** "hoje" vem do fuso do usuário, nunca de `DateTime.UtcNow`; datas de calendário são `DateOnly`.
 
+## Problemas reais resolvidos
+
+Alguns diagnósticos feitos com o sistema já em produção:
+
+- **Deploy intermitente com erro 500.** O `azure/webapps-deploy` falhava sem mensagem útil. O trace do Kudu revelou `There is not enough space on the disk`: o plano gratuito não comportava
+  o envio, e 94 MB do pacote de 232 MB eram símbolos de depuração nativos do SkiaSharp (`libSkiaSharp.pdb`). Removidos do publish por um target de MSBuild, o pacote caiu para 138 MB.
+- **Cancelamento invisível no Stripe.** Um teste automatizado do fluxo completo em produção, com checkout real em modo de teste, mostrou que, nas versões atuais da API, o Customer Portal define `cancel_at` e mantém `cancel_at_period_end` como `false`. O app continuava exibindo "renova em". Os testes de integração passavam porque usavam o formato antigo do evento.
+- **`terraform plan` evitou derrubar outro sistema.** O plano do App Service é compartilhado com outro projeto e fica em outro grupo de recursos. O código inicial o recriaria; a revisão levou a referenciá-lo apenas pelo ID, o que também dispensou dar à identidade de CI qualquer acesso àquele grupo.
+- **Migração de segredos sem indisponibilidade.** Como o Terraform oculta os valores no diff, o `plan` em JSON foi comparado programaticamente com o estado real antes do `apply`. A troca para Key Vault começou por um segredo não crítico, como *canary*, com reversão automática se o Azure não resolvesse as referências.
+- **Origem instável atrás do Cloudflare.** O `Host` recebido alternava entre o domínio próprio e o `*.azurewebsites.net`, quebrando o `redirect_uri` do Google. `App:BaseUrl` passou a definir a origem pública em produção.
+
+
 ## API e MCP
 
 Tudo o que o app faz passa pela API REST documentada em [docs/API.md](docs/API.md). Fora do app, autentique com
@@ -180,6 +369,20 @@ claude mcp add --transport http arco https://arco.daviluis.dev/api/mcp --header 
 **Infraestrutura como código:** o ambiente do Azure está descrito em [`infra/`](infra/) com Terraform, com state remoto e segredos no Key
 Vault (o código só guarda referências). O `apply` é sempre manual; cada pull request roda um `terraform plan`. O passo a passo está em
 [infra/IMPORT.md](infra/IMPORT.md).
+
+```mermaid
+flowchart LR
+  P["push na main"] --> B["build<br/>lint, testes, build, publish win-x86"]
+  B --> E["e2e<br/>Playwright"]
+  E --> D["deploy<br/>OIDC, zip deploy, retry"]
+  D --> S["smoke test<br/>/api/health"]
+  PR["pull request"] --> B
+  PR --> T["terraform-plan<br/>fmt, validate, plan, sem apply"]
+```
+
+O runtime do .NET 10 é publicado junto (*self-contained*, `win-x86`), porque o plano gratuito roda em 32 bits. Banco, chaves do DataProtection e chaves VAPID ficam em
+`D:\home\data`, fora do pacote, e sobrevivem aos deploys. As migrations são aplicadas na inicialização.
+
 
 **Servidor próprio (Docker):** requer uma VPS com Docker e um domínio apontando para ela (HTTPS é obrigatório para o
 PWA e o push).
