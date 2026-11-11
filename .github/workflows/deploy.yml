@@ -148,7 +148,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.host.outputs.url }}
+      url: ${{ vars.APP_PUBLIC_URL || 'https://arco.daviluis.dev' }}
     permissions:
       id-token: write # login OIDC no Azure
       contents: read
@@ -163,13 +163,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      # O portal pode gerar hostnames com sufixo (ex.: arco-abc123.westus3-01.azurewebsites.net).
-      - name: Hostname
-        id: host
-        run: |
-          host=$(az webapp show --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name "${{ vars.AZURE_WEBAPP_NAME }}" --query defaultHostName -o tsv)
-          echo "url=https://$host" >> "$GITHUB_OUTPUT"
 
       # Configuração que não é segredo. Auth__PasswordHash e Push__Subject ficam só no portal.
       # O banco, as chaves de cookie e o vapid.json ficam em D:\home\data (persistente, fora do pacote).
@@ -195,7 +188,7 @@ jobs:
       - name: Aguardar o app voltar
         run: |
           sleep 20
-          url="${{ steps.host.outputs.url }}/api/health"
+          url="${{ vars.APP_PUBLIC_URL || 'https://arco.daviluis.dev' }}/api/health"
           for i in $(seq 1 12); do
             curl -fsS --max-time 20 -o /dev/null "$url" && exit 0
             sleep 10
@@ -221,7 +214,7 @@ jobs:
 
       - name: Smoke test
         run: |
-          url="${{ steps.host.outputs.url }}/api/health"
+          url="${{ vars.APP_PUBLIC_URL || 'https://arco.daviluis.dev' }}/api/health"
           for i in $(seq 1 12); do
             body=$(curl -fsS --max-time 20 "$url") && { echo "$body"; exit 0; }
             echo "Tentativa $i falhou; aguardando..."

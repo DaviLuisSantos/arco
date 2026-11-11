@@ -227,10 +227,14 @@ public static class Startup
             o.AddPolicy(AuthActionsRateLimitPolicy, http => PerIpPerMinute(http, actionsLimit));
         });
 
-        // Runs behind Caddy.
+        // Runs behind Caddy (container) or Cloudflare (Azure). By default the client IP comes from X-Forwarded-For;
+        // Proxy:ClientIpHeader (e.g. CF-Connecting-IP) swaps that header, which is only safe when the origin
+        // accepts traffic from the proxy alone (otherwise anyone could forge it and dodge the per-IP rate limits).
+        var clientIpHeader = config["Proxy:ClientIpHeader"];
         services.Configure<ForwardedHeadersOptions>(o =>
         {
             o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            if (!string.IsNullOrWhiteSpace(clientIpHeader)) o.ForwardedForHeaderName = clientIpHeader.Trim();
             o.KnownIPNetworks.Clear();
             o.KnownProxies.Clear();
         });

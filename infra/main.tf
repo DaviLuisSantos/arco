@@ -8,6 +8,7 @@ locals {
     ASPNETCORE_ENVIRONMENT    = "Production"
     "ConnectionStrings__Arco" = "Data Source=D:\\home\\data\\arco.db"
     App__BaseUrl              = local.base_url
+    Proxy__ClientIpHeader     = "CF-Connecting-IP" # origem restrita ao Cloudflare: o IP do cliente vem desse header
   }
 
   optional_settings = {
@@ -72,9 +73,22 @@ resource "azurerm_windows_web_app" "this" {
     http2_enabled       = true
     minimum_tls_version = "1.2"
     ftps_state          = "Disabled"
+
+    # Só o Cloudflare alcança o site principal; o SCM (deploy) segue com a própria regra, aberta.
+    ip_restriction_default_action = "Deny"
+    scm_use_main_ip_restriction   = false
+
+    dynamic "ip_restriction" {
+      for_each = var.cloudflare_ip_ranges
+      content {
+        name       = "cloudflare-${ip_restriction.key + 1}"
+        action     = "Allow"
+        priority   = 100 + ip_restriction.key
+        ip_address = ip_restriction.value
+      }
+    }
   }
 
-  # O zip deploy pode acrescentar settings WEBSITE_*; não brigamos com isso.
   # O zip deploy pode acrescentar settings WEBSITE_*; não brigamos com isso.
   lifecycle {
     ignore_changes = [

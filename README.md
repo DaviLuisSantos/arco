@@ -407,3 +407,11 @@ docker compose cp arco:/data/arco.db ./backup.db
 - [docs/RELATO-AZURE.md](docs/RELATO-AZURE.md): como foi montar a esteira no Azure.
 - [infra/IMPORT.md](infra/IMPORT.md): importar o ambiente para o Terraform.
 - [CLAUDE.md](CLAUDE.md): convenções para quem (ou o que) mexe no código.
+
+## Licença
+
+Distribuído sob a licença MIT. Veja [LICENSE](LICENSE).
+
+## Segurança
+
+Para reportar vulnerabilidades, veja [SECURITY.md](SECURITY.md).

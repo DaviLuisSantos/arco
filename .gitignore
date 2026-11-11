@@ -37,3 +37,7 @@ web/playwright-report/
 *.tfvars.json
 backend.hcl
 tfplan
+
+# Claude Code e plano local
+.claude/
+/PLAN.md

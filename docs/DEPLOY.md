@@ -142,3 +142,12 @@ a managed identity `arco-github` com as credenciais OIDC e os role assignments.
 Validação local (sem falar com o Azure): `cd infra && terraform fmt -check && terraform init -backend=false && terraform validate`.
 
 **Estado atual:** o ambiente já foi importado. Os segredos (`Auth__PasswordHash`, `Email__ResendApiKey`, `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Auth__Google__ClientSecret`, `Sentry__Dsn`, `APPLICATIONINSIGHTS_CONNECTION_STRING`) ficam no Key Vault `arco-kv-davizaun`, e o portal mostra só a referência: para trocar um valor, use `az keyvault secret set` e reinicie o app. Setting nova precisa entrar também no Terraform, senão o próximo `apply` a remove.
+
+### Origem restrita ao Cloudflare
+
+O Terraform restringe o site principal aos IPs do Cloudflare e deixa o SCM livre (`scm_use_main_ip_restriction = false`), para que o deploy continue funcionando. Assim, o host `*.azurewebsites.net` não serve como atalho para contornar o Cloudflare nem para forjar `X-Forwarded-For` e escapar do rate limit por IP.
+
+- App setting `Proxy__ClientIpHeader=CF-Connecting-IP`: o IP do cliente passa a vir desse header. Só é seguro com a origem restrita aos IPs do Cloudflare.
+- O smoke test do CI usa `vars.APP_PUBLIC_URL` (fallback `https://arco.daviluis.dev`), nunca o host do Azure.
+- Ordem: faça o deploy do código antes e rode o `terraform apply` manualmente depois.
+- Para atualizar os ranges, edite a variável `cloudflare_ip_ranges` (https://www.cloudflare.com/ips-v4 e https://www.cloudflare.com/ips-v6).
