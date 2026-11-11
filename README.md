@@ -4,10 +4,9 @@ App de hábitos com **progresso e objetivo**: check-ins diários alimentam hábi
 com prazo e tudo vive em ciclos de 6 semanas, com XP e nível de jogador. PWA instalável, offline para o dia a dia,
 multiusuário e operável inteiro pela API e por assistentes de IA via MCP.
 
+[![Build](https://dev.azure.com/Naktiwru/arco/_apis/build/status/arco?branchName=main)](https://dev.azure.com/Naktiwru/arco/_build/latest?definitionId=1&branchName=main)
+
 - **Demo ao vivo:** https://arco.daviluis.dev (botão "Experimentar demo", sem cadastro)
-<!-- Badge do Azure DevOps: ativar quando o pipeline existir (trocar ORG e PROJETO).
-[![Build](https://dev.azure.com/ORG/PROJETO/_apis/build/status/arco?branchName=main)](https://dev.azure.com/ORG/PROJETO/_build/latest?definitionId=1&branchName=main)
--->
 - **API interativa (Scalar):** https://arco.daviluis.dev/api/docs · OpenAPI em `/api/openapi/v1.json`
 
 | Hoje | Hábito | Ciclo |
