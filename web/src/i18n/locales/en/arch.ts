@@ -7,7 +7,7 @@ export default {
   sub: { closed: 'cycle completed', notStarted: 'not started yet', week: 'week {{current}} of {{total}}' },
   end: 'end',
   panel: {
-    totalInCycle: '{{duration}} of focus in the cycle',
+    orderHint: 'The arch rises from both pillars: odd weeks on the left, even on the right.',
     goalPerWeek: 'Goal: {{duration}} per week',
     emptyTitle: 'No focus sessions yet',
     emptyDescription: 'Use the timer or log the minutes on the check-in. Each session becomes a brick of the arch.',

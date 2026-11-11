@@ -18,19 +18,20 @@ const BASE = 106
 const PX_PER_MIN = 0.3
 const GAP = 1.5
 const MAX_H = BASE - 8
+const MAX_SCALE = 3
 
 /** Sete colunas (dias da semana do ciclo); cada sessão de foco é um tijolo. */
 export function StoneDays({ stone, habits, today }: StoneDaysProps) {
   const { t } = useTranslation('arch')
   const names = useMemo(() => new Map(habits.map((h) => [h.habitId, h.name])), [habits])
 
-  // Reduz a escala se a coluna mais alta não couber.
+  // Ajusta a escala: reduz se a coluna mais alta não couber e amplia (até MAX_SCALE) se sobrar espaço.
   const scale = useMemo(() => {
     const tallest = Math.max(
       0,
       ...stone.days.map((d) => d.bricks.reduce((sum, b) => sum + Math.max(3, b.minutes * PX_PER_MIN) + GAP, 0)),
     )
-    return tallest > MAX_H ? MAX_H / tallest : 1
+    return tallest > 0 ? Math.min(MAX_H / tallest, MAX_SCALE) : 1
   }, [stone.days])
 
   const summary = stone.days
@@ -39,7 +40,7 @@ export function StoneDays({ stone, habits, today }: StoneDaysProps) {
 
   return (
     <svg
-      className="mt-1 block h-auto w-full"
+      className="mx-auto mt-1 block h-auto w-full max-w-sm"
       viewBox="0 0 300 132"
       role="img"
       aria-label={t('stoneDays.label', { week: stone.week, summary })}

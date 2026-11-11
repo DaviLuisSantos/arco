@@ -7,7 +7,6 @@ import type { Cycle } from '../api/types'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
-import { ProgressBar } from '../components/ui/ProgressBar'
 import { Skeleton } from '../components/ui/Skeleton'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { CompleteCycleDialog } from '../features/cycle/CompleteCycleDialog'
@@ -69,15 +68,8 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
     <>
       <PageHeader
         title={cycle.name}
-        subtitle={`${formatFullDate(cycle.startDate)} – ${formatFullDate(cycle.endDate)}`}
+        subtitle={`${formatFullDate(cycle.startDate)} – ${formatFullDate(cycle.endDate)} · ${t('dayOf', { day: cycle.dayNumber, total: cycle.totalDays })}`}
       />
-
-      <Card>
-        <p className="mb-2 text-sm font-semibold">
-          {t('dayOf', { day: cycle.dayNumber, total: cycle.totalDays })}
-        </p>
-        <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label={t('progress')} />
-      </Card>
 
       <Card>
         <h2 id="cycle-arch-title" className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">

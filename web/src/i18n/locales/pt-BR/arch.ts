@@ -7,7 +7,7 @@ const ns = {
   sub: { closed: 'ciclo concluído', notStarted: 'ainda não começou', week: 'semana {{current}} de {{total}}' },
   end: 'fim',
   panel: {
-    totalInCycle: '{{duration}} de foco no ciclo',
+    orderHint: 'O arco sobe dos dois pilares: semanas ímpares à esquerda, pares à direita.',
     goalPerWeek: 'Meta: {{duration}} por semana',
     emptyTitle: 'Nenhuma sessão de foco ainda',
     emptyDescription: 'Use o cronômetro ou registre os minutos no check-in. Cada sessão vira um tijolo do arco.',

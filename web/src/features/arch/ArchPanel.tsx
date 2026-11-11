@@ -7,13 +7,14 @@ import type { ArchStone, Cycle, CycleArch } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { EmptyState, ErrorState, Spinner } from '../../components/ui/States'
-import { diffDays, formatDate, localToday } from '../../lib/dates'
+import { formatDate, localToday } from '../../lib/dates'
 import { formatDuration } from '../../lib/format'
 import { habitColor } from '../../lib/habitColor'
 import { queryKeys } from '../../lib/queryKeys'
 import { useAppMutation } from '../../lib/useAppMutation'
 import { Arch } from './Arch'
 import { StoneDays } from './StoneDays'
+import { currentWeek } from './weeks'
 
 const MIN_HOURS = 1
 const MAX_HOURS = 56
@@ -27,8 +28,7 @@ interface ArchPanelProps {
 /** Semana pré-selecionada: a de hoje (limitada às pontas) ou, se encerrado, a última. */
 function defaultWeek(arch: CycleArch, today: string): number {
   if (arch.closed) return arch.weeks
-  const w = Math.floor(diffDays(today, arch.startDate) / 7) + 1
-  return Math.min(Math.max(w, 1), arch.weeks)
+  return currentWeek(arch, today)
 }
 
 /** Arco do ciclo: pedras por semana, legenda dos hábitos, detalhe da semana e dos dias. */
@@ -52,12 +52,7 @@ export function ArchPanel({ cycleId, cycle }: ArchPanelProps) {
     <div className="flex flex-col gap-4">
       <Arch arch={arch} selectedWeek={week} onSelect={setPicked} today={today} />
 
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
-        <span className="font-semibold">{t('panel.totalInCycle', { duration: formatDuration(arch.totalMinutes) })}</span>
-        <span className="text-muted">{t('panel.goalPerWeek', { duration: formatDuration(arch.weeklyTargetMinutes) })}</span>
-      </div>
-
-      {canEdit && <EditGoal cycle={cycle} current={arch.weeklyTargetMinutes} />}
+      {arch.layout !== 'Row' && arch.weeks >= 2 && <p className="text-xs text-muted">{t('panel.orderHint')}</p>}
 
       {arch.habits.length === 0 ? (
         <EmptyState
@@ -66,25 +61,26 @@ export function ArchPanel({ cycleId, cycle }: ArchPanelProps) {
           description={t('panel.emptyDescription')}
         />
       ) : (
-        <>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label={t('panel.legend')}>
-            {arch.habits.map((h) => (
-              <li key={h.habitId} className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
-                <span
-                  className="size-2.5 shrink-0 rounded-sm"
-                  style={{ backgroundColor: habitColor(h.habitId) }}
-                  aria-hidden
-                />
-                <span className="truncate">
-                  {h.emoji ? `${h.emoji} ` : ''}
-                  {h.name}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {stone && <WeekDetail stone={stone} arch={arch} today={today} />}
-        </>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label={t('panel.legend')}>
+          {arch.habits.map((h) => (
+            <li key={h.habitId} className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
+              <span
+                className="size-2.5 shrink-0 rounded-sm"
+                style={{ backgroundColor: habitColor(h.habitId) }}
+                aria-hidden
+              />
+              <span className="truncate">
+                {h.emoji ? `${h.emoji} ` : ''}
+                {h.name}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
+
+      <GoalRow cycle={canEdit ? cycle : undefined} minutes={arch.weeklyTargetMinutes} />
+
+      {arch.habits.length > 0 && stone && <WeekDetail stone={stone} arch={arch} today={today} />}
     </div>
   )
 }
@@ -135,14 +131,14 @@ function WeekDetail({ stone, arch, today }: { stone: ArchStone; arch: CycleArch;
   )
 }
 
-function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
+function GoalRow({ cycle, minutes }: { cycle?: Cycle; minutes: number }) {
   const { t } = useTranslation(['arch', 'common'])
   const [editing, setEditing] = useState(false)
   const [hours, setHours] = useState('')
   const [error, setError] = useState<string | null>(null)
   const save = useAppMutation(
-    (minutes: number) =>
-      cyclesApi.update(cycle.id, { name: cycle.name, endDate: cycle.endDate, weeklyFocusMinutes: minutes }),
+    (value: number) =>
+      cyclesApi.update(cycle!.id, { name: cycle!.name, endDate: cycle!.endDate, weeklyFocusMinutes: value }),
     {
       successMessage: t('panel.goalUpdated'),
       onSuccess: () => setEditing(false),
@@ -150,7 +146,7 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
   )
 
   function open() {
-    setHours(String(Math.round((current / 60) * 100) / 100))
+    setHours(String(Math.round((minutes / 60) * 100) / 100))
     setError(null)
     setEditing(true)
   }
@@ -165,45 +161,50 @@ function EditGoal({ cycle, current }: { cycle: Cycle; current: number }) {
     save.mutate(Math.round(h * 60))
   }
 
-  if (!editing) {
-    return (
-      <div>
-        <Button variant="ghost" size="sm" onClick={open}>
+  const row = (
+    <div className="flex items-center gap-1 text-sm text-muted">
+      <span>{t('panel.goalPerWeek', { duration: formatDuration(minutes) })}</span>
+      {cycle && !editing && (
+        <Button variant="ghost" size="sm" onClick={open} aria-label={t('panel.editGoal')}>
           <Pencil className="size-4" aria-hidden />
-          {t('panel.editGoal')}
         </Button>
-      </div>
-    )
-  }
+      )}
+    </div>
+  )
+
+  if (!cycle || !editing) return row
 
   return (
-    <form
-      className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-2/50 p-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        submit()
-      }}
-    >
-      <Input
-        label={t('panel.goalLabel')}
-        type="number"
-        inputMode="decimal"
-        min={MIN_HOURS}
-        max={MAX_HOURS}
-        step="0.5"
-        value={hours}
-        onChange={(e) => setHours(e.target.value)}
-        error={error}
-        hint={t('panel.hoursHint', { min: MIN_HOURS, max: MAX_HOURS })}
-      />
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" block onClick={() => setEditing(false)}>
-          {t('common:cancel')}
-        </Button>
-        <Button type="submit" block loading={save.isPending}>
-          {t('common:save')}
-        </Button>
-      </div>
-    </form>
+    <div className="flex flex-col gap-2">
+      {row}
+      <form
+        className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-2/50 p-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <Input
+          label={t('panel.goalLabel')}
+          type="number"
+          inputMode="decimal"
+          min={MIN_HOURS}
+          max={MAX_HOURS}
+          step="0.5"
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+          error={error}
+          hint={t('panel.hoursHint', { min: MIN_HOURS, max: MAX_HOURS })}
+        />
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" block onClick={() => setEditing(false)}>
+            {t('common:cancel')}
+          </Button>
+          <Button type="submit" block loading={save.isPending}>
+            {t('common:save')}
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

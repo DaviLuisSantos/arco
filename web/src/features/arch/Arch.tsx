@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ArchStone, CycleArch } from '../../api/types'
-import { diffDays, localToday } from '../../lib/dates'
+import { localToday } from '../../lib/dates'
 import { formatDuration } from '../../lib/format'
 import { habitColor } from '../../lib/habitColor'
+import { currentWeek } from './weeks'
 import {
   ARCH_VIEWBOX,
   CX,
@@ -48,12 +49,6 @@ function stoneState(stone: ArchStone, today: string, closed: boolean): StoneStat
   if (stone.from > today) return 'future'
   if (stone.to < today) return 'done'
   return 'now'
-}
-
-/** Semana (1..weeks) em que "hoje" cai; limitada às pontas do ciclo. */
-function currentWeek(arch: CycleArch, today: string): number {
-  const w = Math.floor(diffDays(today, arch.startDate) / 7) + 1
-  return Math.min(Math.max(w, 1), arch.weeks)
 }
 
 /** Área de toque da pedra: o setor alongado até o número da semana (e um pouco para dentro). */
@@ -151,7 +146,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, today: today
   const chips = showChips ? (
     <div
       aria-hidden="true"
-      className="-mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      className="-mx-1 mt-2 flex sm:hidden gap-1.5 overflow-x-auto px-1 pb-1"
     >
       {stones.map((stone) => {
         const state = stoneState(stone, today, arch.closed)
@@ -178,7 +173,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, today: today
     const rowWidth = ROW_PAD * 2 + (arch.weeks + 1) * (ROW_STONE_W + ROW_GAP) - ROW_GAP
     const rowSvg = (
       <svg
-        className={svgClass}
+        className={`${svgClass} [&_g]:outline-none`}
         style={small ? undefined : { minWidth: Math.round(rowWidth * ROW_MIN_SCALE) }}
         viewBox={rowViewBox(arch.weeks)}
         role={svgRole}
@@ -283,7 +278,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, today: today
   const [kx, ky] = keystoneLabelPos()
   const pillarW = THICKNESS
   const archSvg = (
-    <svg className={svgClass} viewBox={ARCH_VIEWBOX} role={svgRole} aria-label={svgLabel}>
+    <svg className={`${svgClass} [&_g]:outline-none`} viewBox={ARCH_VIEWBOX} role={svgRole} aria-label={svgLabel}>
       <rect
         x={CX - R2}
         y={CY}

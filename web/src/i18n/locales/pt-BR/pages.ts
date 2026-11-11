@@ -54,7 +54,6 @@ const ns = {
     title: 'Ciclo',
     none: 'Nenhum ciclo ativo',
     dayOf: 'Dia {{day}} de {{total}}',
-    progress: 'Progresso do ciclo',
     arch: 'Arco do ciclo',
     lastDay: 'Último dia do ciclo',
     ended: 'O ciclo terminou',

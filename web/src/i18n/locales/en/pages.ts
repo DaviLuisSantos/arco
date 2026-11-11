@@ -56,7 +56,6 @@ const en: typeof ns = {
     title: 'Cycle',
     none: 'No active cycle',
     dayOf: 'Day {{day}} of {{total}}',
-    progress: 'Cycle progress',
     arch: 'Cycle arch',
     lastDay: 'Last day of the cycle',
     ended: 'The cycle has ended',
