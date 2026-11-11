@@ -31,7 +31,7 @@ export function PlanCard() {
   const [params, setParams] = useSearchParams()
   const checkout = params.get('checkout')
   const handled = useRef(false)
-  const [polling, setPolling] = useState(false)
+  const [polling, setPolling] = useState(() => checkout === 'success')
   const queryClient = useQueryClient()
   const refetchBilling = refetch
 
@@ -51,7 +51,6 @@ export function PlanCard() {
     }
     if (checkout !== 'success') return
     toast.success(t('checkoutSuccess'))
-    setPolling(true)
     void refetchBilling()
   }, [checkout, setParams, toast, t, refetchBilling])
 
