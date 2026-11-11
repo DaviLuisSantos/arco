@@ -27,7 +27,7 @@ infraestrutura como código.
 |---|---|
 | **Backend** | .NET 10, Minimal APIs em *vertical slices*, EF Core 10 com SQLite em modo WAL, regras de negócio em funções puras |
 | **Multi-tenancy** | Isolamento por linha com *global query filters* do EF Core e `CurrentUser` por requisição |
-| **Autenticação** | Cookie com sessão revogável por aparelho, Google OAuth, 2FA TOTP (RFC 6238), chaves de API, *rate limiting* por IP |
+| **Autenticação** | Cookie com sessão revogável por aparelho, Google OAuth, 2FA TOTP (RFC 6238), chaves de API, *rate limiting* por IP real do cliente (`CF-Connecting-IP`) |
 | **Pagamentos** | Stripe Checkout e Customer Portal, com webhook assinado e idempotente |
 | **Confiabilidade** | *Transactional outbox*, retry com *exponential backoff* e *jitter*, *circuit breaker* por host, consumidor idempotente |
 | **Mensageria** | `IEventBus` com implementação em memória e Azure Service Bus |
@@ -35,8 +35,8 @@ infraestrutura como código.
 | **Web Push** | VAPID (RFC 8292) e criptografia `aes128gcm` (RFC 8291) implementados sem biblioteca externa |
 | **Integração com IA** | Servidor MCP (*Model Context Protocol*) com 24 ferramentas sobre a própria API REST |
 | **Observabilidade** | Sentry, OpenTelemetry e Application Insights: traces, métricas customizadas e logs, sem dados pessoais |
-| **Infraestrutura** | Terraform (azurerm), state remoto, Key Vault com RBAC e managed identity, GitHub Actions com OIDC, sem segredos de longa duração |
-| **Qualidade** | 243 testes de domínio e integração, 11 cenários E2E com Playwright, E2E como condição para o deploy |
+| **Infraestrutura** | Terraform (azurerm), state remoto, Key Vault com RBAC e managed identity, GitHub Actions com OIDC, sem segredos de longa duração, origem fechada aos IPs do Cloudflare |
+| **Qualidade** | 247 testes de domínio e integração, 17 cenários E2E com Playwright (com axe para acessibilidade), E2E como condição para o deploy |
 
 Em números: cerca de 8 mil linhas de C# na API, 12 mil de TypeScript no web e 5 mil de testes; 23 entidades, 11 migrations e
 23 fatias de funcionalidade.
@@ -48,6 +48,8 @@ Em números: cerca de 8 mil linhas de C# na API, 12 mil de TypeScript no web e 5
   escada à frente e escolher quando o app sugere subir e quando sugere voltar um degrau.
 - **Check-in** Feito / Mínimo / Não fiz, com XP; sequências (streaks) com tolerância a uma falha isolada por semana.
 - **Ciclos e objetivos:** ciclos de ~6 semanas com objetivos numéricos ou por marcos, e encerramento com revisão guiada.
+- **Arco do ciclo:** cada semana é uma pedra do arco, preenchida pelos minutos de foco de cada hábito; a pedra-chave só
+  assenta quando o ciclo fecha. Tocar numa pedra mostra a semana, com uma coluna de sessões por dia e a meta semanal editável.
 - **Revisão semanal**, **conquistas**, **histórico**, **estatísticas** e sessões de **foco**.
 - **Lembretes push** por hábito e da revisão semanal.
 - **Offline:** telas com os últimos dados e fila de check-ins enviada quando a conexão volta.
@@ -224,11 +226,17 @@ docs/               produto, contrato da API e deploy
 - **2FA:** TOTP (RFC 6238, HMAC-SHA1, 6 dígitos, janela de ±1 passo), com segredo cifrado por ASP.NET DataProtection e 10 códigos de recuperação guardados apenas como SHA-256.
 - **Chaves de API:** exibidas uma única vez e guardadas só como SHA-256; ações sensíveis, como trocar a senha e excluir a conta, exigem o cookie.
 - ***Rate limiting*:** janela fixa por IP, 5 tentativas de login e 10 ações de conta por minuto, respondendo `429` no formato padrão de erro.
+  Em produção o IP vem de `CF-Connecting-IP` (`Proxy:ClientIpHeader`), que o cliente não consegue forjar.
+- **Origem fechada:** o App Service só aceita os IPs do Cloudflare (regras de acesso no Terraform, padrão `Deny`); o host
+  `*.azurewebsites.net` responde `403`, então não dá para contornar o proxy nem forjar `X-Forwarded-For`.
 - **Stripe:** webhook com verificação de assinatura e deduplicação por `event.id` na mesma transação da mudança de plano.
 - **Tokens de e-mail** (verificação e redefinição) são guardados apenas como hash.
 - **Headers:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` e `Referrer-Policy: strict-origin-when-cross-origin`.
 - **Segredos de produção:** ficam no Azure Key Vault, lidos pela managed identity do App Service. O GitHub Actions autentica no Azure com
   *federated credentials* (OIDC), sem senha armazenada, e cada identidade tem o menor escopo necessário.
+- **Repositório:** *secret scanning* com *push protection*, Dependabot, workflows com permissão só de leitura por padrão, aprovação
+  manual para PRs de fora, `main` protegida contra force-push e exclusão, e o environment `production` restrito à `main`.
+- **Relato de vulnerabilidades:** pelo canal privado do GitHub, conforme o [SECURITY.md](SECURITY.md).
 
 ## Confiabilidade
 
@@ -324,7 +332,7 @@ Hash da senha de produção: `dotnet run --project src/Arco.Api -- hash-password
 - **Offline com fila:** o cache do TanStack Query é persistido no IndexedDB e os check-ins pausam numa fila ordenada, retomada ao reabrir; o servidor recalcula o XP.
 - **MCP:** `/api/mcp` expõe ferramentas que chamam a própria API REST (nunca o banco), então valem as mesmas regras e limites de plano.
 - **TOTP próprio:** 2FA (RFC 6238) com segredo cifrado por DataProtection e códigos de recuperação guardados só como SHA-256, sem pacote externo.
-- **Origem pública atrás do Cloudflare:** `App:BaseUrl` fixa a origem de toda requisição em produção, mantendo estáveis o redirect_uri do Google e os links dos e-mails.
+- **Origem pública atrás do Cloudflare:** `App:BaseUrl` fixa a origem de toda requisição em produção, mantendo estáveis o redirect_uri do Google e os links dos e-mails. A origem só aceita o Cloudflare, e o IP do cliente vem de `CF-Connecting-IP`.
 - **Outbox transacional:** e-mails e eventos são gravados no mesmo `SaveChanges` da ação; um worker entrega com retry, backoff e lease, e o payload é apagado após o envio, porque pode conter token.
 - **Resiliência por host:** retry, timeout e circuit breaker nos clientes de push e e-mail, com um circuito por host; 404/410 de push significam inscrição morta e nunca entram em retry.
 - **Evento atrás de interface:** `WeekClosed` passa pelo `IEventBus`, em memória por padrão ou Azure Service Bus só com connection string; o consumidor é idempotente.
@@ -342,6 +350,13 @@ Alguns diagnósticos feitos com o sistema já em produção:
 - **`terraform plan` evitou derrubar outro sistema.** O plano do App Service é compartilhado com outro projeto e fica em outro grupo de recursos. O código inicial o recriaria; a revisão levou a referenciá-lo apenas pelo ID, o que também dispensou dar à identidade de CI qualquer acesso àquele grupo.
 - **Migração de segredos sem indisponibilidade.** Como o Terraform oculta os valores no diff, o `plan` em JSON foi comparado programaticamente com o estado real antes do `apply`. A troca para Key Vault começou por um segredo não crítico, como *canary*, com reversão automática se o Azure não resolvesse as referências.
 - **Origem instável atrás do Cloudflare.** O `Host` recebido alternava entre o domínio próprio e o `*.azurewebsites.net`, quebrando o `redirect_uri` do Google. `App:BaseUrl` passou a definir a origem pública em produção.
+- **Rate limit contornável pela origem.** Na revisão para abrir o código, o endereço `*.azurewebsites.net` aparecia na documentação, e o app
+  confiava em `X-Forwarded-For` de qualquer origem: bastava chamar a origem direto, trocando o header a cada tentativa, para escapar do limite de
+  login. A origem passou a aceitar só os IPs do Cloudflare (Terraform, regra padrão `Deny`, SCM liberado para o deploy) e o IP do cliente passou
+  a vir de `CF-Connecting-IP`; o smoke test do deploy foi para o domínio público.
+- **Semana do ciclo sempre "1".** Uma revisão visual com capturas da conta demo mostrou o arco dizendo "semana 1 de 6" no dia 22: os argumentos
+  de `diffDays` estavam invertidos, e o E2E não pegava porque só criava ciclos começando hoje. O cálculo virou uma função única e ganhou um E2E
+  com ciclo em andamento.
 
 
 ## API e MCP
@@ -361,7 +376,7 @@ claude mcp add --transport http arco https://arco.daviluis.dev/api/mcp --header 
 
 ## Deploy
 
-**Azure App Service (plano Free):** publicado em `https://arco.daviluis.dev` (proxy do domínio do Azure). A esteira do GitHub Actions testa e publica a cada push na `main`. A configuração
+**Azure App Service (plano Free):** publicado em `https://arco.daviluis.dev`, atrás do Cloudflare (a origem do Azure só aceita os IPs dele). A esteira do GitHub Actions testa e publica a cada push na `main`, e o smoke test chama o domínio público. A configuração
 única (Web App, identidade OIDC, segredos), os limites do plano, o backup e o monitor de disponibilidade estão em
 [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -409,8 +424,4 @@ docker compose cp arco:/data/arco.db ./backup.db
 
 ## Licença
 
-Distribuído sob a licença MIT. Veja [LICENSE](LICENSE).
-
-## Segurança
-
-Para reportar vulnerabilidades, veja [SECURITY.md](SECURITY.md).
+Distribuído sob a licença MIT. Veja [LICENSE](LICENSE). Para reportar vulnerabilidades, veja [SECURITY.md](SECURITY.md).
