@@ -157,12 +157,31 @@ public sealed class Phase3ApiTests : IDisposable
         Assert.Equal(7, (int)streak7["progress"]!);
         Assert.Equal(7, (int)list.Single(a => (string?)a!["key"] == "streak-30")!["progress"]!);
 
-        // Undoing a check-in never revokes an achievement.
+        // Undoing the check-in that completed the streak takes the achievement back; others stay.
         var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
         var delete = await client.DeleteAsync($"/api/checkins/{habitId}/{date}");
         Assert.Empty((await delete.JsonAsync())["achievements"]!.AsArray());
         list = (await client.GetJsonAsync("/api/achievements")).AsArray();
-        Assert.NotNull(list.Single(a => (string?)a!["key"] == "streak-7")!["unlockedAt"]);
+        Assert.Null(list.Single(a => (string?)a!["key"] == "streak-7")!["unlockedAt"]);
+        Assert.NotNull(list.Single(a => (string?)a!["key"] == "checkins-1")!["unlockedAt"]);
+    }
+
+    [Fact]
+    public async Task Deleting_the_only_check_in_locks_checkins_1_again()
+    {
+        var client = await _factory.LoggedInClientAsync();
+        var res = await client.PostAsJsonAsync("/api/habits",
+            new { name = "Ler", frequencyType = "Daily", levelDescription = "10 min", minimumDescription = "2 min" });
+        var habitId = (int)(await res.JsonAsync())["id"]!;
+        var date = (string)(await client.GetJsonAsync("/api/today"))["date"]!;
+
+        await client.PutAsJsonAsync("/api/checkins", new { habitId, date, status = "Done" });
+        var list = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.NotNull(list.Single(a => (string?)a!["key"] == "checkins-1")!["unlockedAt"]);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.DeleteAsync($"/api/checkins/{habitId}/{date}")).StatusCode);
+        list = (await client.GetJsonAsync("/api/achievements")).AsArray();
+        Assert.Null(list.Single(a => (string?)a!["key"] == "checkins-1")!["unlockedAt"]);
     }
 
     [Fact]

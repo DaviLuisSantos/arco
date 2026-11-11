@@ -11,8 +11,7 @@ import { DayStone } from '../features/arch/DayStone'
 import { HabitCheckInCard } from '../features/checkins/HabitCheckInCard'
 import { CycleStrip } from '../features/cycle/CycleStrip'
 import { GoalMiniCard } from '../features/goals/GoalMiniCard'
-import { FirstSessionChecklist } from '../features/onboarding/FirstSessionChecklist'
-import { PushPrimingCard } from '../features/onboarding/PushPrimingCard'
+import { OnboardingSlot } from '../features/onboarding/FirstSessionChecklist'
 import { TemplateShortcuts } from '../features/onboarding/TemplateShortcuts'
 import { PlayerProgress } from '../features/player/PlayerProgress'
 import { TodayNudges } from '../features/reviews/TodayNudges'
@@ -96,9 +95,7 @@ export function TodayPage() {
         )}
       </section>
 
-      <FirstSessionChecklist habits={habits} />
-
-      <PushPrimingCard habits={habits} />
+      <OnboardingSlot habits={habits} />
 
       <TodayNudges today={today.data} />
 

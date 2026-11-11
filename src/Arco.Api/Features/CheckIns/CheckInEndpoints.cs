@@ -114,7 +114,7 @@ public static class CheckInEndpoints
             await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
-    private static async Task<IResult> Delete(int habitId, DateOnly date, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> Delete(int habitId, DateOnly date, AppDbContext db, AppClock clock, CancellationToken ct)
     {
         var checkIn = await db.CheckIns.FirstOrDefaultAsync(c => c.HabitId == habitId && c.Date == date, ct);
         if (checkIn is null) return ApiResults.NotFound("Check-in não encontrado.");
@@ -126,6 +126,7 @@ public static class CheckInEndpoints
         db.FocusSessions.RemoveRange(await db.FocusSessions
             .Where(s => s.HabitId == habitId && s.Date == date && s.Source == FocusSource.Manual).ToListAsync(ct));
         await db.SaveChangesAsync(ct);
+        await AchievementService.RevokeUnmetAsync(db, clock, ct);
 
         return Results.Ok(new XpResult(-events.Sum(e => e.Amount), await Queries.GetPlayerAsync(db, ct), []));
     }
