@@ -49,7 +49,7 @@ export default {
   past: {
     title: 'Past cycles',
     viewArch: 'View the arch of {{name}}',
-    archError: 'Could not load the arch. Tap to try again.',
+    archError: 'Could not load the arch.',
     archLoading: 'Loading the arch…',
     archDescription: 'Arch of the completed cycle.',
     days_one: '{{count}} day',

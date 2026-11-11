@@ -48,7 +48,7 @@ const ns = {
   past: {
     title: 'Ciclos anteriores',
     viewArch: 'Ver o arco de {{name}}',
-    archError: 'Não foi possível carregar o arco. Toque para tentar de novo.',
+    archError: 'Não foi possível carregar o arco.',
     archLoading: 'Carregando o arco…',
     archDescription: 'Arco do ciclo encerrado.',
     days: '{{count}} dias',

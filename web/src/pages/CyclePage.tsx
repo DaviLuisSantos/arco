@@ -73,12 +73,9 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
       />
 
       <Card>
-        <div className="mb-2 flex items-baseline justify-between text-sm">
-          <span className="font-semibold">
-            {t('dayOf', { day: cycle.dayNumber, total: cycle.totalDays })}
-          </span>
-          <span className="text-muted">{Math.round((cycle.dayNumber / Math.max(1, cycle.totalDays)) * 100)}%</span>
-        </div>
+        <p className="mb-2 text-sm font-semibold">
+          {t('dayOf', { day: cycle.dayNumber, total: cycle.totalDays })}
+        </p>
         <ProgressBar value={cycle.dayNumber / Math.max(1, cycle.totalDays)} label={t('progress')} />
       </Card>
 
@@ -140,9 +137,11 @@ function ActiveCycle({ cycle, today }: { cycle: Cycle; today: string }) {
         )}
       </section>
 
-      <Button variant="secondary" size="lg" onClick={() => setModal('complete')}>
-        {t('endCycle')}
-      </Button>
+      {!over && (
+        <Button variant="secondary" onClick={() => setModal('complete')}>
+          {t('endCycle')}
+        </Button>
+      )}
       <div className="flex justify-center">
         <DeleteCycleButton cycle={cycle} />
       </div>

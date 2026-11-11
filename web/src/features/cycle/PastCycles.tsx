@@ -28,13 +28,13 @@ function PastArch({ cycle }: { cycle: Cycle }) {
         className="mt-3 block w-full rounded-xl border border-border bg-surface-2/50 p-2 hover:border-accent focus-visible:border-accent focus-visible:outline-none"
       >
         {query.data ? (
-          <div className="mx-auto max-w-56">
+          <span className="mx-auto block max-w-56">
             <Arch arch={query.data} small />
-          </div>
+          </span>
         ) : (
-          <p className="py-3 text-center text-xs text-muted">
+          <span className="block py-3 text-center text-xs text-muted">
             {query.isLoadingError ? t('past.archError') : t('past.archLoading')}
-          </p>
+          </span>
         )}
       </button>
       <Dialog open={open} onClose={() => setOpen(false)} title={cycle.name} description={t('past.archDescription')}>
@@ -58,7 +58,7 @@ export function PastCycles({ cycles }: { cycles: Cycle[] }) {
         {past.map((c) => (
           <li key={c.id}>
             <Card>
-              <p className="font-semibold">{c.name}</p>
+              <h3 className="font-semibold">{c.name}</h3>
               <p className="text-xs text-muted">
                 {formatFullDate(c.startDate)} – {formatFullDate(c.endDate)} · {t('past.days', { count: c.totalDays })}
               </p>

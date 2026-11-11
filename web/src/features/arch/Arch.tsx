@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ArchStone, CycleArch } from '../../api/types'
@@ -20,10 +20,15 @@ import {
   rowKeystone,
   rowStone,
   rowViewBox,
+  sector,
+  stoneAngles,
+  stoneIndex,
   stoneLabelPos,
   stonePath,
   ROW_PAD,
   ROW_Y,
+  ROW_STONE_W,
+  ROW_GAP,
 } from './geometry'
 
 type StoneState = 'done' | 'now' | 'future'
@@ -34,8 +39,8 @@ interface ArchProps {
   onSelect?: (week: number) => void
   /** Miniatura: sem texto e sem interação. */
   small?: boolean
-  /** Quando muda (e o ciclo está encerrado), a pedra-chave desce de novo. */
-  animateKey?: number | string
+  /** "Hoje" no fuso do usuário (`todayApi`); sem ele, cai no relógio local. */
+  today?: string
 }
 
 function stoneState(stone: ArchStone, today: string, closed: boolean): StoneState {
@@ -51,39 +56,35 @@ function currentWeek(arch: CycleArch, today: string): number {
   return Math.min(Math.max(w, 1), arch.weeks)
 }
 
-/** Pedra-chave: desce até encaixar quando o ciclo é encerrado. */
-function useKeystoneSet(closed: boolean, animateKey: number | string | undefined, small: boolean) {
-  const animated = closed && animateKey !== undefined && !small
-  const [droppedKey, setDroppedKey] = useState<number | string | undefined>(undefined)
-  useEffect(() => {
-    if (!animated) return
-    let inner = 0
-    const outer = requestAnimationFrame(() => {
-      // Dois quadros: o primeiro pinta a pedra no alto, o segundo dispara a transição.
-      inner = requestAnimationFrame(() => setDroppedKey(animateKey))
-    })
-    return () => {
-      cancelAnimationFrame(outer)
-      cancelAnimationFrame(inner)
-    }
-  }, [animated, animateKey])
-  return closed && (!animated || droppedKey === animateKey)
+/** Área de toque da pedra: o setor alongado até o número da semana (e um pouco para dentro). */
+function hitPath(week: number, weeks: number): string {
+  const { a0, a1 } = stoneAngles(stoneIndex(week, weeks + 1), weeks + 1)
+  return sector(R1 - 12, R2 + 34, a0, a1)
 }
 
 const STONE_BASE = 'stroke-[1.5] transition-[stroke] duration-150'
 
 function stoneBaseClass(state: StoneState, selected: boolean, interactive: boolean): string {
-  if (selected) return `${STONE_BASE} fill-surface-2 stroke-accent stroke-[3]`
-  const hover = interactive ? ' group-hover:stroke-accent group-focus-visible:stroke-accent group-focus-visible:stroke-[3]' : ''
-  if (state === 'future') return `${STONE_BASE} fill-none stroke-muted opacity-50${hover}`
-  return `${STONE_BASE} fill-surface-2 stroke-border${hover}`
+  // Foco: traço na cor do texto (contraste alto) e mais grosso que a seleção, que é accent.
+  const focus = interactive ? ' group-focus-visible:stroke-text group-focus-visible:stroke-[4]' : ''
+  const hover = interactive ? ' group-hover:stroke-accent' : ''
+  // "Em andamento" ganha preenchimento accent; "concluída" fica neutra.
+  const fill = state === 'now' ? 'fill-accent/15' : 'fill-surface-2'
+  if (selected) return `${STONE_BASE} ${fill} stroke-accent stroke-[3]${focus}`
+  // Futura: fill transparente (e não "none") para continuar recebendo toque e clique.
+  if (state === 'future') return `${STONE_BASE} fill-transparent stroke-muted opacity-50${hover}${focus}`
+  if (state === 'now') return `${STONE_BASE} ${fill} stroke-accent${hover}${focus}`
+  return `${STONE_BASE} ${fill} stroke-border${hover}${focus}`
 }
 
-export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }: ArchProps) {
+/** Largura mínima (px) por pedra na fila reta, para o texto e o toque continuarem legíveis. */
+const ROW_MIN_SCALE = 0.7
+
+export function Arch({ arch, selectedWeek, onSelect, small = false, today: todayProp }: ArchProps) {
   const { t } = useTranslation('arch')
-  const today = localToday()
+  const today = todayProp ?? localToday()
   const interactive = !small && !!onSelect
-  const keySet = useKeystoneSet(arch.closed, animateKey, small)
+  const keySet = arch.closed
   const isRow = arch.layout === 'Row'
   const target = arch.weeklyTargetMinutes
   const cur = currentWeek(arch, today)
@@ -137,21 +138,52 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
     }
   }
 
-  const keyTransform = {
-    transform: `translateY(${keySet ? 0 : -34}px)`,
-    transition: 'transform 0.7s cubic-bezier(0.55, 0, 0.85, 0.35)',
-  }
-  const keyClass = `motion-reduce:!transition-none ${
-    keySet ? 'fill-accent stroke-accent' : 'fill-none stroke-muted opacity-60'
-  } stroke-[1.5]`
+  const keyClass = `${keySet ? 'fill-accent stroke-accent' : 'fill-none stroke-muted opacity-60'} stroke-[1.5]`
   const keyDash = keySet ? undefined : '5 5'
 
   const svgClass = 'block h-auto w-full overflow-visible'
+  // Com pedras interativas o SVG é um grupo (role="img" esconderia os botões dos leitores de tela).
+  const svgRole = interactive ? 'group' : 'img'
+
+  /** Seletor de semanas fora do SVG: alvo de toque de 44px quando as pedras ficam pequenas.
+   *  Duplica as pedras para quem usa o dedo; leitor de tela e teclado usam as pedras. */
+  const showChips = interactive && arch.weeks >= 6
+  const chips = showChips ? (
+    <div
+      aria-hidden="true"
+      className="-mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-1"
+    >
+      {stones.map((stone) => {
+        const state = stoneState(stone, today, arch.closed)
+        const selected = selectedWeek === stone.week
+        return (
+          <button
+            key={stone.week}
+            type="button"
+            tabIndex={-1}
+            onClick={() => onSelect?.(stone.week)}
+            className={`grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg border px-2 text-sm tabular-nums ${
+              selected ? 'border-accent border-2' : state === 'future' ? 'border-border border-dashed' : 'border-border'
+            } ${state === 'now' ? 'bg-accent/15 font-bold text-accent' : 'bg-surface-2 text-muted'}`}
+          >
+            {stone.week}
+          </button>
+        )
+      })}
+    </div>
+  ) : null
 
   if (isRow) {
     const ks = rowKeystone(arch.weeks)
-    return (
-      <svg className={svgClass} viewBox={rowViewBox(arch.weeks)} role="img" aria-label={svgLabel}>
+    const rowWidth = ROW_PAD * 2 + (arch.weeks + 1) * (ROW_STONE_W + ROW_GAP) - ROW_GAP
+    const rowSvg = (
+      <svg
+        className={svgClass}
+        style={small ? undefined : { minWidth: Math.round(rowWidth * ROW_MIN_SCALE) }}
+        viewBox={rowViewBox(arch.weeks)}
+        role={svgRole}
+        aria-label={svgLabel}
+      >
         <line
           className="stroke-border"
           strokeWidth={2}
@@ -171,6 +203,9 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
               className={`group outline-none ${interactive ? 'cursor-pointer' : ''}`}
               {...stoneProps(stone, state)}
             >
+              {interactive && (
+                <rect x={r.x - 3} y={r.y - 8} width={r.w + 6} height={r.h + 40} className="fill-transparent" />
+              )}
               <rect
                 x={r.x}
                 y={r.y}
@@ -211,7 +246,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
             </g>
           )
         })}
-        <g style={keyTransform} className={keyClass}>
+        <g className={keyClass}>
           <rect
             x={ks.x}
             y={ks.y}
@@ -237,12 +272,18 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
         )}
       </svg>
     )
+    return (
+      <div>
+        {small ? rowSvg : <div className="overflow-x-auto">{rowSvg}</div>}
+        {chips}
+      </div>
+    )
   }
 
   const [kx, ky] = keystoneLabelPos()
   const pillarW = THICKNESS
-  return (
-    <svg className={svgClass} viewBox={ARCH_VIEWBOX} role="img" aria-label={svgLabel}>
+  const archSvg = (
+    <svg className={svgClass} viewBox={ARCH_VIEWBOX} role={svgRole} aria-label={svgLabel}>
       <rect
         x={CX - R2}
         y={CY}
@@ -278,6 +319,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
             className={`group outline-none ${interactive ? 'cursor-pointer' : ''}`}
             {...stoneProps(stone, state)}
           >
+            {interactive && <path d={hitPath(stone.week, arch.weeks)} className="fill-transparent" />}
             <path
               d={stonePath(stone.week, arch.weeks)}
               strokeDasharray={state === 'future' ? '5 5' : undefined}
@@ -303,7 +345,7 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
           </g>
         )
       })}
-      <g style={keyTransform} className={keyClass}>
+      <g className={keyClass}>
         <path
           d={keystonePath(arch.weeks)}
           strokeDasharray={keyDash}
@@ -324,5 +366,11 @@ export function Arch({ arch, selectedWeek, onSelect, small = false, animateKey }
         </>
       )}
     </svg>
+  )
+  return (
+    <div>
+      {archSvg}
+      {chips}
+    </div>
   )
 }

@@ -1,13 +1,15 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ArchHabit, ArchStone } from '../../api/types'
-import { WEEKDAY_SHORT, dayOfWeek, localToday } from '../../lib/dates'
+import { WEEKDAY_SHORT, dayOfWeek } from '../../lib/dates'
 import { formatDuration } from '../../lib/format'
 import { habitColor } from '../../lib/habitColor'
 
 interface StoneDaysProps {
   stone: ArchStone
   habits: ArchHabit[]
+  /** "Hoje" no fuso do usuário. */
+  today: string
 }
 
 const COL_W = 42
@@ -18,9 +20,8 @@ const GAP = 1.5
 const MAX_H = BASE - 8
 
 /** Sete colunas (dias da semana do ciclo); cada sessão de foco é um tijolo. */
-export function StoneDays({ stone, habits }: StoneDaysProps) {
+export function StoneDays({ stone, habits, today }: StoneDaysProps) {
   const { t } = useTranslation('arch')
-  const today = localToday()
   const names = useMemo(() => new Map(habits.map((h) => [h.habitId, h.name])), [habits])
 
   // Reduz a escala se a coluna mais alta não couber.

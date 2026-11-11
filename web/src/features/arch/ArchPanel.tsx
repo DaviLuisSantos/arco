@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Landmark, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cyclesApi } from '../../api/endpoints'
+import { cyclesApi, todayApi } from '../../api/endpoints'
 import type { ArchStone, Cycle, CycleArch } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
@@ -22,34 +22,35 @@ interface ArchPanelProps {
   cycleId: number
   /** Ciclo ativo: habilita a edição da meta semanal (precisa de nome e fim para o PUT). */
   cycle?: Cycle
-  /** Quando muda (e o ciclo está encerrado), a pedra-chave desce de novo. */
-  animateKey?: number | string
 }
 
 /** Semana pré-selecionada: a de hoje (limitada às pontas) ou, se encerrado, a última. */
-function defaultWeek(arch: CycleArch): number {
+function defaultWeek(arch: CycleArch, today: string): number {
   if (arch.closed) return arch.weeks
-  const w = Math.floor(diffDays(localToday(), arch.startDate) / 7) + 1
+  const w = Math.floor(diffDays(today, arch.startDate) / 7) + 1
   return Math.min(Math.max(w, 1), arch.weeks)
 }
 
 /** Arco do ciclo: pedras por semana, legenda dos hábitos, detalhe da semana e dos dias. */
-export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
+export function ArchPanel({ cycleId, cycle }: ArchPanelProps) {
   const { t } = useTranslation('arch')
   const query = useQuery({ queryKey: queryKeys.cycleArch(cycleId), queryFn: () => cyclesApi.arch(cycleId) })
+  // "Hoje" no fuso do usuário (mesma query da Hoje e do Ciclo); relógio local só até carregar.
+  const todayQuery = useQuery({ queryKey: queryKeys.today, queryFn: todayApi.get, select: (d) => d.date })
+  const today = todayQuery.data ?? localToday()
   const [picked, setPicked] = useState<number | null>(null)
 
   if (query.isPending) return <Spinner />
   if (query.isLoadingError) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
 
   const arch = query.data
-  const week = picked ?? defaultWeek(arch)
+  const week = picked ?? defaultWeek(arch, today)
   const stone = arch.stones.find((s) => s.week === week)
   const canEdit = !!cycle && cycle.status === 'Active' && !arch.closed
 
   return (
     <div className="flex flex-col gap-4">
-      <Arch arch={arch} selectedWeek={week} onSelect={setPicked} animateKey={animateKey} />
+      <Arch arch={arch} selectedWeek={week} onSelect={setPicked} today={today} />
 
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
         <span className="font-semibold">{t('panel.totalInCycle', { duration: formatDuration(arch.totalMinutes) })}</span>
@@ -81,14 +82,14 @@ export function ArchPanel({ cycleId, cycle, animateKey }: ArchPanelProps) {
               </li>
             ))}
           </ul>
-          {stone && <WeekDetail stone={stone} arch={arch} />}
+          {stone && <WeekDetail stone={stone} arch={arch} today={today} />}
         </>
       )}
     </div>
   )
 }
 
-function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
+function WeekDetail({ stone, arch, today }: { stone: ArchStone; arch: CycleArch; today: string }) {
   const { t } = useTranslation('arch')
   const target = arch.weeklyTargetMinutes
   const names = new Map(arch.habits.map((h) => [h.habitId, h]))
@@ -128,7 +129,7 @@ function WeekDetail({ stone, arch }: { stone: ArchStone; arch: CycleArch }) {
         </ul>
       )}
       <div className="overflow-x-auto">
-        <StoneDays stone={stone} habits={arch.habits} />
+        <StoneDays stone={stone} habits={arch.habits} today={today} />
       </div>
     </section>
   )
