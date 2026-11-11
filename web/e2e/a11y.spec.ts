@@ -17,10 +17,6 @@ interface Cenario {
   idioma?: 'pt' | 'en'
   escuro?: boolean
   passos: (page: Page, analisar: Analisar) => Promise<void>
-  /** Issue aberta para uma violação conhecida: o cenário vira `test.fixme`. */
-  fixme?: string
-  /** O `fixme` vale só no projeto mobile (a violação não ocorre no desktop). */
-  fixmeSoMobile?: boolean
 }
 
 const ROTAS_LOGADAS = ['/', '/habits', '/progress', '/settings', '/profile', '/cycle']
@@ -52,7 +48,6 @@ const CENARIOS: Cenario[] = [
   {
     nome: 'landing pt-BR',
     contexto: 'deslogado',
-    fixme: 'issue #22: label-content-name-mismatch no seletor de idioma',
     passos: async (page, analisar) => {
       await page.goto('/landing/')
       await page.waitForLoadState('networkidle')
@@ -63,7 +58,6 @@ const CENARIOS: Cenario[] = [
     nome: 'landing en',
     contexto: 'deslogado',
     idioma: 'en',
-    fixme: 'issue #22: label-content-name-mismatch no seletor de idioma',
     passos: async (page, analisar) => {
       await page.goto('/landing/en/')
       await page.waitForLoadState('networkidle')
@@ -92,7 +86,6 @@ const CENARIOS: Cenario[] = [
   {
     nome: 'cadastro',
     contexto: 'deslogado',
-    fixme: 'issue #23: link-in-text-block no link da página',
     passos: async (page, analisar) => {
       await page.goto('/register')
       await page.waitForLoadState('networkidle')
@@ -103,7 +96,6 @@ const CENARIOS: Cenario[] = [
     nome: 'cadastro en',
     contexto: 'deslogado',
     idioma: 'en',
-    fixme: 'issue #23: link-in-text-block no link da página',
     passos: async (page, analisar) => {
       await page.goto('/register')
       await page.waitForLoadState('networkidle')
@@ -138,7 +130,6 @@ const CENARIOS: Cenario[] = [
   {
     nome: 'diálogo Novo hábito',
     contexto: 'logado',
-    fixme: 'issue #24: color-contrast no seletor Frequência',
     passos: async (page, analisar) => {
       await page.goto('/habits?new=1')
       const dialogo = page.getByRole('dialog', { name: 'Novo hábito' })
@@ -150,7 +141,6 @@ const CENARIOS: Cenario[] = [
     nome: 'diálogo Novo hábito (tema escuro)',
     contexto: 'logado',
     escuro: true,
-    fixme: 'issue #24: color-contrast no botão Criar',
     passos: async (page, analisar) => {
       await page.goto('/habits?new=1')
       await expect(page.getByRole('dialog', { name: 'Novo hábito' })).toBeVisible()
@@ -160,8 +150,6 @@ const CENARIOS: Cenario[] = [
   {
     nome: 'confirmação de descarte (alertdialog)',
     contexto: 'logado',
-    fixme: 'issue #25: target-size nos botões do alertdialog',
-    fixmeSoMobile: true,
     passos: async (page, analisar) => {
       await page.goto('/habits?new=1')
       const dialogo = page.getByRole('dialog', { name: 'Novo hábito' })
@@ -190,9 +178,7 @@ for (const idioma of ['pt', 'en'] as const) {
     if (idioma === 'en') test.use({ locale: 'en-US' })
 
     for (const c of CENARIOS.filter((x) => (x.idioma ?? 'pt') === idioma)) {
-      test(`axe: ${c.nome}`, async ({ page }, testInfo) => {
-        if (c.fixme) test.fixme(!c.fixmeSoMobile || testInfo.project.name === 'e2e-mobile', c.fixme)
-
+      test(`axe: ${c.nome}`, async ({ page }) => {
         if (idioma === 'pt') await pinLocale(page)
         if (c.escuro) {
           await page.emulateMedia({ colorScheme: 'dark' })

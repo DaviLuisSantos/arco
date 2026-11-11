@@ -123,7 +123,7 @@ export function RegisterPage() {
         </p>
         <p className="mt-6 text-center text-sm text-muted">
           {t('register.haveAccount')}{' '}
-          <Link to="/login" className="text-text hover:underline">
+          <Link to="/login" className="text-text underline">
             {t('register.login')}
           </Link>
         </p>
