@@ -78,10 +78,14 @@ public sealed record GoalDto(
     }
 }
 
-public sealed record HabitLevelDto(int Level, string Description, string MinimumDescription, DateTime ReachedAt);
+/// <param name="Target">Goal of a quantitative habit (null otherwise).</param>
+/// <param name="MinimumTarget">Minimum of a quantitative habit (null otherwise).</param>
+public sealed record HabitLevelDto(int Level, string Description, string MinimumDescription, DateTime ReachedAt,
+    decimal? Target = null, decimal? MinimumTarget = null);
 
 /// <summary>A planned (not yet reached) level; <c>Level</c> is the number it will get.</summary>
-public sealed record HabitPlannedLevelDto(int Level, string Description, string MinimumDescription);
+public sealed record HabitPlannedLevelDto(int Level, string Description, string MinimumDescription,
+    decimal? Target = null, decimal? MinimumTarget = null);
 
 /// <param name="Minutes">Manual focus minutes logged for that habit and day (null when none).</param>
 public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp, int? Minutes = null, string? Note = null)
@@ -117,9 +121,14 @@ public class HabitDto
         Level = current?.Level ?? 1;
         LevelDescription = current?.Description ?? "";
         MinimumDescription = current?.MinimumDescription ?? "";
-        Levels = levels.Select(l => new HabitLevelDto(l.Level, l.Description, l.MinimumDescription, l.ReachedAt)).ToList();
+        Unit = h.Unit;
+        Target = Tenths(current?.TargetTenths);
+        MinimumTarget = Tenths(current?.MinimumTenths);
+        Levels = levels.Select(l => new HabitLevelDto(l.Level, l.Description, l.MinimumDescription, l.ReachedAt,
+            Tenths(l.TargetTenths), Tenths(l.MinimumTenths))).ToList();
         PlannedLevels = h.PlannedLevels.OrderBy(p => p.Position).ThenBy(p => p.Id)
-            .Select((p, i) => new HabitPlannedLevelDto(Level + i + 1, p.Description, p.MinimumDescription)).ToList();
+            .Select((p, i) => new HabitPlannedLevelDto(Level + i + 1, p.Description, p.MinimumDescription,
+                Tenths(p.TargetTenths), Tenths(p.MinimumTenths))).ToList();
         LevelUpWeeks = h.LevelUpWeeks;
         LevelUpDaysPerWeek = h.LevelUpDaysPerWeek;
         ArchivedAt = h.ArchivedAt;
@@ -130,6 +139,14 @@ public class HabitDto
         SortOrder = h.SortOrder;
     }
 
+    private static decimal? Tenths(int? tenths) => tenths is { } t ? QuantityRules.FromTenths(t) : null;
+
+    /// <summary>Unit of a quantitative habit (null = regular habit).</summary>
+    public string? Unit { get; }
+    /// <summary>Goal of the current level (quantitative habits only).</summary>
+    public decimal? Target { get; }
+    /// <summary>Minimum of the current level (quantitative habits only).</summary>
+    public decimal? MinimumTarget { get; }
     public TimeOfDay TimeOfDay { get; }
     public int? AnchorHabitId { get; }
     public string? AnchorText { get; }

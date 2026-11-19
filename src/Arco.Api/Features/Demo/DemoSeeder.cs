@@ -150,6 +150,41 @@ public static class DemoSeeder
         }
         db.CheckIns.AddRange(checkIns);
 
+        // Quantitative habit (own rng so the data above stays unchanged): daily totals drive the check-ins.
+        var water = new Habit
+        {
+            Name = "Água", Emoji = "💧", FrequencyType = FrequencyType.Daily, Unit = "copos",
+            TimeOfDay = TimeOfDay.Anytime, SortOrder = 0, CreatedAt = At(start),
+            Levels = [new HabitLevel
+            {
+                Level = 1, Description = "8 copos", MinimumDescription = "4 copos",
+                TargetTenths = 80, MinimumTenths = 40, ReachedAt = At(start),
+            }],
+        };
+        db.Habits.Add(water);
+        await db.SaveChangesAsync(ct);
+        var waterRng = new Random(99);
+        for (var d = start; d <= today; d = d.AddDays(1))
+        {
+            if (d == today && waterRng.NextDouble() < 0.5) continue;
+            var total = waterRng.Next(0, 11) * 10; // 0..10 copos, in tenths
+            if (total == 0) continue;
+            db.HabitDayQuantities.Add(new HabitDayQuantity
+            {
+                HabitId = water.Id, Date = d, TotalTenths = total, UpdatedAt = At(d),
+            });
+            if (QuantityRules.StatusFor(total, 80, 40) is not { } ws) continue;
+            var wxp = XpRules.ForCheckIn(ws, 1);
+            var wci = new CheckIn { HabitId = water.Id, Date = d, Status = ws, Xp = wxp, CreatedAt = At(d), UpdatedAt = At(d) };
+            db.CheckIns.Add(wci);
+            if (wxp > 0)
+                events.Add(new XpEvent
+                {
+                    Date = d, Amount = wxp, Source = XpSource.CheckIn, HabitId = water.Id, CreatedAt = At(d),
+                    Description = $"{water.Name}: {(ws == CheckInStatus.Done ? "feito" : "mínimo")}", CheckIn = wci,
+                });
+        }
+
         // Mood on most days, correlated with how the day went (lower roll = better day).
         var moodRng = new Random(11);
         foreach (var (d, (sum, count)) in dayRolls)

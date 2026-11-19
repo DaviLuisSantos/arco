@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
     public DbSet<HabitPlannedLevel> HabitPlannedLevels => Set<HabitPlannedLevel>();
     public DbSet<HabitPause> HabitPauses => Set<HabitPause>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
+    public DbSet<HabitDayQuantity> HabitDayQuantities => Set<HabitDayQuantity>();
     public DbSet<DailyMood> DailyMoods => Set<DailyMood>();
     public DbSet<FocusSession> FocusSessions => Set<FocusSession>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
@@ -166,6 +167,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
             e.Property(x => x.FrequencyType).HasConversion<string>().HasMaxLength(16);
             e.Property(x => x.TimeOfDay).HasConversion<string>().HasMaxLength(16).HasDefaultValue(TimeOfDay.Anytime);
             e.Property(x => x.AnchorText).HasMaxLength(60);
+            e.Property(x => x.Unit).HasMaxLength(16);
             e.HasOne(x => x.Goal).WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.AnchorHabit).WithMany().HasForeignKey(x => x.AnchorHabitId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(x => x.Levels).WithOne().HasForeignKey(l => l.HabitId).OnDelete(DeleteBehavior.Cascade);
@@ -199,6 +201,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
         {
             e.Property(x => x.Note).HasMaxLength(280);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(x => x.Habit).WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
+            e.HasIndex(x => x.Date);
+        });
+
+        b.Entity<HabitDayQuantity>(e =>
+        {
             e.HasOne(x => x.Habit).WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
             e.HasIndex(x => x.Date);

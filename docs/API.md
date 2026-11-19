@@ -73,10 +73,11 @@ interface Goal {
   habitIds: number[];
 }
 
-interface HabitLevel { level: number; description: string; minimumDescription: string; reachedAt: string; }
+// target/minimumTarget: meta e mínimo numéricos (só em hábito quantitativo; null nos demais).
+interface HabitLevel { level: number; description: string; minimumDescription: string; reachedAt: string; target: number | null; minimumTarget: number | null; }
 
 // Degrau planejado (ainda não alcançado); level = número que ele vai ter (nível atual + 1, + 2…).
-interface HabitPlannedLevel { level: number; description: string; minimumDescription: string; }
+interface HabitPlannedLevel { level: number; description: string; minimumDescription: string; target: number | null; minimumTarget: number | null; }
 
 interface CheckIn { habitId: number; date: string; status: CheckInStatus; xp: number; minutes: number | null; note: string | null; } // note: até 280 caracteres, em qualquer status
 
@@ -95,6 +96,9 @@ interface Habit {
   level: number;                       // nível atual
   levelDescription: string;            // descrição do nível atual
   minimumDescription: string;
+  unit: string | null;                 // unidade (até 16 caracteres): presente = hábito quantitativo (ver "Quantidades")
+  target: number | null;               // meta do nível atual (quantitativo; 1 casa decimal)
+  minimumTarget: number | null;        // mínimo do nível atual (quantitativo)
   levels: HabitLevel[];                // crescente
   plannedLevels: HabitPlannedLevel[];  // a escada à frente, em ordem; subir de nível consome o primeiro
   levelUpWeeks: number | null;         // regra "N semanas seguidas com X+ dias"; null = regra padrão (80% em 14 dias)
@@ -246,7 +250,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   resto de `/api` (na prática, com chave de API). Só no plano Pro (Free → 403 `plan_limit`). Para assistentes de IA operarem o Arco.
 - As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
-- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?` e `nota?`: omitida mantém, `""` remove), `desfazer_checkin`, `registrar_foco`, `registrar_humor(valor, data?)`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
+- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?` e `nota?`: omitida mantém, `""` remove; em hábito quantitativo só Não fiz/Pulei), `desfazer_checkin`, `registrar_quantidade(habitId, quantidade, somar = true, data?)`, `registrar_foco`, `registrar_humor(valor, data?)`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
   `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
   `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ver_parceiros`, `ver_resumo_parceiro(id)`,
   `configurar_perfil_publico(ativo?, slug?)` (sem argumentos só devolve o estado e o link), `ver_plano`,
@@ -275,6 +279,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
     weekCount: number;                // check-ins Done/Minimum na semana atual (segunda a domingo)
     weekTarget: number | null;        // timesPerWeek em WeeklyTarget, senão null
     checkIn: CheckIn | null;          // check-in de hoje
+    quantityToday: number;            // total de hoje de um hábito quantitativo; 0 sem registro ou em hábito comum
     isPaused: boolean;                // pausado hoje: vai para "Pausados" e isDueToday = false
     pausedUntil: string | null;       // fim da pausa em curso (YYYY-MM-DD); null = indefinida ou sem pausa (use isPaused)
     goalTitle: string | null;
@@ -303,9 +308,31 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   - Hábito arquivado → 400 `validation`.
   - `status: "Skipped"` ("Pulei") dispensa o dia: 0 XP, sem `XpEvent` (trocar um Feito/Mínimo por Pulei remove o XP, com `xpDelta` negativo) e não conta como check-in em conquistas e no admin. Não quebra a sequência nem entra nos esperados de consistência, estatísticas, revisões e parceiro. `minutes > 0` com `Skipped` → 400 `validation`.
   - `note` (opcional, até 280 caracteres, texto limpo) vale para qualquer status; maior que isso → 400 `validation`. **Mudança de contrato:** `note` ausente ou `null` = **mantém** a nota já salva (trocar o status não a apaga); `""` (vazio ou só espaços) = **remove**; texto = substitui.
+  - Hábito quantitativo (com `unit`): `Missed` e `Skipped` são aceitos; `Done`/`Minimum` só quando repetem o status que o total do dia já deu (para editar `note`/`minutes`, sem mudar o XP). Qualquer outro `Done`/`Minimum` → 400 `quantity_required` (registre a quantidade em `PUT /api/quantities`).
   - `minutes` (0–480, opcional): ausente = não mexe; `0` = remove a sessão de foco Manual do dia; `>0` = cria/substitui a única sessão Manual de (hábito, data). `minutes > 0` com status `Missed` → 400 `validation`. `checkIn.minutes` (`number | null`) devolve os minutos manuais do dia; aparece também em `GET /api/today` e no `recentCheckIns` de `GET /api/habits/{id}`.
-- `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404. Remove também a sessão de foco Manual do dia (as de Timer permanecem).
+- `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Sem check-in **e** sem total de quantidade no dia → 404. Remove também a sessão de foco Manual do dia (as de Timer permanecem) e o total de quantidade do dia: em hábito quantitativo com total abaixo do mínimo (sem check-in), responde 200 com `xpDelta` 0.
 - `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `CheckIn[]` (intervalo máximo de 366 dias; `habitId` opcional filtra um hábito).
+
+## Quantidades
+
+Hábito **quantitativo** = hábito com `unit` (1–16 caracteres). Cada nível tem `target` (meta) e `minimumTarget` (mínimo): números > 0, até 1 casa decimal, `minimumTarget ≤ target ≤ 100000`. O total do dia (um por hábito e dia) decide o status: total ≥ meta = `Done`; mínimo ≤ total < meta = `Minimum`; abaixo do mínimo = sem check-in. Ao gravar o total o servidor cria/atualiza o check-in e o XP na mesma transação (mantém nota e minutos); se o total cai abaixo do mínimo, remove o check-in Feito/Mínimo com o XP. Um `Missed`/`Skipped` manual fica como está abaixo do mínimo e é substituído ao atingir o mínimo.
+
+- `PUT /api/quantities` `{ habitId, date?, total }` → **200** `QuantityResult`. `total` é o total **absoluto** do dia (≥ 0, até 1 casa; `0` apaga o registro); `date` ausente = hoje, mesma janela do check-in (até 7 dias atrás, sem futuro).
+
+  ```ts
+  interface QuantityResult {
+    habitId: number; date: string; total: number;
+    checkIn: CheckIn | null;   // check-in do dia após a mudança; null quando não há (total abaixo do mínimo)
+    xpDelta: number;           // XP ganho (positivo) ou perdido (negativo)
+    player: Player;
+    achievements: Achievement[];
+  }
+  ```
+
+  Erros 400: `invalid_quantity` (total ausente, negativo, acima de 100000 ou com mais de 1 casa), `not_quantitative` (hábito sem `unit`), `date_out_of_range` (data futura ou além de 7 dias), `validation` (hábito arquivado, hábito sem id ou nível atual sem meta/mínimo). Hábito inexistente → 404. Gravação simultânea do mesmo (hábito, dia) → 409.
+- `GET /api/quantities?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `Array<{ habitId, date, total }>` (intervalo máximo de 366 dias; `habitId` opcional). Só dias com total > 0.
+- Subir ou voltar de nível recalcula o status de **hoje** com a meta/mínimo novos (pode virar Feito, Mínimo ou pendente).
+- Ferramenta MCP: `registrar_quantidade(habitId, quantidade, somar = true, data?)`. `somar` soma ao total do dia (lê `GET /api/quantities`); `somar = false` define o total.
 
 ## Humor
 
@@ -345,32 +372,40 @@ Dia dispensado = dia pausado ou com check-in `Skipped`. Se o dia tiver Feito/Mí
     levelDescription, minimumDescription, reminderTime?,
     plannedLevels?: Array<{ description, minimumDescription }>,
     levelUpWeeks?, levelUpDaysPerWeek?,
-    timeOfDay?, anchorHabitId?, anchorText? }
+    timeOfDay?, anchorHabitId?, anchorText?,
+    unit?, levelTarget?, levelMinimumTarget? }
   ```
 
-  Cria o nível 1. `timeOfDay` ausente = `Anytime`; o hábito entra no fim do período. `anchorHabitId` e `anchorText`: ver "Ordem do dia".
+  Cria o nível 1. Hábito quantitativo: ver "Quantidades" e "Hábito quantitativo" abaixo. `timeOfDay` ausente = `Anytime`; o hábito entra no fim do período. `anchorHabitId` e `anchorText`: ver "Ordem do dia".
 - `PUT /api/habits/{id}` → `Habit`. Corpo:
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
     levelDescription, minimumDescription, reminderTime?,
-    plannedLevels?: Array<{ description, minimumDescription }>,
+    plannedLevels?: Array<{ description, minimumDescription, target?, minimumTarget? }>,
     levelUpWeeks?, levelUpDaysPerWeek?,
-    timeOfDay?, anchorHabitId?, anchorText? }
+    timeOfDay?, anchorHabitId?, anchorText?,
+    unit?, levelTarget?, levelMinimumTarget? }
   ```
 
+  `unit`, `levelTarget` e `levelMinimumTarget` ausentes **mantêm** os valores atuais (um cliente antigo não desfaz o hábito quantitativo). `unit: ""` volta o hábito a comum, mantendo o histórico e apagando meta/mínimo de todos os níveis.
   `timeOfDay`, `anchorHabitId` e `anchorText`: campo ausente **mantém** o valor atual (ver "Ordem do dia").
   `levelDescription` e `minimumDescription` editam o nível atual. `reminderTime` ausente ou null remove o lembrete.
   `plannedLevels` substitui a escada inteira (ausente = sem níveis planejados). Cada item usa os mesmos nomes de
   `Habit.plannedLevels`, então a escada lida no GET pode voltar como está no PUT (o `level` é ignorado: a ordem define
   a numeração). O nome antigo `levelDescription` no lugar de `description` ainda é aceito, mas está obsoleto. `levelUpWeeks` ausente ou null volta à
   regra padrão.
-- `POST /api/habits/{id}/level-up` `{ levelDescription?, minimumDescription? }` → `{ habit: Habit, xpDelta: 50, player }`.
+- `POST /api/habits/{id}/level-up` `{ levelDescription?, minimumDescription?, target?, minimumTarget? }` → `{ habit: Habit, xpDelta: 50, player }`.
   Campo ausente ou vazio usa o do primeiro nível planejado; havendo nível planejado, ele é consumido (sai da escada).
-  Sem nível planejado, os dois campos são obrigatórios.
+  Sem nível planejado, os dois campos são obrigatórios. Em hábito quantitativo, `target`/`minimumTarget` vêm do corpo ou, ausentes, do nível planejado
+  (sem nenhum dos dois → 400 `validation`; `minimumTarget > target` → 400); as descrições são opcionais (vazias viram `"<n> <unidade>"`). O `xpDelta` soma os 50 do nível ao efeito do recálculo do status de hoje com a meta/mínimo novos (pode ser maior ou menor que 50).
 - `POST /api/habits/{id}/level-up-suggestion/dismiss` → **204**. Esconde a sugestão por 7 dias.
 - `POST /api/habits/{id}/level-down` → `Habit`. Volta um nível: o nível atual sai do histórico e vira o primeiro nível
-  planejado. Não mexe no XP. Nível 1 ou hábito arquivado → 400.
+  planejado (com sua meta e mínimo). Não dá nem tira XP do nível, mas em hábito quantitativo o status de hoje é recalculado com a meta/mínimo do nível anterior. Nível 1 ou hábito arquivado → 400.
+
+#### Hábito quantitativo
+
+`unit` (texto, 1–16 caracteres) torna o hábito quantitativo; então `levelTarget` (meta) e `levelMinimumTarget` (mínimo) são obrigatórios no nível atual, e cada item de `plannedLevels` exige `target` e `minimumTarget` (regras em "Quantidades"; `plannedLevels` lido no GET volta como está no PUT). Erros de número → 400 `validation`. `levelDescription`/`minimumDescription` (e `description` dos planejados) ficam opcionais: vazios, o servidor grava `"<meta> <unidade>"` e `"<mínimo> <unidade>"` (vírgula decimal, ex.: "2,5 km"). Converter um hábito comum exige meta e mínimo no nível atual.
 - `POST /api/habits/{id}/level-down-suggestion/dismiss` → **204**. Esconde a sugestão de voltar por 7 dias.
 - `POST /api/habits/{id}/archive` → `Habit`; `POST /api/habits/{id}/restore` → `Habit`.
 - `PUT /api/habits/order` `{ timeOfDay, habitIds: number[] }` → **204**. Ver "Ordem do dia".
@@ -529,7 +564,9 @@ Sessões de foco (tempo dedicado a um hábito). Não dão XP. Os minutos enchem 
 - `GET /api/backup` → JSON (`arco-export-AAAA-MM-DD.json`) com tudo o que o usuário atual possui (ciclos, objetivos,
   hábitos, check-ins, foco, XP, conquistas, revisões, humores, configurações). `dailyMoods` traz
   `{ date, value, createdAt, updatedAt }` por dia. Cada hábito traz `timeOfDay`, `anchorHabitId`, `anchorText` e
-  `sortOrder` (ver "Ordem do dia"). Não inclui hashes de chaves de API nem chaves de push.
+  `sortOrder` (ver "Ordem do dia"), `unit`; `habitLevels` e `habitPlannedLevels` trazem `targetTenths` e `minimumTenths`,
+  e `habitDayQuantities` traz `{ id, habitId, date, totalTenths, updatedAt }` por dia. **Atenção:** no export as
+  quantidades vão em **décimos** (inteiros: 2,5 = 25), diferente da API. Não inclui hashes de chaves de API nem chaves de push.
 - O servidor continua fazendo a cópia diária do SQLite inteiro (14 dias), mas ela não é exposta pela API;
   `GET /api/backups` foi removido.
 

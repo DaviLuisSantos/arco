@@ -28,6 +28,7 @@ using Arco.Api.Features.Pauses;
 using Arco.Api.Features.Health;
 using Arco.Api.Features.Player;
 using Arco.Api.Features.Push;
+using Arco.Api.Features.Quantities;
 using Arco.Api.Features.Reviews;
 using Arco.Api.Features.Settings;
 using Arco.Api.Features.Today;
@@ -85,6 +86,7 @@ public static class Startup
 
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<AppClock>();
+        services.AddScoped<QuantityService>();
         services.AddHttpContextAccessor();
         services.AddScoped<CurrentUser>();
         services.AddArcoEmail(config);
@@ -401,6 +403,7 @@ public static class Startup
         var secured = api.MapGroup("").RequireAuthorization();
         secured.MapToday();
         secured.MapCheckIns();
+        secured.MapQuantities();
         secured.MapFocus();
         secured.MapMoods();
         secured.MapHabits();

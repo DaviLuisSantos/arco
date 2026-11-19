@@ -17,8 +17,11 @@ public static class TodayEndpoints
         bool isPaused,
         DateOnly? pausedUntil,
         string? anchorName,
-        bool anchorDone) : HabitDto(habit, today)
+        bool anchorDone,
+        decimal quantityToday = 0) : HabitDto(habit, today)
     {
+        /// <summary>Running total of a quantitative habit today (0 without a record or for regular habits).</summary>
+        public decimal QuantityToday { get; } = quantityToday;
         /// <summary>Name of the active anchor habit, or the free-text anchor; null when none (archived anchors are ignored).</summary>
         public string? AnchorName { get; } = anchorName;
         /// <summary>The anchor habit was done (Done/Minimum) today and this habit has no check-in yet: its turn.</summary>
@@ -90,6 +93,9 @@ public static class TodayEndpoints
                 .OrderBy(s => s.Id).Select(s => new { s.HabitId, s.Minutes }).ToListAsync(ct))
             .GroupBy(s => s.HabitId).ToDictionary(g => g.Key, g => g.First().Minutes);
 
+        var quantityToday = await db.HabitDayQuantities.AsNoTracking()
+            .Where(q => q.Date == today).ToDictionaryAsync(q => q.HabitId, q => q.TotalTenths, ct);
+
         var habitsById = habits.ToDictionary(h => h.Id);
         var dayRank = DayOrder.Order(habits.Select(h => new DayOrder.Item(h.Id, h.Name, h.TimeOfDay, h.SortOrder, h.AnchorHabitId)))
             .Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
@@ -118,7 +124,8 @@ public static class TodayEndpoints
                 !suggested && Queries.LevelDown(h, history, today, timezone, calendar),
                 Queries.Streak(h, history, today, timezone, calendar),
                 today, paused, paused ? calendar.PausedUntil(today) : null,
-                anchorName, anchorDone);
+                anchorName, anchorDone,
+                quantityToday.TryGetValue(h.Id, out var qt) ? QuantityRules.FromTenths(qt) : 0m);
         })
         .OrderBy(h => h.IsPaused)
         .ThenByDescending(h => h.IsDueToday)

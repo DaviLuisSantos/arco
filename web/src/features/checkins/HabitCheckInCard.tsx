@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import type { CheckInStatus, TodayHabit } from '../../api/types'
 import { cn } from '../../lib/cn'
 import { formatDuration, streakText } from '../../lib/format'
+import { statusAfterTotal } from '../../lib/quantity'
+import { QuantityControls } from './QuantityControls'
 import { useCheckIn } from './useCheckIn'
 
 const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string }> = [
@@ -31,8 +33,19 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   const noteText = noteDraft ?? savedNote
   const noteChanged = noteText.trim() !== savedNote
   const [noteOpen, setNoteOpen] = useState(false)
+  // Hábito quantitativo: Feito/Mínimo vêm do total do dia (não são botões). Nota e minutos reenviam o status
+  // derivado, que o servidor aceita; a fila manda o total antes, então o status já confere quando eles chegam.
+  const quantitative = Boolean(habit.unit) && habit.target !== null && habit.minimumTarget !== null
   const showNoteField = current === 'Skipped' || savedNote !== '' || noteOpen
   const statusGroup = useRef<HTMLDivElement>(null)
+  const options = quantitative ? OPTIONS.filter((o) => o.status === 'Missed' || o.status === 'Skipped') : OPTIONS
+  const busy = checkIn.isPending && !checkIn.isPaused
+
+  function setTotal(total: number) {
+    // O total absoluto vai pela mesma fila do check-in; o status esperado só serve ao otimismo.
+    const status = statusAfterTotal(current, total, habit.target ?? 0, habit.minimumTarget ?? 0)
+    checkIn.mutate({ habit, date, status, total })
+  }
 
   function handleTap(status: CheckInStatus) {
     // tocar no status atual desfaz
@@ -122,8 +135,15 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </div>
       </div>
 
-      <div ref={statusGroup} className="mt-3 grid grid-cols-4 gap-1.5" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
-        {OPTIONS.map(({ status, icon: Icon, active }) => {
+      {quantitative && <QuantityControls habit={habit} onSet={setTotal} disabled={busy} />}
+
+      <div
+        ref={statusGroup}
+        className={cn('mt-3 grid gap-1.5', quantitative ? 'grid-cols-2' : 'grid-cols-4')}
+        role="group"
+        aria-label={t('card.checkInOf', { name: habit.name })}
+      >
+        {options.map(({ status, icon: Icon, active }) => {
           const selected = current === status
           return (
             <button
@@ -131,7 +151,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               type="button"
               aria-pressed={selected}
               // Pausado (offline, ou esperando a fila): deixa trocar de novo.
-              disabled={checkIn.isPending && !checkIn.isPaused}
+              disabled={busy}
               onClick={() => handleTap(status)}
               className={cn(
                 'flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-1 text-sm font-semibold transition active:scale-95',
@@ -146,7 +166,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         })}
       </div>
 
-      {current !== null && !showNoteField && (
+      {current !== null &&!showNoteField && (
         <button
           type="button"
           onClick={() => setNoteOpen(true)}
@@ -156,7 +176,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </button>
       )}
 
-      {current !== null && showNoteField && (
+      {current !== null &&showNoteField && (
         <form
           onSubmit={(e) => {
             e.preventDefault()

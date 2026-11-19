@@ -23,6 +23,9 @@ import type {
   FocusSession,
   CycleInput,
   CycleUpdateInput,
+  DayQuantity,
+  QuantityInput,
+  QuantityResult,
   Goal,
   GoalInput,
   GoalProgressInput,
@@ -158,6 +161,15 @@ export const checkInsApi = {
   list: (from: string, to: string, habitId?: number) =>
     api.get<CheckIn[]>(
       `/checkins?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${habitId ? `&habitId=${habitId}` : ''}`,
+    ),
+}
+
+export const quantitiesApi = {
+  /** Grava o total absoluto do dia (idempotente); o status do check-in vem dele. */
+  set: (input: QuantityInput) => api.put<QuantityResult>('/quantities', input),
+  list: (from: string, to: string, habitId?: number) =>
+    api.get<DayQuantity[]>(
+      `/quantities?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${habitId ? `&habitId=${habitId}` : ''}`,
     ),
 }
 

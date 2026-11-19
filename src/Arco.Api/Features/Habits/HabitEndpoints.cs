@@ -1,4 +1,5 @@
 using Arco.Api.Features.Achievements;
+using Arco.Api.Features.Quantities;
 using System.Globalization;
 
 namespace Arco.Api.Features.Habits;
@@ -20,7 +21,10 @@ public static class HabitEndpoints
         int? LevelUpDaysPerWeek = null,
         TimeOfDay? TimeOfDay = null,
         int? AnchorHabitId = null,
-        string? AnchorText = null);
+        string? AnchorText = null,
+        string? Unit = null,
+        decimal? LevelTarget = null,
+        decimal? LevelMinimumTarget = null);
 
     /// <summary>The exact set of active habits of one period, in the wanted order.</summary>
     public sealed record ReorderRequest(TimeOfDay? TimeOfDay, int[]? HabitIds);
@@ -34,13 +38,18 @@ public static class HabitEndpoints
     /// A planned level, with the same field names as <c>plannedLevels[]</c> in the responses, so a ladder read with GET
     /// can be sent back as is. <c>LevelDescription</c> is the old name of <c>Description</c>, still accepted.
     /// </summary>
-    public sealed record PlannedLevelRequest(string? Description, string? MinimumDescription, string? LevelDescription = null)
+    public sealed record PlannedLevelRequest(string? Description, string? MinimumDescription, string? LevelDescription = null,
+        decimal? Target = null, decimal? MinimumTarget = null)
     {
         public string? EffectiveDescription => Description ?? LevelDescription;
     }
 
-    /// <summary>Both fields optional when the habit has a planned next level (it is used instead).</summary>
-    public sealed record LevelUpRequest(string? LevelDescription, string? MinimumDescription);
+    /// <summary>
+    /// Both descriptions optional when the habit has a planned next level (it is used instead). In a quantitative habit,
+    /// <c>Target</c>/<c>MinimumTarget</c> come from the request or, when absent, from the planned level.
+    /// </summary>
+    public sealed record LevelUpRequest(string? LevelDescription, string? MinimumDescription,
+        decimal? Target = null, decimal? MinimumTarget = null);
 
     private const int MaxPlannedLevels = 10;
 
@@ -174,7 +183,7 @@ public static class HabitEndpoints
     /// Goes back one level: the current level leaves the history and returns to the top of the planned ladder,
     /// so the next level-up starts from it. XP already earned stays.
     /// </summary>
-    private static async Task<IResult> LevelDown(int id, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> LevelDown(int id, AppDbContext db, AppClock clock, QuantityService quantities, CancellationToken ct)
     {
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
@@ -188,11 +197,15 @@ public static class HabitEndpoints
             Position = first,
             Description = current.Description,
             MinimumDescription = current.MinimumDescription,
+            TargetTenths = current.TargetTenths,
+            MinimumTenths = current.MinimumTenths,
         });
         habit.Levels.Remove(current);
         habit.LevelDownSnoozedUntil = null;
         habit.LevelUpSnoozedUntil = null;
         await db.SaveChangesAsync(ct);
+        // The previous level's goal/minimum may change today's status of a quantitative habit.
+        await quantities.RecalculateAsync(habit, await clock.GetTodayAsync(ct), ct);
         return Results.Ok(new HabitDto(habit));
     }
 
@@ -206,11 +219,15 @@ public static class HabitEndpoints
         var habit = new Habit { CreatedAt = now };
         Apply(habit, request);
         habit.SortOrder = await NextSortOrderAsync(db, habit.TimeOfDay, null, ct);
+        var target = Tenths(request.LevelTarget, habit.Unit);
+        var minimum = Tenths(request.LevelMinimumTarget, habit.Unit);
         habit.Levels.Add(new HabitLevel
         {
             Level = 1,
-            Description = request.LevelDescription!.Trim(),
-            MinimumDescription = request.MinimumDescription!.Trim(),
+            Description = LevelText(request.LevelDescription, target, habit.Unit),
+            MinimumDescription = LevelText(request.MinimumDescription, minimum, habit.Unit),
+            TargetTenths = target,
+            MinimumTenths = minimum,
             ReachedAt = now,
         });
         db.Habits.Add(habit);
@@ -224,6 +241,19 @@ public static class HabitEndpoints
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
+        // Absent quantity fields keep the current ones, so clients that predate quantitative habits do not turn
+        // them back into regular habits; only unit "" does that.
+        if (habit.Unit is not null && request.Unit != "")
+        {
+            var level = habit.CurrentLevel;
+            request = request with
+            {
+                Unit = request.Unit ?? habit.Unit,
+                LevelTarget = request.LevelTarget ?? (level?.TargetTenths is { } t ? QuantityRules.FromTenths(t) : null),
+                LevelMinimumTarget = request.LevelMinimumTarget ?? (level?.MinimumTenths is { } m ? QuantityRules.FromTenths(m) : null),
+            };
+        }
+
         if (await ValidateAsync(request, db, id, ct) is { } error) return error;
 
         var previousPeriod = habit.TimeOfDay;
@@ -232,22 +262,58 @@ public static class HabitEndpoints
         var current = habit.CurrentLevel;
         if (current is not null)
         {
-            current.Description = request.LevelDescription!.Trim();
-            current.MinimumDescription = request.MinimumDescription!.Trim();
+            current.TargetTenths = Tenths(request.LevelTarget, habit.Unit);
+            current.MinimumTenths = Tenths(request.LevelMinimumTarget, habit.Unit);
+            current.Description = LevelText(request.LevelDescription, current.TargetTenths, habit.Unit);
+            current.MinimumDescription = LevelText(request.MinimumDescription, current.MinimumTenths, habit.Unit);
+        }
+        // A regular habit has no goals: back from quantitative, the history stays but its goals go.
+        if (habit.Unit is null)
+        {
+            foreach (var level in habit.Levels) (level.TargetTenths, level.MinimumTenths) = (null, null);
         }
         await db.SaveChangesAsync(ct);
         return Results.Ok(new HabitDto(habit));
     }
 
-    private static async Task<IResult> LevelUp(int id, LevelUpRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
+    private static async Task<IResult> LevelUp(int id, LevelUpRequest? request, AppDbContext db, AppClock clock, QuantityService quantities, CancellationToken ct)
     {
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Não é possível subir de nível um hábito arquivado.");
 
         var planned = habit.PlannedLevels.OrderBy(p => p.Position).ThenBy(p => p.Id).FirstOrDefault();
-        var description = Text.Clean(request?.LevelDescription) ?? planned?.Description;
-        var minimum = Text.Clean(request?.MinimumDescription) ?? planned?.MinimumDescription;
+        int? targetTenths = null, minimumTenths = null;
+        string? description, minimum;
+        if (habit.Unit is { } unit)
+        {
+            // Quantitative: the numbers come from the request or the planned level; texts are optional (auto "<n> <unit>").
+            if (request?.Target is { } t)
+            {
+                if (!QuantityRules.TryToTenths(t, out var parsed) || parsed <= 0) return ApiResults.Validation(TargetError);
+                targetTenths = parsed;
+            }
+            else targetTenths = planned?.TargetTenths;
+            if (request?.MinimumTarget is { } m)
+            {
+                if (!QuantityRules.TryToTenths(m, out var parsed) || parsed <= 0) return ApiResults.Validation(MinimumTargetError);
+                minimumTenths = parsed;
+            }
+            else minimumTenths = planned?.MinimumTenths;
+            if (targetTenths is null) return ApiResults.Validation("Informe a meta do novo nível.");
+            if (minimumTenths is null) return ApiResults.Validation("Informe o mínimo do novo nível.");
+            if (minimumTenths > targetTenths) return ApiResults.Validation(MinimumAboveTargetError);
+
+            description = Text.Clean(request?.LevelDescription)
+                ?? (request?.Target is null ? planned?.Description : null) ?? QuantityRules.Describe(targetTenths.Value, unit);
+            minimum = Text.Clean(request?.MinimumDescription)
+                ?? (request?.MinimumTarget is null ? planned?.MinimumDescription : null) ?? QuantityRules.Describe(minimumTenths.Value, unit);
+        }
+        else
+        {
+            description = Text.Clean(request?.LevelDescription) ?? planned?.Description;
+            minimum = Text.Clean(request?.MinimumDescription) ?? planned?.MinimumDescription;
+        }
         if (!Text.LengthBetween(description, 1, 120)) return ApiResults.Validation(LevelDescriptionError);
         if (!Text.LengthBetween(minimum, 1, 120)) return ApiResults.Validation(MinimumDescriptionError);
         if (planned is not null) habit.PlannedLevels.Remove(planned);
@@ -259,6 +325,8 @@ public static class HabitEndpoints
             Level = newLevel,
             Description = description!,
             MinimumDescription = minimum!,
+            TargetTenths = targetTenths,
+            MinimumTenths = minimumTenths,
             ReachedAt = now,
         });
         habit.LevelUpSnoozedUntil = null;
@@ -282,7 +350,10 @@ public static class HabitEndpoints
             return ApiResults.Conflict("O hábito foi alterado ao mesmo tempo. Tente novamente.");
         }
 
-        return Results.Ok(new HabitXpResult(new HabitDto(habit), XpRules.HabitLevelUp, await Queries.GetPlayerAsync(db, ct),
+        // The new goal/minimum may change today's status of a quantitative habit (and its XP).
+        var quantityXp = await quantities.RecalculateAsync(habit, await clock.GetTodayAsync(ct), ct);
+
+        return Results.Ok(new HabitXpResult(new HabitDto(habit), XpRules.HabitLevelUp + quantityXp, await Queries.GetPlayerAsync(db, ct),
             await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
@@ -306,6 +377,29 @@ public static class HabitEndpoints
 
     private const string LevelDescriptionError = "A descrição do nível deve ter entre 1 e 120 caracteres.";
     private const string MinimumDescriptionError = "A versão mínima deve ter entre 1 e 120 caracteres.";
+    private const string TargetError = "A meta deve ser um número maior que zero, com no máximo 1 casa decimal e até 100000.";
+    private const string MinimumTargetError = "O mínimo deve ser um número maior que zero, com no máximo 1 casa decimal e até 100000.";
+    private const string MinimumAboveTargetError = "O mínimo não pode ser maior que a meta.";
+
+    /// <summary>The amount in tenths, or null for a regular habit (no unit) or an absent value.</summary>
+    private static int? Tenths(decimal? value, string? unit) =>
+        unit is not null && value is { } v && QuantityRules.TryToTenths(v, out var tenths) ? tenths : null;
+
+    /// <summary>The level text: what was typed or, in a quantitative habit, "&lt;amount&gt; &lt;unit&gt;".</summary>
+    private static string LevelText(string? typed, int? tenths, string? unit) =>
+        Text.Clean(typed) ?? (unit is not null && tenths is { } t ? QuantityRules.Describe(t, unit) : "");
+
+    /// <summary>Validates a goal/minimum pair of a quantitative habit; null when valid.</summary>
+    private static string? ValidateAmounts(decimal? target, decimal? minimum)
+    {
+        if (target is not { } t || !QuantityRules.TryToTenths(t, out var targetTenths) || targetTenths <= 0) return TargetError;
+        if (minimum is not { } m || !QuantityRules.TryToTenths(m, out var minimumTenths) || minimumTenths <= 0) return MinimumTargetError;
+        return minimumTenths > targetTenths ? MinimumAboveTargetError : null;
+    }
+
+    /// <summary>A description is required in a regular habit; in a quantitative one it may be empty (auto text).</summary>
+    private static bool DescriptionOk(string? value, bool quantitative) =>
+        Text.LengthBetween(value?.Trim(), 1, 120) || (quantitative && string.IsNullOrWhiteSpace(value));
 
     /// <summary>Error response for an invalid request, or null. <paramref name="habitId"/> is null when creating.</summary>
     private static async Task<IResult?> ValidateAsync(HabitRequest r, AppDbContext db, int? habitId, CancellationToken ct)
@@ -356,16 +450,24 @@ public static class HabitEndpoints
                 break;
         }
 
-        if (!Text.LengthBetween(r.LevelDescription?.Trim(), 1, 120)) return LevelDescriptionError;
-        if (!Text.LengthBetween(r.MinimumDescription?.Trim(), 1, 120)) return MinimumDescriptionError;
+        var unit = Text.Clean(r.Unit);
+        var quantitative = unit is not null;
+        if (unit is not null && unit.Length > QuantityRules.MaxUnitLength)
+            return $"A unidade deve ter entre 1 e {QuantityRules.MaxUnitLength} caracteres.";
+        if (quantitative && ValidateAmounts(r.LevelTarget, r.LevelMinimumTarget) is { } amountsError) return amountsError;
+
+        if (!DescriptionOk(r.LevelDescription, quantitative)) return LevelDescriptionError;
+        if (!DescriptionOk(r.MinimumDescription, quantitative)) return MinimumDescriptionError;
 
         if (r.PlannedLevels is { } plannedLevels)
         {
             if (plannedLevels.Length > MaxPlannedLevels) return $"Planeje no máximo {MaxPlannedLevels} níveis à frente.";
-            if (plannedLevels.Any(l => !Text.LengthBetween(l?.EffectiveDescription?.Trim(), 1, 120)))
+            if (plannedLevels.Any(l => !DescriptionOk(l?.EffectiveDescription, quantitative)))
                 return "A dose de cada nível planejado deve ter entre 1 e 120 caracteres.";
-            if (plannedLevels.Any(l => !Text.LengthBetween(l?.MinimumDescription?.Trim(), 1, 120)))
+            if (plannedLevels.Any(l => !DescriptionOk(l?.MinimumDescription, quantitative)))
                 return "O mínimo de cada nível planejado deve ter entre 1 e 120 caracteres.";
+            if (quantitative && plannedLevels.Select(l => ValidateAmounts(l?.Target, l?.MinimumTarget)).FirstOrDefault(e => e is not null) is { } plannedError)
+                return $"Nível planejado: {plannedError}";
         }
 
         if (r.LevelUpWeeks is not null || r.LevelUpDaysPerWeek is not null)
@@ -396,6 +498,7 @@ public static class HabitEndpoints
         habit.ReminderTime = Text.Clean(r.ReminderTime) is { } reminder && TryParseTime(reminder, out var time) ? time : null;
         habit.LevelUpWeeks = r.LevelUpWeeks;
         habit.LevelUpDaysPerWeek = r.LevelUpWeeks is null ? null : r.LevelUpDaysPerWeek;
+        habit.Unit = Text.Clean(r.Unit);
         // Absent fields keep their value (new habits start as Anytime with no anchor), so clients that predate
         // the day order do not reset it. "Depois de…": a habit id replaces the text; anchorText "" removes the anchor.
         if (r.TimeOfDay is { } period) habit.TimeOfDay = period;
@@ -414,11 +517,15 @@ public static class HabitEndpoints
         habit.PlannedLevels.Clear();
         foreach (var (level, i) in (r.PlannedLevels ?? []).Select((l, i) => (l, i)))
         {
+            var target = Tenths(level.Target, habit.Unit);
+            var minimum = Tenths(level.MinimumTarget, habit.Unit);
             habit.PlannedLevels.Add(new HabitPlannedLevel
             {
                 Position = i,
-                Description = level.EffectiveDescription!.Trim(),
-                MinimumDescription = level.MinimumDescription!.Trim(),
+                Description = LevelText(level.EffectiveDescription, target, habit.Unit),
+                MinimumDescription = LevelText(level.MinimumDescription, minimum, habit.Unit),
+                TargetTenths = target,
+                MinimumTenths = minimum,
             });
         }
     }
