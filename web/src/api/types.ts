@@ -63,6 +63,9 @@ export interface HabitLevel {
   level: number
   description: string
   minimumDescription: string
+  /** Meta e mínimo do nível (só em hábito quantitativo). */
+  target: number | null
+  minimumTarget: number | null
   reachedAt: string
 }
 
@@ -118,6 +121,11 @@ export interface Habit {
   level: number
   levelDescription: string
   minimumDescription: string
+  /** Unidade de um hábito quantitativo (null = hábito comum). */
+  unit: string | null
+  /** Meta e mínimo do nível atual (só em hábito quantitativo). */
+  target: number | null
+  minimumTarget: number | null
   levels: HabitLevel[]
   /** A escada à frente; subir de nível usa (e consome) o primeiro. */
   plannedLevels: HabitPlannedLevel[]
@@ -143,6 +151,8 @@ export interface HabitPlannedLevel {
   level: number
   description: string
   minimumDescription: string
+  target: number | null
+  minimumTarget: number | null
 }
 
 /** Consistência dos últimos 14 dias (só "Feito" conta). */
@@ -184,6 +194,8 @@ export interface TodayHabit extends Habit {
   pausedUntil: string | null
   weekCount: number
   weekTarget: number | null
+  /** Total do dia em hábito quantitativo (0 sem registro). */
+  quantityToday: number
   checkIn: CheckIn | null
   goalTitle: string | null
   /** Nome da âncora-hábito ativa ou o texto; null se não houver. */
@@ -239,6 +251,28 @@ export interface Achievement {
 
 export interface CheckInResult extends XpResult {
   checkIn: CheckIn
+}
+
+/** `PUT /api/quantities`: `checkIn` é null quando o total ficou abaixo do mínimo. */
+export interface QuantityResult extends XpResult {
+  habitId: number
+  date: string
+  total: number
+  checkIn: CheckIn | null
+}
+
+export interface DayQuantity {
+  habitId: number
+  date: string
+  total: number
+}
+
+export interface QuantityInput {
+  habitId: number
+  /** Ausente = hoje. */
+  date?: string
+  /** Total absoluto do dia (≥ 0, 1 casa decimal). */
+  total: number
 }
 
 export interface HabitLevelUpResult extends XpResult {
@@ -437,7 +471,16 @@ export interface HabitInput {
   minimumDescription: string
   reminderTime?: string | null
   /** Mesmos campos de `Habit.plannedLevels` (sem o `level`, que é calculado). */
-  plannedLevels?: Array<{ description: string; minimumDescription: string }>
+  plannedLevels?: Array<{
+    description: string
+    minimumDescription: string
+    target?: number | null
+    minimumTarget?: number | null
+  }>
+  /** Texto (1–16) liga o modo quantitativo; "" volta a hábito comum. */
+  unit?: string | null
+  levelTarget?: number | null
+  levelMinimumTarget?: number | null
   levelUpWeeks?: number | null
   levelUpDaysPerWeek?: number | null
   timeOfDay?: TimeOfDay
@@ -450,6 +493,8 @@ export interface HabitInput {
 export interface LevelUpInput {
   levelDescription?: string
   minimumDescription?: string
+  target?: number | null
+  minimumTarget?: number | null
 }
 
 export interface CheckInInput {

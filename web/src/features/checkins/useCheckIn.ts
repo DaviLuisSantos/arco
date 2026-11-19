@@ -11,12 +11,14 @@ import { CHECK_IN_KEY, type CheckInVars } from './checkInMutation'
 
 const counts = (status: CheckInStatus | null | undefined) => (status && status !== 'Missed' && status !== 'Skipped' ? 1 : 0)
 
-function optimistic(habit: TodayHabit, { date, status, minutes, note }: CheckInVars): TodayHabit {
+function optimistic(habit: TodayHabit, { date, status, minutes, note, total }: CheckInVars): TodayHabit {
   const delta = counts(status) - counts(habit.checkIn?.status)
   // Estimativa até o servidor responder: marcar hoje soma 1 dia na sequência, desfazer tira.
   const current = habit.streak.unit === 'Days' ? Math.max(0, habit.streak.current + delta) : habit.streak.current
   return {
     ...habit,
+    // Desfazer o check-in de um hábito quantitativo também apaga o total do dia (como o servidor).
+    quantityToday: total ?? (status === null && habit.unit ? 0 : habit.quantityToday),
     weekCount: habit.weekCount + delta,
     streak: { ...habit.streak, current, best: Math.max(habit.streak.best, current) },
     checkIn: status
@@ -82,9 +84,12 @@ export function useCheckIn() {
         d ? { ...d, habits: d.habits.map((h) => (h.id === vars.habit.id ? optimistic(h, vars) : h)) } : d,
       )
 
+      const habitBefore = previous?.habits.find((h) => h.id === vars.habit.id)
+      const before = habitBefore?.checkIn ?? null
       // Só trocas de status (não o salvar minutos nem a nota) ganham toast com "Desfazer".
-      if (!silent && vars.minutes === undefined && vars.note === undefined) {
-        const before = previous?.habits.find((h) => h.id === vars.habit.id)?.checkIn ?? null
+      // Somar quantidade sem mudar o status não avisa: cada toque seria um toast.
+      const statusChanged = vars.total === undefined || (vars.status ?? null) !== (before?.status ?? null)
+      if (!silent && vars.minutes === undefined && vars.note === undefined && statusChanged) {
         const after = qc.getQueryData<Today>(queryKeys.today)
         const dueAfter = after ? dueOf(after.habits) : []
         const dueBefore = previous ? dueOf(previous.habits) : []
@@ -97,7 +102,11 @@ export function useCheckIn() {
           habit: vars.habit,
           date: vars.date,
           status: before?.status ?? null,
-          ...(before ? { minutes: before.minutes ?? 0 } : {}),
+          ...(vars.total !== undefined
+            ? { total: habitBefore?.quantityToday ?? 0 }
+            : before
+              ? { minutes: before.minutes ?? 0 }
+              : {}),
         }
         toast.show({
           message: dayComplete

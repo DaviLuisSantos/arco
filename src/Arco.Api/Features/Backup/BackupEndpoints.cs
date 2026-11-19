@@ -56,13 +56,18 @@ public static class BackupEndpoints
                 {
                     h.Id, h.Name, h.Emoji, h.GoalId, h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, h.ReminderTime,
                     h.LevelUpSnoozedUntil, h.LevelDownSnoozedUntil, h.LevelUpWeeks, h.LevelUpDaysPerWeek, h.ArchivedAt,
-                    h.CreatedAt, h.TimeOfDay, h.AnchorHabitId, h.AnchorText, h.SortOrder,
+                    h.CreatedAt, h.TimeOfDay, h.AnchorHabitId, h.AnchorText, h.SortOrder, h.Unit,
                 }).ToListAsync(ct),
             habitLevels = await db.HabitLevels.AsNoTracking().OrderBy(l => l.Id)
-                .Select(l => new { l.Id, l.HabitId, l.Level, l.Description, l.MinimumDescription, l.ReachedAt })
-                .ToListAsync(ct),
+                .Select(l => new
+                {
+                    l.Id, l.HabitId, l.Level, l.Description, l.MinimumDescription, l.ReachedAt, l.TargetTenths, l.MinimumTenths,
+                }).ToListAsync(ct),
             habitPlannedLevels = await db.HabitPlannedLevels.AsNoTracking().OrderBy(l => l.Id)
-                .Select(l => new { l.Id, l.HabitId, l.Position, l.Description, l.MinimumDescription }).ToListAsync(ct),
+                .Select(l => new { l.Id, l.HabitId, l.Position, l.Description, l.MinimumDescription, l.TargetTenths, l.MinimumTenths })
+                .ToListAsync(ct),
+            habitDayQuantities = await db.HabitDayQuantities.AsNoTracking().OrderBy(q => q.Id)
+                .Select(q => new { q.Id, q.HabitId, q.Date, q.TotalTenths, q.UpdatedAt }).ToListAsync(ct),
             checkIns = await db.CheckIns.AsNoTracking().OrderBy(c => c.Id)
                 .Select(c => new { c.Id, c.HabitId, c.Date, c.Status, c.Xp, c.CreatedAt, c.UpdatedAt }).ToListAsync(ct),
             dailyMoods = await db.DailyMoods.AsNoTracking().OrderBy(m => m.Date)

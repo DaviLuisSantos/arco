@@ -164,6 +164,16 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 - **Hoje:** grupos por período (só os não vazios); o do período atual vem marcado "Agora", sem reordenar os grupos; "A qualquer hora" fica no fim. Pausados e "fora de hoje" continuam nas seções atuais, também na ordem do dia.
 - **Organizar:** modo no Hoje com setas subir/descer por grupo (só hábitos ativos do período, inclusive os não devidos hoje), salvo por `PUT /api/habits/order`.
 
+## Hábito quantitativo
+- **Hábito quantitativo** = hábito com `unit` (texto, 1–16). Cada nível (atual e da escada) tem `target` (meta) e `minimumTarget` (mínimo): números > 0 com até 1 casa decimal, `minimumTarget ≤ target ≤ 100000`. Em hábito quantitativo, `levelDescription`/`minimumDescription` são opcionais: vazias, o servidor grava `"<meta> <unidade>"` e `"<mínimo> <unidade>"` (vírgula decimal no texto, ex.: "2,5 km").
+- **Total do dia** (`HabitDayQuantity`): um por hábito e dia, em décimos (`TotalTenths`, inteiro) para evitar decimal no SQLite. A API usa números com 1 casa. Total 0 apaga o registro. Mesma janela do check-in (até 7 dias atrás, sem futuro). O registro soma no dia (+1, + valor ou corrigir o total).
+- **Status derivado** (`Domain/QuantityRules.cs`): total ≥ meta = Feito; mínimo ≤ total < meta = Mínimo; abaixo = pendente. Ao gravar o total, na mesma transação: status não nulo cria/atualiza o `CheckIn` (mantém nota e minutos) e o `XpEvent` como o check-in normal; status nulo remove um check-in Feito/Mínimo existente com o XP (e revoga conquistas não mais cumpridas). Check-in manual Não fiz/Pulei abaixo do mínimo fica como está; ao atingir o mínimo, é substituído.
+- **Check-in manual:** `PUT /api/checkins` aceita só `Missed`/`Skipped` (Feito/Mínimo → 400 `quantity_required`). `DELETE /api/checkins/...` também apaga o total do dia.
+- **Subir/voltar de nível:** recalcula o status de hoje com a meta/mínimo novos (pode virar Feito, Mínimo ou pendente).
+- XP, sequência, sugestões, pausa, revisões, conquistas e estatísticas seguem pelo `CheckIn` resultante, sem mudança.
+- **Offline:** o app envia o total absoluto (idempotente) pela mesma fila do check-in; o card deriva o status na hora (otimista) com a mesma regra do servidor.
+- **Conversão:** tornar um hábito quantitativo exige meta e mínimo no nível atual; voltar a não quantitativo (unidade vazia) mantém o histórico e apaga meta/mínimo dos níveis.
+
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
@@ -242,6 +252,6 @@ O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.jso
 3. **Pausa e modo férias** (em andamento, ver seção própria): viagem ou doença não deve zerar a sequência; "pular ou pausar sem falhar" é o pedido mais comum (Strides, apps com férias).
 4. ~~**Nota e humor no check-in**~~ (feito, ver "Nota e humor"): registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
 5. ~~**Ordem do dia por período e encadeamento**~~ (feito, ver "Ordem do dia"): manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
-6. **Hábito quantitativo:** metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
+6. ~~**Hábito quantitativo**~~ (feito, ver "Hábito quantitativo"): metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
 7. **Hábito negativo:** acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).
 8. **Desafio cooperativo com o parceiro:** meta compartilhada da semana, em vez de só ver o resumo do outro (Habitica).

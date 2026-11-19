@@ -28,7 +28,9 @@ public sealed class ArcoTools(ArcoApiClient api)
     public Task<string> VerHoje(CancellationToken ct) => api.GetAsync("/api/today", ct);
 
     [McpServerTool(Name = "fazer_checkin", Title = "Fazer check-in", Idempotent = true)]
-    [Description("Marca (ou altera) o check-in de um hábito em um dia. Devolve o XP ganho, o jogador e conquistas desbloqueadas.")]
+    [Description("Marca (ou altera) o check-in de um hábito em um dia. Devolve o XP ganho, o jogador e conquistas desbloqueadas. " +
+                 "Em hábito quantitativo (com unidade) só vale Missed (Não fiz) e Skipped (Pulei); Feito e Mínimo vêm da " +
+                 "quantidade: use registrar_quantidade.")]
     public async Task<string> FazerCheckIn(
         [Description("Id do hábito (veja ver_hoje ou listar_habitos).")] int habitId,
         [Description(StatusDescription)] string status,
@@ -48,6 +50,29 @@ public sealed class ArcoTools(ArcoApiClient api)
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Put, "/api/moods",
             new { date = data ?? await TodayAsync(ct), value = valor }, ct);
+
+    [McpServerTool(Name = "registrar_quantidade", Title = "Registrar quantidade")]
+    [Description("Registra a quantidade do dia de um hábito quantitativo (com unidade, ex.: copos, páginas, km). O status vem do " +
+                 "total: meta atingida = Feito, mínimo atingido = Mínimo, abaixo = pendente (sem check-in). Por padrão a " +
+                 "quantidade é somada ao total do dia; com somar = false ela substitui o total (use 0 para zerar). " +
+                 "Devolve o total, o check-in resultante (pode ser nulo), o XP e as conquistas.")]
+    public async Task<string> RegistrarQuantidade(
+        [Description("Id do hábito quantitativo.")] int habitId,
+        [Description("Quantidade (até 1 casa decimal). Somada ao total do dia, ou o novo total se somar = false.")] decimal quantidade,
+        [Description("true (padrão) soma ao total do dia; false define o total absoluto do dia.")] bool somar = true,
+        [Description(DateDescription)] string? data = null,
+        CancellationToken ct = default)
+    {
+        var date = data ?? await TodayAsync(ct);
+        var total = quantidade;
+        if (somar)
+        {
+            var rows = await api.GetJsonAsync($"/api/quantities?from={date}&to={date}&habitId={habitId}", ct);
+            var current = rows.AsArray().Select(r => r?["total"]?.GetValue<decimal>()).FirstOrDefault() ?? 0m;
+            total = current + quantidade;
+        }
+        return await api.SendAsync(HttpMethod.Put, "/api/quantities", new { habitId, date, total }, ct);
+    }
 
     [McpServerTool(Name = "registrar_foco", Title = "Registrar foco")]
     [Description("Registra uma sessão de foco (minutos) em um hábito. Não dá XP; vira uma árvore na floresta.")]
@@ -143,12 +168,13 @@ public sealed class ArcoTools(ArcoApiClient api)
     [McpServerTool(Name = "criar_habito", Title = "Criar hábito")]
     [Description("Cria um hábito no nível 1. Para escada planejada e regra de subida por semanas, use chamar_api " +
                  "(POST /api/habits com plannedLevels: [{ description, minimumDescription }], levelUpWeeks e " +
-                 "levelUpDaysPerWeek; veja ler_documentacao_api).")]
+                 "levelUpDaysPerWeek; veja ler_documentacao_api). Hábito quantitativo: informe unidade, meta e minimoQuantidade " +
+                 "numéricos (dose e minimo textuais ficam opcionais).")]
     public Task<string> CriarHabito(
         [Description("Nome (até 80 caracteres).")] string nome,
         [Description("Daily (todo dia), SpecificDays (dias da semana) ou WeeklyTarget (N vezes por semana).")] string frequencia,
-        [Description("Dose do nível 1: o que conta como Feito (ex.: \"15 min\").")] string dose,
-        [Description("Versão mínima para dias difíceis (ex.: \"5 min\").")] string minimo,
+        [Description("Dose do nível 1: o que conta como Feito (ex.: \"15 min\"). Em hábito quantitativo pode ficar vazia (vira \"<meta> <unidade>\").")] string dose,
+        [Description("Versão mínima para dias difíceis (ex.: \"5 min\"). Em hábito quantitativo pode ficar vazia.")] string minimo,
         [Description("Emoji opcional.")] string? emoji = null,
         [Description("Para SpecificDays: dias da semana, 0 = domingo … 6 = sábado.")] int[]? diasDaSemana = null,
         [Description("Para WeeklyTarget: vezes por semana (1 a 7).")] int? vezesPorSemana = null,
@@ -156,6 +182,9 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description("Horário do lembrete push, HH:mm.")] string? lembrete = null,
         [Description(PeriodDescription)] string? periodo = null,
         [Description(AfterDescription)] string? depoisDe = null,
+        [Description("Unidade de um hábito quantitativo (até 16 caracteres, ex.: \"copos\", \"páginas\"). Exige meta e minimoQuantidade.")] string? unidade = null,
+        [Description("Meta do nível 1 do hábito quantitativo (número > 0, 1 casa decimal): total que conta como Feito.")] decimal? meta = null,
+        [Description("Mínimo do nível 1 do hábito quantitativo (número > 0, não maior que a meta): total que conta como Mínimo.")] decimal? minimoQuantidade = null,
         CancellationToken ct = default)
     {
         var body = new JsonObject
@@ -170,6 +199,12 @@ public sealed class ArcoTools(ArcoApiClient api)
             ["minimumDescription"] = minimo,
             ["reminderTime"] = lembrete,
         };
+        if (!string.IsNullOrWhiteSpace(unidade))
+        {
+            body["unit"] = unidade;
+            body["levelTarget"] = meta;
+            body["levelMinimumTarget"] = minimoQuantidade;
+        }
         if (periodo is not null) body["timeOfDay"] = ParsePeriod(periodo);
         if (!string.IsNullOrWhiteSpace(depoisDe)) ApplyAnchor(body, depoisDe);
         return api.SendAsync(HttpMethod.Post, "/api/habits", body, ct);
@@ -191,9 +226,12 @@ public sealed class ArcoTools(ArcoApiClient api)
         foreach (var key in new[]
                  {
                      "name", "emoji", "goalId", "frequencyType", "frequencyDays", "timesPerWeek", "levelDescription",
-                     "minimumDescription", "reminderTime", "plannedLevels", "levelUpWeeks", "levelUpDaysPerWeek",
+                     "minimumDescription", "reminderTime", "plannedLevels", "levelUpWeeks", "levelUpDaysPerWeek", "unit",
                  })
             body[key] = habit[key]?.DeepClone();
+        // The GET names the current level's numbers target/minimumTarget; the PUT takes levelTarget/levelMinimumTarget.
+        body["levelTarget"] = habit["target"]?.DeepClone();
+        body["levelMinimumTarget"] = habit["minimumTarget"]?.DeepClone();
         if (nome is not null) body["name"] = nome;
         if (periodo is not null) body["timeOfDay"] = ParsePeriod(periodo);
         if (depoisDe is not null) ApplyAnchor(body, depoisDe);

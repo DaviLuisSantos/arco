@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { ApiError } from '../../api/client'
-import { checkInsApi } from '../../api/endpoints'
+import { checkInsApi, quantitiesApi } from '../../api/endpoints'
 import type { CheckInStatus, TodayHabit, XpResult } from '../../api/types'
 
 export const CHECK_IN_KEY = ['checkin'] as const
@@ -14,6 +14,11 @@ export interface CheckInVars {
   minutes?: number
   /** Nota (qualquer status). Ausente = mantém; "" = remove. Serializável na fila offline. */
   note?: string
+  /**
+   * Total absoluto do dia em hábito quantitativo (idempotente, vai por PUT /quantities). `status` é então o
+   * resultado esperado (derivado do total), só para o otimismo. Serializável na fila offline.
+   */
+  total?: number
 }
 
 /**
@@ -25,10 +30,12 @@ export interface CheckInVars {
  */
 export function registerCheckInDefaults(qc: QueryClient) {
   qc.setMutationDefaults(CHECK_IN_KEY, {
-    mutationFn: ({ habit, date, status, minutes, note }: CheckInVars): Promise<XpResult> =>
-      status
-        ? checkInsApi.upsert({ habitId: habit.id, date, status, ...(minutes !== undefined && { minutes }), ...(note !== undefined && { note }) })
-        : checkInsApi.remove(habit.id, date),
+    mutationFn: ({ habit, date, status, minutes, note, total }: CheckInVars): Promise<XpResult> =>
+      total !== undefined
+        ? quantitiesApi.set({ habitId: habit.id, date, total })
+        : status
+          ? checkInsApi.upsert({ habitId: habit.id, date, status, ...(minutes !== undefined && { minutes }), ...(note !== undefined && { note }) })
+          : checkInsApi.remove(habit.id, date),
     networkMode: 'online',
     scope: { id: 'checkin' },
     // Rede instável com o aparelho "online": tenta mais algumas vezes antes de desistir.

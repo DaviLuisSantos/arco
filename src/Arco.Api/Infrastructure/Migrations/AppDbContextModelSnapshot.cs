@@ -383,6 +383,10 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("TimesPerWeek")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Unit")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
 
@@ -395,6 +399,39 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Habits");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.HabitDayQuantity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HabitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TotalTenths")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("HabitId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("HabitDayQuantities");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.HabitLevel", b =>
@@ -419,8 +456,14 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("MinimumTenths")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("ReachedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("TargetTenths")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
@@ -491,7 +534,13 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("MinimumTenths")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TargetTenths")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("UserId")
@@ -1183,6 +1232,23 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Navigation("AnchorHabit");
 
                     b.Navigation("Goal");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.HabitDayQuantity", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.Habit", "Habit")
+                        .WithMany()
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Habit");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.HabitLevel", b =>

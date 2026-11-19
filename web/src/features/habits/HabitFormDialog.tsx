@@ -17,6 +17,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { WEEKDAY_INITIALS, WEEKDAY_NAMES } from "../../lib/dates";
 import { errorMessage } from "../../lib/errors";
+import { formatQuantity, parseQuantity, validTargets } from "../../lib/quantity";
 import { queryKeys } from "../../lib/queryKeys";
 import { useInvalidateData } from "../../lib/useInvalidateData";
 import { PlanLimitNotice, usePlanLimitHandler } from "../billing";
@@ -93,7 +94,10 @@ type Errors = Partial<
     | "minimum"
     | "reminder"
     | "planned"
-    | "anchor",
+    | "anchor"
+    | "unit"
+    | "target"
+    | "minimumTarget",
     string
   >
 >;
@@ -163,7 +167,15 @@ function HabitForm({
     habit?.plannedLevels.map((l) => ({
       levelDescription: l.description,
       minimumDescription: l.minimumDescription,
+      target: formatQuantity(l.target),
+      minimumTarget: formatQuantity(l.minimumTarget),
     })) ?? [],
+  );
+  const [measure, setMeasure] = useState(!!habit?.unit);
+  const [unit, setUnit] = useState(habit?.unit ?? "");
+  const [target, setTarget] = useState(formatQuantity(habit?.target));
+  const [minimumTarget, setMinimumTarget] = useState(
+    formatQuantity(habit?.minimumTarget),
   );
   const [rule, setRule] = useState<LevelUpRuleDraft>({
     weeks: habit?.levelUpWeeks ?? null,
@@ -191,6 +203,10 @@ function HabitForm({
       timeOfDay,
       anchorSel,
       anchorText,
+      measure,
+      unit,
+      target,
+      minimumTarget,
     ]),
   );
   const snapshot = JSON.stringify([
@@ -208,6 +224,10 @@ function HabitForm({
     timeOfDay,
     anchorSel,
     anchorText,
+    measure,
+    unit,
+    target,
+    minimumTarget,
   ]);
   const isDirty = snapshot !== initial;
   useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
@@ -255,12 +275,24 @@ function HabitForm({
     if (emoji.trim().length > 8) e.emoji = t("form.maxChars", { max: 8 });
     if (frequencyType === "SpecificDays" && days.length === 0)
       e.days = t("form.daysRequired");
-    if (!levelDescription.trim()) e.level = t("form.levelRequired");
-    else if (levelDescription.trim().length > 120)
-      e.level = t("form.maxChars", { max: 120 });
-    if (!minimumDescription.trim()) e.minimum = t("form.minimumRequired");
-    else if (minimumDescription.trim().length > 120)
-      e.minimum = t("form.maxChars", { max: 120 });
+    if (measure) {
+      const u = unit.trim();
+      if (!u || u.length > 16) e.unit = t("form.unitRequired");
+      if (parseQuantity(target) === null) e.target = t("form.targetInvalid");
+      if (!validTargets(target, minimumTarget))
+        e.minimumTarget = t("form.minimumTargetInvalid");
+      if (levelDescription.trim().length > 120)
+        e.level = t("form.maxChars", { max: 120 });
+      if (minimumDescription.trim().length > 120)
+        e.minimum = t("form.maxChars", { max: 120 });
+    } else {
+      if (!levelDescription.trim()) e.level = t("form.levelRequired");
+      else if (levelDescription.trim().length > 120)
+        e.level = t("form.maxChars", { max: 120 });
+      if (!minimumDescription.trim()) e.minimum = t("form.minimumRequired");
+      else if (minimumDescription.trim().length > 120)
+        e.minimum = t("form.maxChars", { max: 120 });
+    }
     if (anchorSel === ANCHOR_TEXT) {
       if (!anchorText.trim()) e.anchor = t("form.anchorTextRequired");
       else if (anchorText.trim().length > 60)
@@ -268,7 +300,10 @@ function HabitForm({
     }
     if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime))
       e.reminder = t("form.timeFormat");
-    if (
+    if (measure) {
+      if (planned.some((l) => !validTargets(l.target, l.minimumTarget)))
+        e.planned = t("form.plannedQuantityIncomplete");
+    } else if (
       planned.some(
         (l) => !l.levelDescription.trim() || !l.minimumDescription.trim(),
       )
@@ -302,9 +337,14 @@ function HabitForm({
         levelDescription: levelDescription.trim(),
         minimumDescription: minimumDescription.trim(),
         reminderTime: reminderTime || null,
+        unit: measure ? unit.trim() : "",
+        levelTarget: measure ? parseQuantity(target) : null,
+        levelMinimumTarget: measure ? parseQuantity(minimumTarget) : null,
         plannedLevels: planned.map((l) => ({
           description: l.levelDescription.trim(),
           minimumDescription: l.minimumDescription.trim(),
+          target: measure ? parseQuantity(l.target) : null,
+          minimumTarget: measure ? parseQuantity(l.minimumTarget) : null,
         })),
         levelUpWeeks: rule.weeks,
         levelUpDaysPerWeek: rule.weeks === null ? null : rule.daysPerWeek,
@@ -472,6 +512,49 @@ function HabitForm({
         )}
       </fieldset>
 
+      <div className="flex flex-col gap-1">
+        <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={measure}
+            onChange={(e) => setMeasure(e.target.checked)}
+            className="size-5"
+          />
+          {t("form.measure")}
+        </label>
+        <p className="text-xs text-muted">{t("form.measureHint")}</p>
+      </div>
+      {measure && (
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            label={t("form.unit")}
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            placeholder={t("form.unitPlaceholder")}
+            maxLength={16}
+            onBlur={() => checkField("unit")}
+            error={errors.unit}
+          />
+          <Input
+            label={t("form.target")}
+            inputMode="decimal"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            maxLength={9}
+            onBlur={() => checkField("target")}
+            error={errors.target}
+          />
+          <Input
+            label={t("form.minimumTarget")}
+            inputMode="decimal"
+            value={minimumTarget}
+            onChange={(e) => setMinimumTarget(e.target.value)}
+            maxLength={9}
+            onBlur={() => checkField("minimumTarget")}
+            error={errors.minimumTarget}
+          />
+        </div>
+      )}
       <Input
         label={
           habit
@@ -480,7 +563,13 @@ function HabitForm({
         }
         value={levelDescription}
         onChange={(e) => setLevelDescription(e.target.value)}
-        placeholder={t("form.dosePlaceholder")}
+        placeholder={
+          measure && parseQuantity(target) !== null
+            ? t("form.autoDescription", {
+                value: `${formatQuantity(parseQuantity(target))} ${unit.trim()}`.trim(),
+              })
+            : t("form.dosePlaceholder")
+        }
         maxLength={120}
         hint={t("form.doseHint")}
         onBlur={() => checkField("level")}
@@ -490,7 +579,13 @@ function HabitForm({
         label={t("form.minimum")}
         value={minimumDescription}
         onChange={(e) => setMinimumDescription(e.target.value)}
-        placeholder={t("form.minimumPlaceholder")}
+        placeholder={
+          measure && parseQuantity(minimumTarget) !== null
+            ? t("form.autoDescription", {
+                value: `${formatQuantity(parseQuantity(minimumTarget))} ${unit.trim()}`.trim(),
+              })
+            : t("form.minimumPlaceholder")
+        }
         maxLength={120}
         hint={t("form.minimumHint")}
         onBlur={() => checkField("minimum")}
@@ -513,6 +608,8 @@ function HabitForm({
           <PlannedLevelsField
             currentLevel={habit?.level ?? 1}
             currentMinimum={minimumDescription.trim()}
+            currentMinimumTarget={minimumTarget}
+            unit={measure ? unit.trim() : undefined}
             value={planned}
             onChange={setPlanned}
             error={errors.planned}

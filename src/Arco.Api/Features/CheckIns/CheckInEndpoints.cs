@@ -1,4 +1,5 @@
 using Arco.Api.Features.Achievements;
+using Arco.Api.Features.Quantities;
 namespace Arco.Api.Features.CheckIns;
 
 public static class CheckInEndpoints
@@ -44,42 +45,15 @@ public static class CheckInEndpoints
         if (habit is null) return ApiResults.NotFound("Hábito não encontrado.");
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Hábitos arquivados não aceitam check-in.");
 
+        // A quantitative habit gets Done/Minimum from its day total (PUT /api/quantities), never by hand. Resending the
+        // status the total already gave is allowed, so the note and the minutes of that day can still be edited.
+        if (habit.Unit is not null && status is CheckInStatus.Done or CheckInStatus.Minimum
+            && !await db.CheckIns.AnyAsync(c => c.HabitId == habitId && c.Date == date && c.Status == status, ct))
+            return ApiResults.Error(StatusCodes.Status400BadRequest, QuantityCodes.QuantityRequired,
+                "Em hábito quantitativo, Feito e Mínimo vêm da quantidade registrada. Registre a quantidade do dia.");
+
         var now = clock.UtcNow;
-        var xp = XpRules.ForCheckIn(status, habit.CurrentLevelNumber);
-
-        var checkIn = await db.CheckIns.FirstOrDefaultAsync(c => c.HabitId == habitId && c.Date == date, ct);
-        List<XpEvent> events = checkIn is null
-            ? []
-            : await db.XpEvents.Where(e => e.CheckInId == checkIn.Id).ToListAsync(ct);
-        var previousXp = events.Sum(e => e.Amount);
-
-        if (checkIn is null)
-        {
-            checkIn = new CheckIn { HabitId = habitId, Date = date, CreatedAt = now };
-            db.CheckIns.Add(checkIn);
-            Arco.Api.Infrastructure.Observability.Telemetry.CheckIns.Add(1);
-        }
-        checkIn.Status = status;
-        checkIn.Xp = xp;
-        // Note: absent/null keeps the saved one; "" (or whitespace) removes it; text replaces it.
-        if (request.Note is not null) checkIn.Note = note;
-        checkIn.UpdatedAt = now;
-
-        // The check-in's XP event is replaced (one event per check-in, none when 0 XP).
-        db.XpEvents.RemoveRange(events);
-        if (xp > 0)
-        {
-            db.XpEvents.Add(new XpEvent
-            {
-                CheckIn = checkIn,
-                HabitId = habitId,
-                Date = date,
-                Amount = xp,
-                Source = XpSource.CheckIn,
-                Description = Describe(habit.Name, status),
-                CreatedAt = now,
-            });
-        }
+        var (checkIn, xpDelta) = await ApplyStatusAsync(db, habit, date, status, now, request.Note is not null, note, ct);
 
         // Manual minutes live in the same transaction (single SaveChanges). There is one Manual session per
         // (habit, day), updated in place, so resending the same PUT (offline queue) is idempotent.
@@ -118,18 +92,25 @@ public static class CheckInEndpoints
             return ApiResults.Conflict("Este check-in foi registrado ao mesmo tempo por outra requisição. Tente novamente.");
         }
 
-        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn) with { Minutes = manual.Count > 0 ? manual[0].Minutes : null }, xp - previousXp, await Queries.GetPlayerAsync(db, ct),
+        return Results.Ok(new CheckInResult(CheckInDto.From(checkIn) with { Minutes = manual.Count > 0 ? manual[0].Minutes : null }, xpDelta,await Queries.GetPlayerAsync(db, ct),
             await AchievementService.UnlockAsync(db, clock, ct)));
     }
 
     private static async Task<IResult> Delete(int habitId, DateOnly date, AppDbContext db, AppClock clock, CancellationToken ct)
     {
         var checkIn = await db.CheckIns.FirstOrDefaultAsync(c => c.HabitId == habitId && c.Date == date, ct);
-        if (checkIn is null) return ApiResults.NotFound("Check-in não encontrado.");
+        // The day's quantity total goes with the check-in (it may exist alone, below the minimum).
+        var quantity = await db.HabitDayQuantities.FirstOrDefaultAsync(q => q.HabitId == habitId && q.Date == date, ct);
+        if (checkIn is null && quantity is null) return ApiResults.NotFound("Check-in não encontrado.");
 
-        var events = await db.XpEvents.Where(e => e.CheckInId == checkIn.Id).ToListAsync(ct);
-        db.XpEvents.RemoveRange(events);
-        db.CheckIns.Remove(checkIn);
+        List<XpEvent> events = [];
+        if (quantity is not null) db.HabitDayQuantities.Remove(quantity);
+        if (checkIn is not null)
+        {
+            events = await db.XpEvents.Where(e => e.CheckInId == checkIn.Id).ToListAsync(ct);
+            db.XpEvents.RemoveRange(events);
+            db.CheckIns.Remove(checkIn);
+        }
         // The manual minutes go with the check-in; Timer sessions stay.
         db.FocusSessions.RemoveRange(await db.FocusSessions
             .Where(s => s.HabitId == habitId && s.Date == date && s.Source == FocusSource.Manual).ToListAsync(ct));
@@ -157,6 +138,52 @@ public static class CheckInEndpoints
                 c.Note))
             .ToListAsync(ct);
         return Results.Ok(checkIns);
+    }
+
+    /// <summary>
+    /// Sets the status of a habit's check-in on a day (creating it if needed) and replaces its XP event, all staged in
+    /// <paramref name="db"/> (the caller saves). <paramref name="habit"/> must have its levels loaded. When
+    /// <paramref name="setNote"/> is false the saved note stays. Returns the check-in and the XP change it caused.
+    /// </summary>
+    internal static async Task<(CheckIn CheckIn, int XpDelta)> ApplyStatusAsync(AppDbContext db, Habit habit, DateOnly date,
+        CheckInStatus status, DateTime now, bool setNote, string? note, CancellationToken ct)
+    {
+        var xp = XpRules.ForCheckIn(status, habit.CurrentLevelNumber);
+
+        var checkIn = await db.CheckIns.FirstOrDefaultAsync(c => c.HabitId == habit.Id && c.Date == date, ct);
+        List<XpEvent> events = checkIn is null
+            ? []
+            : await db.XpEvents.Where(e => e.CheckInId == checkIn.Id).ToListAsync(ct);
+        var previousXp = events.Sum(e => e.Amount);
+
+        if (checkIn is null)
+        {
+            checkIn = new CheckIn { HabitId = habit.Id, Date = date, CreatedAt = now };
+            db.CheckIns.Add(checkIn);
+            Arco.Api.Infrastructure.Observability.Telemetry.CheckIns.Add(1);
+        }
+        checkIn.Status = status;
+        checkIn.Xp = xp;
+        // Note: absent/null keeps the saved one; "" (or whitespace) removes it; text replaces it.
+        if (setNote) checkIn.Note = note;
+        checkIn.UpdatedAt = now;
+
+        // The check-in's XP event is replaced (one event per check-in, none when 0 XP).
+        db.XpEvents.RemoveRange(events);
+        if (xp > 0)
+        {
+            db.XpEvents.Add(new XpEvent
+            {
+                CheckIn = checkIn,
+                HabitId = habit.Id,
+                Date = date,
+                Amount = xp,
+                Source = XpSource.CheckIn,
+                Description = Describe(habit.Name, status),
+                CreatedAt = now,
+            });
+        }
+        return (checkIn, xp - previousXp);
     }
 
     private static string Describe(string habitName, CheckInStatus status)

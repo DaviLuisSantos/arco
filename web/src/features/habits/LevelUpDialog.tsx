@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { Input } from '../../components/ui/Input'
 import { useAppMutation } from '../../lib/useAppMutation'
+import { formatQuantity, parseQuantity, validTargets } from '../../lib/quantity'
 
 interface LevelUpDialogProps {
   habit: Habit
@@ -59,12 +60,33 @@ function LevelUpForm({
 }) {
   const { t } = useTranslation('habits')
   const next = habit.plannedLevels[0]
-  const [levelDescription, setLevelDescription] = useState(next?.description ?? '')
-  const [minimumDescription, setMinimumDescription] = useState(next?.minimumDescription ?? '')
-  const [errors, setErrors] = useState<{ level?: string; minimum?: string }>({})
+  // Em hábito quantitativo as descrições ficam vazias (o servidor as gera da meta e do mínimo).
+  const [levelDescription, setLevelDescription] = useState(habit.unit ? '' : (next?.description ?? ''))
+  const [minimumDescription, setMinimumDescription] = useState(habit.unit ? '' : (next?.minimumDescription ?? ''))
+  const unit = habit.unit
+  const [target, setTarget] = useState(formatQuantity(next?.target))
+  const [minimumTarget, setMinimumTarget] = useState(formatQuantity(next?.minimumTarget ?? habit.minimumTarget))
+  const [errors, setErrors] = useState<{ level?: string; minimum?: string; target?: string; minimumTarget?: string }>(
+    {},
+  )
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (unit) {
+      const found = {
+        target: parseQuantity(target) !== null ? undefined : t('levelUp.targetInvalid'),
+        minimumTarget: validTargets(target, minimumTarget) ? undefined : t('levelUp.minimumTargetInvalid'),
+      }
+      setErrors(found)
+      if (found.target || found.minimumTarget) return
+      onSubmit({
+        target: parseQuantity(target),
+        minimumTarget: parseQuantity(minimumTarget),
+        levelDescription: levelDescription.trim() || undefined,
+        minimumDescription: minimumDescription.trim() || undefined,
+      })
+      return
+    }
     const found = {
       level: levelDescription.trim() ? undefined : t('levelUp.doseRequired'),
       minimum: minimumDescription.trim() ? undefined : t('levelUp.minimumRequired'),
@@ -76,20 +98,43 @@ function LevelUpForm({
 
   return (
     <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      {unit && (
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label={t('levelUp.newTarget', { unit })}
+            inputMode="decimal"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            maxLength={9}
+            autoFocus={!next}
+            error={errors.target}
+          />
+          <Input
+            label={t('levelUp.newMinimumTarget', { unit })}
+            inputMode="decimal"
+            value={minimumTarget}
+            onChange={(e) => setMinimumTarget(e.target.value)}
+            maxLength={9}
+            error={errors.minimumTarget}
+          />
+        </div>
+      )}
       <Input
         label={t('levelUp.newDose')}
         value={levelDescription}
         onChange={(e) => setLevelDescription(e.target.value)}
-        placeholder="30 min"
+        placeholder={unit && parseQuantity(target) !== null ? `${formatQuantity(parseQuantity(target))} ${unit}` : '30 min'}
         maxLength={120}
-        autoFocus={!next}
+        autoFocus={!next && !unit}
         error={errors.level}
       />
       <Input
         label={t('levelUp.newMinimum')}
         value={minimumDescription}
         onChange={(e) => setMinimumDescription(e.target.value)}
-        placeholder="10 min"
+        placeholder={
+          unit && parseQuantity(minimumTarget) !== null ? `${formatQuantity(parseQuantity(minimumTarget))} ${unit}` : '10 min'
+        }
         maxLength={120}
         error={errors.minimum}
       />

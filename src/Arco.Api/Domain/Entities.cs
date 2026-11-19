@@ -213,6 +213,8 @@ public class Habit : IUserOwned
     public string? AnchorText { get; set; }
     /// <summary>Manual order within the period.</summary>
     public int SortOrder { get; set; }
+    /// <summary>Unit (1-16 chars) of a quantitative habit; null = a regular habit.</summary>
+    public string? Unit { get; set; }
     public List<HabitLevel> Levels { get; set; } = [];
     /// <summary>The ladder ahead: the next levels, in order. Leveling up consumes the first one.</summary>
     public List<HabitPlannedLevel> PlannedLevels { get; set; } = [];
@@ -246,6 +248,10 @@ public class HabitPlannedLevel : IUserOwned
     public int Position { get; set; }
     public string Description { get; set; } = "";
     public string MinimumDescription { get; set; } = "";
+    /// <summary>Goal of a quantitative habit, in tenths of the unit (null otherwise).</summary>
+    public int? TargetTenths { get; set; }
+    /// <summary>Minimum of a quantitative habit, in tenths of the unit (null otherwise).</summary>
+    public int? MinimumTenths { get; set; }
 }
 
 public class HabitLevel : IUserOwned
@@ -257,6 +263,25 @@ public class HabitLevel : IUserOwned
     public string Description { get; set; } = "";
     public string MinimumDescription { get; set; } = "";
     public DateTime ReachedAt { get; set; }
+    /// <summary>Goal of a quantitative habit, in tenths of the unit (null otherwise).</summary>
+    public int? TargetTenths { get; set; }
+    /// <summary>Minimum of a quantitative habit, in tenths of the unit (null otherwise).</summary>
+    public int? MinimumTenths { get; set; }
+}
+
+/// <summary>
+/// Running total of a quantitative habit on a local day, in tenths of the habit's unit (an integer, to avoid decimals in
+/// SQLite). One per habit and day; a total of 0 is never stored.
+/// </summary>
+public class HabitDayQuantity : IUserOwned
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int HabitId { get; set; }
+    public Habit? Habit { get; set; }
+    public DateOnly Date { get; set; }
+    public int TotalTenths { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class CheckIn : IUserOwned

@@ -11,6 +11,9 @@ public static class McpInstructions
         Cada hábito tem um período (manhã, tarde, noite ou a qualquer hora) e pode vir "depois de" outro hábito ou de um texto;
         o Hoje mostra os hábitos nessa ordem do dia (criar_habito e editar_habito definem período e âncora).
 
+        Hábito quantitativo (com unidade, ex.: 8 copos): o status vem da quantidade do dia (meta = Feito, mínimo = Mínimo,
+        abaixo = pendente). Registre com registrar_quantidade; fazer_checkin só aceita Não fiz e Pulei nele.
+
         Comece com ver_hoje: ele traz a data de hoje, os hábitos (com ids) e o que está pendente. Use as ferramentas
         próprias para o dia a dia; para o resto, ler_documentacao_api e chamar_api cobrem toda a API. Os textos para o
         usuário são em português do Brasil, e as datas são YYYY-MM-DD no fuso do usuário.
