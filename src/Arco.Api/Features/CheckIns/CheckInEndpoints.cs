@@ -45,6 +45,11 @@ public static class CheckInEndpoints
         if (habit is null) return ApiResults.NotFound("Hábito não encontrado.");
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Hábitos arquivados não aceitam check-in.");
 
+        // A negative habit is clean (Done) or relapsed (Missed); there is no "minimum" version of it.
+        if (habit.Kind == HabitKind.Negative && status == CheckInStatus.Minimum)
+            return ApiResults.Error(StatusCodes.Status400BadRequest, "invalid_status",
+                "Em hábito negativo, o dia é Limpo (feito), Recaída (não feito) ou Pulado.");
+
         // A quantitative habit gets Done/Minimum from its day total (PUT /api/quantities), never by hand. Resending the
         // status the total already gave is allowed, so the note and the minutes of that day can still be edited.
         if (habit.Unit is not null && status is CheckInStatus.Done or CheckInStatus.Minimum

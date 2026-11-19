@@ -215,6 +215,8 @@ public class Habit : IUserOwned
     public int SortOrder { get; set; }
     /// <summary>Unit (1-16 chars) of a quantitative habit; null = a regular habit.</summary>
     public string? Unit { get; set; }
+    /// <summary>Positive (default) or Negative (quit habit); set on creation, never changes.</summary>
+    public HabitKind Kind { get; set; } = HabitKind.Positive;
     public List<HabitLevel> Levels { get; set; } = [];
     /// <summary>The ladder ahead: the next levels, in order. Leveling up consumes the first one.</summary>
     public List<HabitPlannedLevel> PlannedLevels { get; set; } = [];

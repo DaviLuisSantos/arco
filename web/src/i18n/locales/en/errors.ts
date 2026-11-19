@@ -28,6 +28,8 @@ const errors_en: typeof errors = {
   quantity_required: 'This habit is measured by amount: log the value instead of marking Done or Minimum.',
   not_quantitative: 'This habit is not measured by amount.',
   invalid_quantity: 'Invalid amount. Use a number with up to 1 decimal place.',
+  kind_change: 'The habit type (do or quit) cannot be changed after creation.',
+  invalid_status: 'This status does not apply to this habit.',
   slug_taken: 'This address is already taken.',
   two_factor_required: 'Enter the two-factor verification code.',
   invalid_two_factor_code: 'Invalid code. Try again.',

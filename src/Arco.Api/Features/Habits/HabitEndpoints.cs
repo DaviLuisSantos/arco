@@ -24,7 +24,8 @@ public static class HabitEndpoints
         string? AnchorText = null,
         string? Unit = null,
         decimal? LevelTarget = null,
-        decimal? LevelMinimumTarget = null);
+        decimal? LevelMinimumTarget = null,
+        HabitKind? Kind = null);
 
     /// <summary>The exact set of active habits of one period, in the wanted order.</summary>
     public sealed record ReorderRequest(TimeOfDay? TimeOfDay, int[]? HabitIds);
@@ -32,6 +33,9 @@ public static class HabitEndpoints
     public const string AnchorConflictCode = "anchor_conflict";
     public const string AnchorCycleCode = "anchor_cycle";
     public const string OrderMismatchCode = "order_mismatch";
+    public const string KindChangeCode = "kind_change";
+    /// <summary>Default dose and minimum of a negative habit.</summary>
+    public const string NoRelapseText = "Sem recaída";
     private const int MaxAnchorTextLength = 60;
 
     /// <summary>
@@ -212,6 +216,7 @@ public static class HabitEndpoints
     private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
+        request = request with { Kind = request.Kind ?? HabitKind.Positive };
         if (await ValidateAsync(request, db, null, ct) is { } error) return error;
         if (await PlanGate.CheckHabitLimitAsync(db, user, ct) is { } limit) return limit;
 
@@ -224,8 +229,8 @@ public static class HabitEndpoints
         habit.Levels.Add(new HabitLevel
         {
             Level = 1,
-            Description = LevelText(request.LevelDescription, target, habit.Unit),
-            MinimumDescription = LevelText(request.MinimumDescription, minimum, habit.Unit),
+            Description = LevelText(request.LevelDescription, target, habit.Unit, habit.Kind),
+            MinimumDescription = LevelText(request.MinimumDescription, minimum, habit.Unit, habit.Kind),
             TargetTenths = target,
             MinimumTenths = minimum,
             ReachedAt = now,
@@ -240,6 +245,12 @@ public static class HabitEndpoints
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
+
+        // The kind is set on creation; absent keeps it, a different one is refused.
+        if (request.Kind is { } kind && kind != habit.Kind)
+            return ApiResults.Error(StatusCodes.Status400BadRequest, KindChangeCode,
+                "O tipo do hábito (positivo ou negativo) não pode ser alterado depois de criado.");
+        request = request with { Kind = habit.Kind };
 
         // Absent quantity fields keep the current ones, so clients that predate quantitative habits do not turn
         // them back into regular habits; only unit "" does that.
@@ -264,8 +275,8 @@ public static class HabitEndpoints
         {
             current.TargetTenths = Tenths(request.LevelTarget, habit.Unit);
             current.MinimumTenths = Tenths(request.LevelMinimumTarget, habit.Unit);
-            current.Description = LevelText(request.LevelDescription, current.TargetTenths, habit.Unit);
-            current.MinimumDescription = LevelText(request.MinimumDescription, current.MinimumTenths, habit.Unit);
+            current.Description = LevelText(request.LevelDescription, current.TargetTenths, habit.Unit, habit.Kind);
+            current.MinimumDescription = LevelText(request.MinimumDescription, current.MinimumTenths, habit.Unit, habit.Kind);
         }
         // A regular habit has no goals: back from quantitative, the history stays but its goals go.
         if (habit.Unit is null)
@@ -308,6 +319,14 @@ public static class HabitEndpoints
                 ?? (request?.Target is null ? planned?.Description : null) ?? QuantityRules.Describe(targetTenths.Value, unit);
             minimum = Text.Clean(request?.MinimumDescription)
                 ?? (request?.MinimumTarget is null ? planned?.MinimumDescription : null) ?? QuantityRules.Describe(minimumTenths.Value, unit);
+        }
+        else if (habit.Kind == HabitKind.Negative)
+        {
+            // Negative: texts are optional. Auto: the milestone being left ("30 dias limpo") and "Sem recaída".
+            var milestone = CleanMilestones.ForLevel(habit.CurrentLevelNumber);
+            description = Text.Clean(request?.LevelDescription) ?? Text.Clean(planned?.Description)
+                ?? (milestone is { } days ? $"{days} dias limpo" : NoRelapseText);
+            minimum = Text.Clean(request?.MinimumDescription) ?? Text.Clean(planned?.MinimumDescription) ?? NoRelapseText;
         }
         else
         {
@@ -386,8 +405,9 @@ public static class HabitEndpoints
         unit is not null && value is { } v && QuantityRules.TryToTenths(v, out var tenths) ? tenths : null;
 
     /// <summary>The level text: what was typed or, in a quantitative habit, "&lt;amount&gt; &lt;unit&gt;".</summary>
-    private static string LevelText(string? typed, int? tenths, string? unit) =>
-        Text.Clean(typed) ?? (unit is not null && tenths is { } t ? QuantityRules.Describe(t, unit) : "");
+    private static string LevelText(string? typed, int? tenths, string? unit, HabitKind kind = HabitKind.Positive) =>
+        Text.Clean(typed) ?? (unit is not null && tenths is { } t ? QuantityRules.Describe(t, unit)
+            : kind == HabitKind.Negative ? NoRelapseText : "");
 
     /// <summary>Validates a goal/minimum pair of a quantitative habit; null when valid.</summary>
     private static string? ValidateAmounts(decimal? target, decimal? minimum)
@@ -434,7 +454,15 @@ public static class HabitEndpoints
         if (emoji is not null && (new StringInfo(emoji).LengthInTextElements > 8 || emoji.Length > 32))
             return "O emoji deve ter no máximo 8 caracteres.";
 
-        switch (r.FrequencyType)
+        // A negative habit is always daily and never quantitative; its dose and minimum are optional.
+        var negative = r.Kind == HabitKind.Negative;
+        if (negative)
+        {
+            if (r.FrequencyType is { } f && f != FrequencyType.Daily) return "Hábito negativo é sempre diário.";
+            if (Text.Clean(r.Unit) is not null) return "Hábito negativo não tem quantidade (unidade).";
+        }
+
+        switch (negative ? FrequencyType.Daily : r.FrequencyType)
         {
             case null:
                 return "Informe a frequência do hábito.";
@@ -456,15 +484,16 @@ public static class HabitEndpoints
             return $"A unidade deve ter entre 1 e {QuantityRules.MaxUnitLength} caracteres.";
         if (quantitative && ValidateAmounts(r.LevelTarget, r.LevelMinimumTarget) is { } amountsError) return amountsError;
 
-        if (!DescriptionOk(r.LevelDescription, quantitative)) return LevelDescriptionError;
-        if (!DescriptionOk(r.MinimumDescription, quantitative)) return MinimumDescriptionError;
+        var optionalText = quantitative || negative;
+        if (!DescriptionOk(r.LevelDescription, optionalText)) return LevelDescriptionError;
+        if (!DescriptionOk(r.MinimumDescription, optionalText)) return MinimumDescriptionError;
 
         if (r.PlannedLevels is { } plannedLevels)
         {
             if (plannedLevels.Length > MaxPlannedLevels) return $"Planeje no máximo {MaxPlannedLevels} níveis à frente.";
-            if (plannedLevels.Any(l => !DescriptionOk(l?.EffectiveDescription, quantitative)))
+            if (plannedLevels.Any(l => !DescriptionOk(l?.EffectiveDescription, optionalText)))
                 return "A dose de cada nível planejado deve ter entre 1 e 120 caracteres.";
-            if (plannedLevels.Any(l => !DescriptionOk(l?.MinimumDescription, quantitative)))
+            if (plannedLevels.Any(l => !DescriptionOk(l?.MinimumDescription, optionalText)))
                 return "O mínimo de cada nível planejado deve ter entre 1 e 120 caracteres.";
             if (quantitative && plannedLevels.Select(l => ValidateAmounts(l?.Target, l?.MinimumTarget)).FirstOrDefault(e => e is not null) is { } plannedError)
                 return $"Nível planejado: {plannedError}";
@@ -492,7 +521,8 @@ public static class HabitEndpoints
         habit.Name = r.Name!.Trim();
         habit.Emoji = Text.Clean(r.Emoji);
         habit.GoalId = r.GoalId;
-        habit.FrequencyType = r.FrequencyType!.Value;
+        if (r.Kind is { } kind) habit.Kind = kind;
+        habit.FrequencyType = habit.Kind == HabitKind.Negative ? FrequencyType.Daily : r.FrequencyType!.Value;
         habit.FrequencyDays = habit.FrequencyType == FrequencyType.SpecificDays ? r.FrequencyDays!.Order().ToList() : [];
         habit.TimesPerWeek = habit.FrequencyType == FrequencyType.WeeklyTarget ? r.TimesPerWeek : null;
         habit.ReminderTime = Text.Clean(r.ReminderTime) is { } reminder && TryParseTime(reminder, out var time) ? time : null;

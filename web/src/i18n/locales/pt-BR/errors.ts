@@ -26,6 +26,8 @@ export default {
   quantity_required: 'Este hábito é medido por quantidade: registre o valor em vez de marcar Feito ou Mínimo.',
   not_quantitative: 'Este hábito não é medido por quantidade.',
   invalid_quantity: 'Quantidade inválida. Use um número, com até 1 casa decimal.',
+  kind_change: 'O tipo do hábito (fazer ou largar) não pode mudar depois de criado.',
+  invalid_status: 'Esse status não vale para este hábito.',
   slug_taken: 'Esse endereço já está em uso.',
   two_factor_required: 'Informe o código de verificação em duas etapas.',
   invalid_two_factor_code: 'Código inválido. Tente de novo.',

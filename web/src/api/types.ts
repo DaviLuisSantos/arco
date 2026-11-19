@@ -108,9 +108,13 @@ export interface VacationInput {
 
 export type TimeOfDay = 'Anytime' | 'Morning' | 'Afternoon' | 'Evening'
 
+export type HabitKind = 'Positive' | 'Negative'
+
 export interface Habit {
   id: number
   name: string
+  /** Hábito para fazer (Positive) ou para largar (Negative). Definido na criação. */
+  kind: HabitKind
   emoji: string | null
   goalId: number | null
   frequencyType: FrequencyType
@@ -208,6 +212,8 @@ export interface TodayHabit extends Habit {
   /** 2 semanas terminadas, no nível atual, abaixo da metade da meta semanal. */
   levelDownSuggested: boolean
   streak: Streak
+  /** Próximo marco de dias limpos (só hábito negativo; null depois do último). */
+  nextMilestone: number | null
 }
 
 export interface WeeklyReviewStatus {
@@ -461,6 +467,8 @@ export interface Health {
 // Corpos de requisição
 
 export interface HabitInput {
+  /** Só na criação; ausente mantém (no PUT, mudar dá 400 `kind_change`). */
+  kind?: HabitKind
   name: string
   emoji?: string | null
   goalId?: number | null

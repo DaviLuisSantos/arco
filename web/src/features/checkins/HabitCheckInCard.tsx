@@ -38,7 +38,13 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   const quantitative = Boolean(habit.unit) && habit.target !== null && habit.minimumTarget !== null
   const showNoteField = current === 'Skipped' || savedNote !== '' || noteOpen
   const statusGroup = useRef<HTMLDivElement>(null)
-  const options = quantitative ? OPTIONS.filter((o) => o.status === 'Missed' || o.status === 'Skipped') : OPTIONS
+  const negative = habit.kind === 'Negative'
+  const options = negative
+    ? OPTIONS.filter((o) => o.status !== 'Minimum')
+    : quantitative
+      ? OPTIONS.filter((o) => o.status === 'Missed' || o.status === 'Skipped')
+      : OPTIONS
+  const statusLabel = (s: CheckInStatus) => (negative ? t(`statusNegative.${s as 'Done' | 'Missed' | 'Skipped'}`) : t(`status.${s}`))
   const busy = checkIn.isPending && !checkIn.isPaused
 
   function setTotal(total: number) {
@@ -100,9 +106,19 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           <p className="truncate text-sm text-muted">
             {t('card.level', { level: habit.level })} · {habit.levelDescription}
           </p>
-          <p className="truncate text-xs text-muted/90">{t('card.minimum', { value: habit.minimumDescription })}</p>
+          {!negative && <p className="truncate text-xs text-muted/90">{t('card.minimum', { value: habit.minimumDescription })}</p>}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {habit.streak.current > 0 && (
+            {negative && (
+              <span data-testid="clean-days" className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-text">
+                {t('card.clean', { count: habit.streak.current, best: habit.streak.best })}
+              </span>
+            )}
+            {negative && habit.nextMilestone !== null && (
+              <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
+                {t('card.nextMilestone', { days: habit.nextMilestone })}
+              </span>
+            )}
+            {!negative && habit.streak.current > 0 && (
               <span
                 className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-text"
                 title={t('card.streakTitle', {
@@ -139,7 +155,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
 
       <div
         ref={statusGroup}
-        className={cn('mt-3 grid gap-1.5', quantitative ? 'grid-cols-2' : 'grid-cols-4')}
+        className={cn('mt-3 grid gap-1.5', quantitative ? 'grid-cols-2' : negative ? 'grid-cols-3' : 'grid-cols-4')}
         role="group"
         aria-label={t('card.checkInOf', { name: habit.name })}
       >
@@ -160,7 +176,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
-              {t(`status.${status}`)}
+              {statusLabel(status)}
             </button>
           )
         })}
@@ -202,7 +218,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </form>
       )}
 
-      {(current === 'Done' || current === 'Minimum') && (
+      {!negative && (current === 'Done' || current === 'Minimum') && (
         <form
           onSubmit={(e) => {
             e.preventDefault()

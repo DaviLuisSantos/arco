@@ -113,7 +113,9 @@ export function useCheckIn() {
             ? t('feedback.dayComplete')
             : vars.status === null
               ? t('feedback.removed', { name })
-              : t(`feedback.${vars.status}`, { name }),
+              : vars.habit.kind === 'Negative' && (vars.status === 'Done' || vars.status === 'Missed')
+                ? t(`feedback.${vars.status}Negative`, { name })
+                : t(`feedback.${vars.status}`, { name }),
           variant: dayComplete ? 'achievement' : vars.status === 'Missed' || vars.status === 'Skipped' ? 'info' : 'success',
           duration: UNDO_MS,
           action: {

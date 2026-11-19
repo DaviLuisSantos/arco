@@ -185,6 +185,42 @@ public static class DemoSeeder
                 });
         }
 
+        // Negative habit (no rng, so the data above stays unchanged): clean every day up to yesterday,
+        // one relapse mid-way, then 7 clean days reach the first milestone (level 2). Today stays pending.
+        var relapseDate = start.AddDays(8);
+        var soda = new Habit
+        {
+            Name = "Sem refrigerante", Emoji = "🥤", Kind = HabitKind.Negative, FrequencyType = FrequencyType.Daily,
+            TimeOfDay = TimeOfDay.Anytime, SortOrder = 1, CreatedAt = At(start),
+            Levels =
+            [
+                new HabitLevel { Level = 1, Description = "Sem recaída", MinimumDescription = "Sem recaída", ReachedAt = At(start) },
+                new HabitLevel { Level = 2, Description = "7 dias limpo", MinimumDescription = "Sem recaída", ReachedAt = At(relapseDate.AddDays(7)) },
+            ],
+        };
+        db.Habits.Add(soda);
+        await db.SaveChangesAsync(ct);
+        for (var d = start; d < today; d = d.AddDays(1))
+        {
+            var sstatus = d == relapseDate ? CheckInStatus.Missed : CheckInStatus.Done;
+            var slevel = soda.Levels.Where(l => DateOnly.FromDateTime(l.ReachedAt) <= d).Max(l => l.Level);
+            var sxp = XpRules.ForCheckIn(sstatus, slevel);
+            var sci = new CheckIn { HabitId = soda.Id, Date = d, Status = sstatus, Xp = sxp, CreatedAt = At(d), UpdatedAt = At(d) };
+            if (d == relapseDate) sci.Note = "Cedi numa festa.";
+            db.CheckIns.Add(sci);
+            if (sxp > 0)
+                events.Add(new XpEvent
+                {
+                    Date = d, Amount = sxp, Source = XpSource.CheckIn, HabitId = soda.Id, CreatedAt = At(d),
+                    Description = $"{soda.Name}: feito", CheckIn = sci,
+                });
+        }
+        events.Add(new XpEvent
+        {
+            Date = relapseDate.AddDays(7), Amount = XpRules.HabitLevelUp, Source = XpSource.HabitLevelUp, HabitId = soda.Id,
+            CreatedAt = At(relapseDate.AddDays(7)), Description = "Sem refrigerante: nível 2",
+        });
+
         // Mood on most days, correlated with how the day went (lower roll = better day).
         var moodRng = new Random(11);
         foreach (var (d, (sum, count)) in dayRolls)

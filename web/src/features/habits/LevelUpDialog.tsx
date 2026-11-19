@@ -27,11 +27,17 @@ export function LevelUpDialog({ habit, open, onClose }: LevelUpDialogProps) {
       onClose={onClose}
       title={t('levelUp.title', { level: habit.level + 1 })}
       description={
-        <>
-          {t('levelUp.today', { dose: habit.levelDescription, minimum: habit.minimumDescription })}{' '}
-          {habit.plannedLevels.length > 0 ? t('levelUp.plannedNext') : t('levelUp.nextDose')}{' '}
-          <span className="font-semibold text-xp">+50 XP</span>
-        </>
+        habit.kind === 'Negative' ? (
+          <>
+            {t('levelUp.negativeNext')} <span className="font-semibold text-xp">+50 XP</span>
+          </>
+        ) : (
+          <>
+            {t('levelUp.today', { dose: habit.levelDescription, minimum: habit.minimumDescription })}{' '}
+            {habit.plannedLevels.length > 0 ? t('levelUp.plannedNext') : t('levelUp.nextDose')}{' '}
+            <span className="font-semibold text-xp">+50 XP</span>
+          </>
+        )
       }
       footer={
         <>
@@ -72,6 +78,11 @@ function LevelUpForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    // Hábito para largar: o servidor gera o texto ("<marco> dias limpo").
+    if (habit.kind === 'Negative') {
+      onSubmit({})
+      return
+    }
     if (unit) {
       const found = {
         target: parseQuantity(target) !== null ? undefined : t('levelUp.targetInvalid'),
@@ -94,6 +105,10 @@ function LevelUpForm({
     setErrors(found)
     if (found.level || found.minimum) return
     onSubmit({ levelDescription: levelDescription.trim(), minimumDescription: minimumDescription.trim() })
+  }
+
+  if (habit.kind === 'Negative') {
+    return <form id={formId} onSubmit={handleSubmit} noValidate />
   }
 
   return (

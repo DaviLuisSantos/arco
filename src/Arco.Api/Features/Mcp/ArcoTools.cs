@@ -30,7 +30,8 @@ public sealed class ArcoTools(ArcoApiClient api)
     [McpServerTool(Name = "fazer_checkin", Title = "Fazer check-in", Idempotent = true)]
     [Description("Marca (ou altera) o check-in de um hábito em um dia. Devolve o XP ganho, o jogador e conquistas desbloqueadas. " +
                  "Em hábito quantitativo (com unidade) só vale Missed (Não fiz) e Skipped (Pulei); Feito e Mínimo vêm da " +
-                 "quantidade: use registrar_quantidade.")]
+                 "quantidade: use registrar_quantidade. Em hábito negativo (para largar) Done = Limpo e Missed = Recaída " +
+                 "(veja também registrar_recaida); Minimum não vale.")]
     public async Task<string> FazerCheckIn(
         [Description("Id do hábito (veja ver_hoje ou listar_habitos).")] int habitId,
         [Description(StatusDescription)] string status,
@@ -40,6 +41,17 @@ public sealed class ArcoTools(ArcoApiClient api)
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Put, "/api/checkins",
             new { habitId, date = data ?? await TodayAsync(ct), status, minutes = minutos, note = nota }, ct);
+
+    [McpServerTool(Name = "registrar_recaida", Title = "Registrar recaída", Idempotent = true)]
+    [Description("Registra uma recaída em um hábito negativo (para largar) em um dia: check-in Missed, 0 XP, e os dias limpos " +
+                 "voltam a zero. Para confirmar um dia limpo, use fazer_checkin com Done.")]
+    public async Task<string> RegistrarRecaida(
+        [Description("Id do hábito negativo.")] int habitId,
+        [Description(DateDescription)] string? data = null,
+        [Description("Nota opcional (até 280 caracteres). Omitida = mantém a nota já salva.")] string? nota = null,
+        CancellationToken ct = default) =>
+        await api.SendAsync(HttpMethod.Put, "/api/checkins",
+            new { habitId, date = data ?? await TodayAsync(ct), status = "Missed", note = nota }, ct);
 
     [McpServerTool(Name = "registrar_humor", Title = "Registrar humor", Idempotent = true)]
     [Description("Registra (ou altera) o humor do dia, de 1 (muito ruim) a 5 (muito bom). Um por dia; não dá XP. " +
@@ -169,12 +181,14 @@ public sealed class ArcoTools(ArcoApiClient api)
     [Description("Cria um hábito no nível 1. Para escada planejada e regra de subida por semanas, use chamar_api " +
                  "(POST /api/habits com plannedLevels: [{ description, minimumDescription }], levelUpWeeks e " +
                  "levelUpDaysPerWeek; veja ler_documentacao_api). Hábito quantitativo: informe unidade, meta e minimoQuantidade " +
-                 "numéricos (dose e minimo textuais ficam opcionais).")]
+                 "numéricos (dose e minimo textuais ficam opcionais). Hábito negativo (para largar, tipo = negativo): é sempre " +
+                 "Daily, sem unidade; dose e minimo ficam opcionais (vazios viram \"Sem recaída\"); os dias passados sem " +
+                 "recaída viram dias limpos sozinhos.")]
     public Task<string> CriarHabito(
         [Description("Nome (até 80 caracteres).")] string nome,
-        [Description("Daily (todo dia), SpecificDays (dias da semana) ou WeeklyTarget (N vezes por semana).")] string frequencia,
-        [Description("Dose do nível 1: o que conta como Feito (ex.: \"15 min\"). Em hábito quantitativo pode ficar vazia (vira \"<meta> <unidade>\").")] string dose,
-        [Description("Versão mínima para dias difíceis (ex.: \"5 min\"). Em hábito quantitativo pode ficar vazia.")] string minimo,
+        [Description("Daily (todo dia), SpecificDays (dias da semana) ou WeeklyTarget (N vezes por semana). Em hábito negativo é sempre Daily.")] string frequencia,
+        [Description("Dose do nível 1: o que conta como Feito (ex.: \"15 min\"). Em hábito quantitativo pode ficar vazia (vira \"<meta> <unidade>\"); em hábito negativo, vazia vira \"Sem recaída\".")] string dose,
+        [Description("Versão mínima para dias difíceis (ex.: \"5 min\"). Em hábito quantitativo pode ficar vazia; em hábito negativo, vazia vira \"Sem recaída\".")] string minimo,
         [Description("Emoji opcional.")] string? emoji = null,
         [Description("Para SpecificDays: dias da semana, 0 = domingo … 6 = sábado.")] int[]? diasDaSemana = null,
         [Description("Para WeeklyTarget: vezes por semana (1 a 7).")] int? vezesPorSemana = null,
@@ -185,6 +199,7 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description("Unidade de um hábito quantitativo (até 16 caracteres, ex.: \"copos\", \"páginas\"). Exige meta e minimoQuantidade.")] string? unidade = null,
         [Description("Meta do nível 1 do hábito quantitativo (número > 0, 1 casa decimal): total que conta como Feito.")] decimal? meta = null,
         [Description("Mínimo do nível 1 do hábito quantitativo (número > 0, não maior que a meta): total que conta como Mínimo.")] decimal? minimoQuantidade = null,
+        [Description("'positivo' (padrão) ou 'negativo' (hábito para largar, ex.: \"não fumar\"; o tipo não muda depois).")] string? tipo = null,
         CancellationToken ct = default)
     {
         var body = new JsonObject
@@ -205,6 +220,7 @@ public sealed class ArcoTools(ArcoApiClient api)
             body["levelTarget"] = meta;
             body["levelMinimumTarget"] = minimoQuantidade;
         }
+        if (tipo is not null) body["kind"] = ParseKind(tipo);
         if (periodo is not null) body["timeOfDay"] = ParsePeriod(periodo);
         if (!string.IsNullOrWhiteSpace(depoisDe)) ApplyAnchor(body, depoisDe);
         return api.SendAsync(HttpMethod.Post, "/api/habits", body, ct);
@@ -237,6 +253,13 @@ public sealed class ArcoTools(ArcoApiClient api)
         if (depoisDe is not null) ApplyAnchor(body, depoisDe);
         return await api.SendAsync(HttpMethod.Put, $"/api/habits/{habitoId}", body, ct);
     }
+
+    private static string ParseKind(string tipo) => tipo.Trim().ToLowerInvariant() switch
+    {
+        "positivo" => "Positive",
+        "negativo" => "Negative",
+        _ => throw new McpException("Tipo inválido: use positivo ou negativo."),
+    };
 
     private static string ParsePeriod(string periodo) => periodo.Trim().ToLowerInvariant() switch
     {
