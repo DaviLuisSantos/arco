@@ -350,6 +350,37 @@ export interface WeeklySummary {
   habits: HabitPeriodStats[]
   cycle: Cycle | null
   goals: Goal[]
+  notes: WeekNote[]
+  mood: MoodSummary
+}
+
+export interface WeekNote {
+  habitId: number
+  habitName: string
+  date: string
+  status: CheckInStatus
+  note: string
+}
+
+export interface MoodSummary {
+  days: number
+  average: number | null
+  goodDays: number
+  badDays: number
+  goodConsistency: number | null
+  badConsistency: number | null
+}
+
+/** Humor do dia, de 1 (muito ruim) a 5 (muito bom). */
+export interface Mood {
+  date: string
+  value: number
+}
+
+export interface MoodInput {
+  /** Ausente = hoje. */
+  date?: string
+  value: number
 }
 
 export interface WeeklyReviewResult extends XpResult {
@@ -407,7 +438,7 @@ export interface CheckInInput {
   status: CheckInStatus
   /** Ausente = não mexe; 0 = remove a sessão manual do dia. */
   minutes?: number
-  /** Anotação do dia (até 280); a UI só usa no Pulei. */
+  /** Nota do dia (até 280), em qualquer status. Ausente = mantém; "" = remove. */
   note?: string
 }
 

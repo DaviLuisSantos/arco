@@ -162,6 +162,35 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.ToTable("Cycles");
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.DailyMood", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("DailyMoods");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.FocusSession", b =>
                 {
                     b.Property<int>("Id")
@@ -1048,6 +1077,15 @@ namespace Arco.Api.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.Cycle", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.DailyMood", b =>
                 {
                     b.HasOne("Arco.Api.Domain.User", null)
                         .WithMany()

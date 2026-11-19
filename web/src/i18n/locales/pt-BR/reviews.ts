@@ -17,6 +17,22 @@ const ns = {
   levelUpRate: '{{rate}} de consistência nos últimos 14 dias.',
   levelDownTitle: '{{habit}}: voltar ao nível {{level}}?',
   levelDownDesc: 'Duas semanas abaixo da metade da meta. Um degrau atrás mantém a constância.',
+  mood: {
+    title: 'Humor da semana',
+    empty: 'Sem humor registrado nesta semana. Marque como foi o dia na tela Hoje.',
+    average: 'Humor médio:',
+    daysLogged_one: '({{count}} dia registrado)',
+    daysLogged_other: '({{count}} dias registrados)',
+    goodDays_one: 'Dia bom ({{count}})',
+    goodDays_other: 'Dias bons ({{count}})',
+    badDays_one: 'Dia ruim ({{count}})',
+    badDays_other: 'Dias ruins ({{count}})',
+    noData: 'Sem dados',
+    consistencyHint: 'Consistência: check-ins feitos ÷ dias devidos, por grupo de dias.',
+  },
+  notes: {
+    title: 'Notas da semana',
+  },
   weekPrompts: {
     wins: 'O que funcionou nesta semana?',
     obstacles: 'O que atrapalhou?',

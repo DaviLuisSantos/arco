@@ -267,6 +267,17 @@ public class CheckIn : IUserOwned
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>How the day went (1 = very bad … 5 = very good). One per user and day. No XP.</summary>
+public class DailyMood : IUserOwned
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public DateOnly Date { get; set; }
+    public int Value { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 /// <summary>Time spent on a habit on a given local day (timer or manual minutes). No XP.</summary>
 public class FocusSession : IUserOwned
 {

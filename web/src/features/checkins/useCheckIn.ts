@@ -82,8 +82,8 @@ export function useCheckIn() {
         d ? { ...d, habits: d.habits.map((h) => (h.id === vars.habit.id ? optimistic(h, vars) : h)) } : d,
       )
 
-      // Só trocas de status (não o salvar minutos) ganham toast com "Desfazer".
-      if (!silent && vars.minutes === undefined) {
+      // Só trocas de status (não o salvar minutos nem a nota) ganham toast com "Desfazer".
+      if (!silent && vars.minutes === undefined && vars.note === undefined) {
         const before = previous?.habits.find((h) => h.id === vars.habit.id)?.checkIn ?? null
         const after = qc.getQueryData<Today>(queryKeys.today)
         const dueAfter = after ? dueOf(after.habits) : []
@@ -98,7 +98,6 @@ export function useCheckIn() {
           date: vars.date,
           status: before?.status ?? null,
           ...(before ? { minutes: before.minutes ?? 0 } : {}),
-          ...(before?.note ? { note: before.note } : {}),
         }
         toast.show({
           message: dayComplete

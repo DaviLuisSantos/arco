@@ -11,6 +11,7 @@ import { DayStone } from '../features/arch/DayStone'
 import { HabitCheckInCard } from '../features/checkins/HabitCheckInCard'
 import { CycleStrip } from '../features/cycle/CycleStrip'
 import { GoalMiniCard } from '../features/goals/GoalMiniCard'
+import { MoodCard } from '../features/moods/MoodCard'
 import { PausedHabitsSection } from '../features/pauses/PausedHabitsSection'
 import { OnboardingSlot } from '../features/onboarding/FirstSessionChecklist'
 import { TemplateShortcuts } from '../features/onboarding/TemplateShortcuts'
@@ -119,6 +120,8 @@ export function TodayPage() {
       <PausedHabitsSection habits={pausedHabits} />
 
       <CycleStrip cycle={cycle} />
+
+      <MoodCard date={date} />
 
       <DayStone date={date} />
 

@@ -240,7 +240,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   resto de `/api` (na prática, com chave de API). Só no plano Pro (Free → 403 `plan_limit`). Para assistentes de IA operarem o Arco.
 - As ferramentas chamam esta própria API com a chave de quem chamou, então seguem as mesmas regras, XP e mensagens.
   Erros da API voltam como erro da ferramenta (`isError`), com a mensagem pt-BR.
-- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?`), `desfazer_checkin`, `registrar_foco`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
+- Ferramentas: `ver_hoje`, `fazer_checkin` (aceita `minutos?` e `nota?`: omitida mantém, `""` remove), `desfazer_checkin`, `registrar_foco`, `registrar_humor(valor, data?)`, `ver_arco`, `listar_habitos`, `ver_habito`, `criar_habito`,
   `subir_nivel`, `voltar_nivel`, `ver_ciclo_atual`, `atualizar_objetivo`, `marcar_marco`, `ver_revisao_semanal`,
   `fazer_revisao_semanal`, `ver_estatisticas`, `ver_conquistas`, `ver_parceiros`, `ver_resumo_parceiro(id)`,
   `configurar_perfil_publico(ativo?, slug?)` (sem argumentos só devolve o estado e o link), `ver_plano`,
@@ -290,10 +290,25 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
   - Data futura ou mais de 7 dias atrás → 400 `validation`.
   - Hábito arquivado → 400 `validation`.
   - `status: "Skipped"` ("Pulei") dispensa o dia: 0 XP, sem `XpEvent` (trocar um Feito/Mínimo por Pulei remove o XP, com `xpDelta` negativo) e não conta como check-in em conquistas e no admin. Não quebra a sequência nem entra nos esperados de consistência, estatísticas, revisões e parceiro. `minutes > 0` com `Skipped` → 400 `validation`.
-  - `note` (opcional, até 280 caracteres, texto limpo) vale para qualquer status; maior que isso → 400 `validation`. Ausente = sem nota.
+  - `note` (opcional, até 280 caracteres, texto limpo) vale para qualquer status; maior que isso → 400 `validation`. **Mudança de contrato:** `note` ausente ou `null` = **mantém** a nota já salva (trocar o status não a apaga); `""` (vazio ou só espaços) = **remove**; texto = substitui.
   - `minutes` (0–480, opcional): ausente = não mexe; `0` = remove a sessão de foco Manual do dia; `>0` = cria/substitui a única sessão Manual de (hábito, data). `minutes > 0` com status `Missed` → 400 `validation`. `checkIn.minutes` (`number | null`) devolve os minutos manuais do dia; aparece também em `GET /api/today` e no `recentCheckIns` de `GET /api/habits/{id}`.
 - `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404. Remove também a sessão de foco Manual do dia (as de Timer permanecem).
 - `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `CheckIn[]` (intervalo máximo de 366 dias; `habitId` opcional filtra um hábito).
+
+## Humor
+
+Um humor por usuário e dia, de 1 (muito ruim) a 5 (muito bom). Não dá XP e não entra em conquistas, estatísticas, ciclo, perfil público nem parceiro; só a revisão semanal usa.
+
+```ts
+interface Mood { date: string; value: number; } // value 1..5
+```
+
+- `GET /api/moods?from=YYYY-MM-DD&to=YYYY-MM-DD` → `Mood[]` (por data). Padrão: os últimos 7 dias (até hoje).
+- `PUT /api/moods` `{ date?, value }` → **200** `Mood`. Cria ou substitui o humor do dia; `date` padrão = hoje.
+  - `value` fora de 1..5 → 400 `mood_invalid_value`.
+  - Data futura ou mais de 7 dias atrás → 400 `date_out_of_range`.
+- `DELETE /api/moods/{date}` → **204**. Sem humor nesse dia → 404.
+- Ferramenta MCP: `registrar_humor(valor, data?)`.
 
 ## Pausas e modo férias
 
@@ -471,7 +486,8 @@ Sessões de foco (tempo dedicado a um hábito). Não dão XP. Os minutos enchem 
 ## Exportação
 
 - `GET /api/backup` → JSON (`arco-export-AAAA-MM-DD.json`) com tudo o que o usuário atual possui (ciclos, objetivos,
-  hábitos, check-ins, foco, XP, conquistas, revisões, configurações). Não inclui hashes de chaves de API nem chaves de push.
+  hábitos, check-ins, foco, XP, conquistas, revisões, humores, configurações). `dailyMoods` traz
+  `{ date, value, createdAt, updatedAt }` por dia. Não inclui hashes de chaves de API nem chaves de push.
 - O servidor continua fazendo a cópia diária do SQLite inteiro (14 dias), mas ela não é exposta pela API;
   `GET /api/backups` foi removido.
 
@@ -506,8 +522,22 @@ Cada semana tem no máximo uma revisão.
     xp: number;                       // XP com data na semana
     checkIns: CheckInTotals;
     habits: HabitPeriodStats[];
-    cycle: Cycle | null; goals: Goal[] } // ciclo ativo e seus objetivos
+    cycle: Cycle | null; goals: Goal[];  // ciclo ativo e seus objetivos
+    notes: WeekNote[];                // check-ins da semana com nota, por data e depois por hábito
+    mood: MoodSummary }               // humor da semana (só do dono; parceiro e Stats não recebem)
+
+  interface WeekNote { habitId: number; habitName: string; date: string; status: CheckInStatus; note: string; }
+  interface MoodSummary {
+    days: number;                     // dias da semana com humor
+    average: number | null;           // média (1 casa); null sem humor
+    goodDays: number; badDays: number; // bons = 4–5, ruins = 1–2
+    goodConsistency: number | null;   // Feito/Mínimo ÷ dias devidos nos dias bons (0..1)
+    badConsistency: number | null;    // idem nos dias ruins
+  }
   ```
+
+  A consistência por grupo soma os hábitos Diário e Dias específicos não dispensados (pausa e Pulei saem do esperado);
+  meta semanal fica fora (não tem dia devido). Grupo sem dia ou sem esperado → `null`.
 
 - `GET /api/reviews/weekly` → `WeeklyReview[]` (mais recentes primeiro).
 - `POST /api/reviews/weekly` `{ weekStart, wins?, obstacles?, next? }` → **201** `{ review, xpDelta: 30, player }`.

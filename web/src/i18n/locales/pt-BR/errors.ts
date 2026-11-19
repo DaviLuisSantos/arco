@@ -16,6 +16,8 @@ export default {
   plan_limit: 'Seu plano atingiu esse limite. Assine o Pro para continuar.',
   pause_overlap: 'Esta data já está em outra pausa deste hábito.',
   pause_invalid_range: 'O período da pausa é inválido (até 365 dias, começando até 7 dias atrás).',
+  mood_invalid_value: 'O humor deve ser um número de 1 a 5.',
+  date_out_of_range: 'Essa data está fora do período permitido (até 7 dias atrás, sem datas futuras).',
   habit_archived: 'Hábito arquivado não pode ser pausado.',
   no_active_pause: 'Este hábito não tem uma pausa em curso.',
   slug_taken: 'Esse endereço já está em uso.',

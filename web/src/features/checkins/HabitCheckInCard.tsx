@@ -30,6 +30,8 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   const [noteDraft, setNoteDraft] = useState<string | null>(null)
   const noteText = noteDraft ?? savedNote
   const noteChanged = noteText.trim() !== savedNote
+  const [noteOpen, setNoteOpen] = useState(false)
+  const showNoteField = current === 'Skipped' || savedNote !== '' || noteOpen
   const statusGroup = useRef<HTMLDivElement>(null)
 
   function handleTap(status: CheckInStatus) {
@@ -38,7 +40,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
     // Minutos digitados vão junto com a troca de status: uma só mutação, sem disputa com o blur.
     const withMinutes = (next === 'Done' || next === 'Minimum') && changed ? { minutes: parsed } : {}
     setDraft(null)
-    setNoteDraft(null)
+    // Sem `note`: o servidor mantém a nota salva ao trocar de status.
     checkIn.mutate({ habit, date, status: next, ...withMinutes })
   }
 
@@ -48,8 +50,8 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   }
 
   function saveNote() {
-    if (current !== 'Skipped' || !noteChanged) return
-    checkIn.mutate({ habit, date, status: 'Skipped', note: noteText.trim() }, { onSuccess: () => setNoteDraft(null) })
+    if (!current || !noteChanged) return
+    checkIn.mutate({ habit, date, status: current, note: noteText.trim() }, { onSuccess: () => setNoteDraft(null) })
   }
 
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
@@ -130,7 +132,17 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         })}
       </div>
 
-      {current === 'Skipped' && (
+      {current !== null && !showNoteField && (
+        <button
+          type="button"
+          onClick={() => setNoteOpen(true)}
+          className="mt-2 inline-flex min-h-11 items-center rounded-xl px-1 text-sm font-medium text-muted hover:text-text"
+        >
+          {t('card.addNote')}
+        </button>
+      )}
+
+      {current !== null && showNoteField && (
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -139,14 +151,15 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           className="mt-2 flex items-center gap-2"
         >
           <label htmlFor={`note-${habit.id}`} className="sr-only">
-            {t('card.noteLabel')}
+            {current === 'Skipped' ? t('card.noteLabel') : t('card.noteOptional')}
           </label>
           <input
             id={`note-${habit.id}`}
             type="text"
             enterKeyHint="done"
             maxLength={280}
-            placeholder={t('card.noteLabel')}
+            autoFocus={noteOpen && savedNote === '' && current !== 'Skipped'}
+            placeholder={current === 'Skipped' ? t('card.noteLabel') : t('card.noteOptional')}
             value={noteText}
             onChange={(e) => setNoteDraft(e.target.value)}
             onBlur={saveNote}

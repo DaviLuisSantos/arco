@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
     public DbSet<HabitPlannedLevel> HabitPlannedLevels => Set<HabitPlannedLevel>();
     public DbSet<HabitPause> HabitPauses => Set<HabitPause>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
+    public DbSet<DailyMood> DailyMoods => Set<DailyMood>();
     public DbSet<FocusSession> FocusSessions => Set<FocusSession>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
     public DbSet<WeeklyReview> WeeklyReviews => Set<WeeklyReview>();
@@ -220,6 +221,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
             e.HasOne<Milestone>().WithMany().HasForeignKey(x => x.MilestoneId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<Cycle>().WithMany().HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne(x => x.WeeklyReview).WithMany().HasForeignKey(x => x.WeeklyReviewId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<DailyMood>(e =>
+        {
+            e.HasIndex(x => new { x.UserId, x.Date }).IsUnique();
         });
 
         b.Entity<WeeklyReview>(e =>
