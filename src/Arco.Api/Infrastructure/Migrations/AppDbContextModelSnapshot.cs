@@ -321,6 +321,13 @@ namespace Arco.Api.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("AnchorHabitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AnchorText")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("ArchivedAt")
                         .HasColumnType("TEXT");
 
@@ -363,6 +370,16 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<TimeOnly?>("ReminderTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TimeOfDay")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Anytime");
+
                     b.Property<int?>("TimesPerWeek")
                         .HasColumnType("INTEGER");
 
@@ -370,6 +387,8 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AnchorHabitId");
 
                     b.HasIndex("GoalId");
 
@@ -1145,6 +1164,11 @@ namespace Arco.Api.Infrastructure.Migrations
 
             modelBuilder.Entity("Arco.Api.Domain.Habit", b =>
                 {
+                    b.HasOne("Arco.Api.Domain.Habit", "AnchorHabit")
+                        .WithMany()
+                        .HasForeignKey("AnchorHabitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Arco.Api.Domain.Goal", "Goal")
                         .WithMany()
                         .HasForeignKey("GoalId")
@@ -1155,6 +1179,8 @@ namespace Arco.Api.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AnchorHabit");
 
                     b.Navigation("Goal");
                 });

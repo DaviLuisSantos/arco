@@ -17,7 +17,18 @@ public static class HabitEndpoints
         string? ReminderTime = null,
         PlannedLevelRequest[]? PlannedLevels = null,
         int? LevelUpWeeks = null,
-        int? LevelUpDaysPerWeek = null);
+        int? LevelUpDaysPerWeek = null,
+        TimeOfDay? TimeOfDay = null,
+        int? AnchorHabitId = null,
+        string? AnchorText = null);
+
+    /// <summary>The exact set of active habits of one period, in the wanted order.</summary>
+    public sealed record ReorderRequest(TimeOfDay? TimeOfDay, int[]? HabitIds);
+
+    public const string AnchorConflictCode = "anchor_conflict";
+    public const string AnchorCycleCode = "anchor_cycle";
+    public const string OrderMismatchCode = "order_mismatch";
+    private const int MaxAnchorTextLength = 60;
 
     /// <summary>
     /// A planned level, with the same field names as <c>plannedLevels[]</c> in the responses, so a ladder read with GET
@@ -55,6 +66,7 @@ public static class HabitEndpoints
     {
         var group = api.MapGroup("/habits").WithTags("Hábitos");
         group.MapGet("", List).WithSummary("Lista hábitos");
+        group.MapPut("/order", Reorder).WithSummary("Reordena os hábitos de um período");
         group.MapGet("/{id:int}", Get).WithSummary("Detalha um hábito");
         group.MapPost("", Create).WithSummary("Cria um hábito");
         group.MapPut("/{id:int}", Update).WithSummary("Atualiza um hábito");
@@ -75,9 +87,39 @@ public static class HabitEndpoints
         if (!includeArchived) query = query.Where(h => h.ArchivedAt == null);
         var habits = await query.ToListAsync(ct);
         var today = await clock.GetTodayAsync(ct);
+        // Active habits in the order of the day; archived ones (only with includeArchived) go after, by name.
+        var active = habits.Where(h => h.ArchivedAt is null).ToList();
+        var position = DayOrder.Order(active.Select(h => new DayOrder.Item(h.Id, h.Name, h.TimeOfDay, h.SortOrder, h.AnchorHabitId)))
+            .Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
         return habits
-            .OrderBy(h => h.Name, StringComparer.InvariantCultureIgnoreCase).ThenBy(h => h.Id)
+            .OrderBy(h => h.ArchivedAt is null ? 0 : 1)
+            .ThenBy(h => position.GetValueOrDefault(h.Id))
+            .ThenBy(h => h.Name, StringComparer.InvariantCultureIgnoreCase).ThenBy(h => h.Id)
             .Select(h => new HabitDto(h, today)).ToList();
+    }
+
+    /// <summary>Saves the manual order of a period: <c>SortOrder</c> = index in <c>habitIds</c>.</summary>
+    private static async Task<IResult> Reorder(ReorderRequest? request, AppDbContext db, CancellationToken ct)
+    {
+        if (request?.TimeOfDay is not { } period) return ApiResults.Validation("Informe o período.");
+        var ids = request.HabitIds ?? [];
+        var habits = await db.Habits.Where(h => h.ArchivedAt == null && h.TimeOfDay == period).ToListAsync(ct);
+        if (ids.Length != habits.Count || ids.Distinct().Count() != ids.Length || !habits.All(h => ids.Contains(h.Id)))
+            return ApiResults.Error(StatusCodes.Status400BadRequest, OrderMismatchCode,
+                "A lista deve conter exatamente os hábitos ativos do período.");
+
+        var byId = habits.ToDictionary(h => h.Id);
+        for (var i = 0; i < ids.Length; i++) byId[ids[i]].SortOrder = i;
+        await db.SaveChangesAsync(ct);
+        return Results.NoContent();
+    }
+
+    /// <summary>The next <c>SortOrder</c> at the end of a period's active habits.</summary>
+    private static async Task<int> NextSortOrderAsync(AppDbContext db, TimeOfDay period, int? exceptId, CancellationToken ct)
+    {
+        var max = await db.Habits.Where(h => h.ArchivedAt == null && h.TimeOfDay == period && h.Id != exceptId)
+            .Select(h => (int?)h.SortOrder).MaxAsync(ct);
+        return max is { } m ? m + 1 : 0;
     }
 
     private static async Task<IResult> Get(int id, AppDbContext db, AppClock clock, CancellationToken ct)
@@ -157,13 +199,13 @@ public static class HabitEndpoints
     private static async Task<IResult> Create(HabitRequest? request, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
-        var error = await ValidateAsync(request, db, ct);
-        if (error is not null) return ApiResults.Validation(error);
+        if (await ValidateAsync(request, db, null, ct) is { } error) return error;
         if (await PlanGate.CheckHabitLimitAsync(db, user, ct) is { } limit) return limit;
 
         var now = clock.UtcNow;
         var habit = new Habit { CreatedAt = now };
         Apply(habit, request);
+        habit.SortOrder = await NextSortOrderAsync(db, habit.TimeOfDay, null, ct);
         habit.Levels.Add(new HabitLevel
         {
             Level = 1,
@@ -182,10 +224,11 @@ public static class HabitEndpoints
         var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
-        var error = await ValidateAsync(request, db, ct);
-        if (error is not null) return ApiResults.Validation(error);
+        if (await ValidateAsync(request, db, id, ct) is { } error) return error;
 
+        var previousPeriod = habit.TimeOfDay;
         Apply(habit, request);
+        if (habit.TimeOfDay != previousPeriod) habit.SortOrder = await NextSortOrderAsync(db, habit.TimeOfDay, id, ct);
         var current = habit.CurrentLevel;
         if (current is not null)
         {
@@ -264,7 +307,31 @@ public static class HabitEndpoints
     private const string LevelDescriptionError = "A descrição do nível deve ter entre 1 e 120 caracteres.";
     private const string MinimumDescriptionError = "A versão mínima deve ter entre 1 e 120 caracteres.";
 
-    private static async Task<string?> ValidateAsync(HabitRequest r, AppDbContext db, CancellationToken ct)
+    /// <summary>Error response for an invalid request, or null. <paramref name="habitId"/> is null when creating.</summary>
+    private static async Task<IResult?> ValidateAsync(HabitRequest r, AppDbContext db, int? habitId, CancellationToken ct)
+    {
+        if (await ValidateFieldsAsync(r, db, ct) is { } message) return ApiResults.Validation(message);
+
+        var anchorText = Text.Clean(r.AnchorText);
+        if (anchorText is not null && anchorText.Length > MaxAnchorTextLength)
+            return ApiResults.Validation($"O texto de \"Depois de…\" deve ter no máximo {MaxAnchorTextLength} caracteres.");
+        if (r.AnchorHabitId is not { } anchorId) return null;
+
+        if (anchorText is not null)
+            return ApiResults.Error(StatusCodes.Status400BadRequest, AnchorConflictCode,
+                "Use um hábito ou um texto em \"Depois de…\", não os dois.");
+        if (anchorId == habitId) return ApiResults.Validation("Um hábito não pode vir depois dele mesmo.");
+
+        var anchors = await db.Habits.AsNoTracking().Select(h => new { h.Id, h.AnchorHabitId })
+            .ToDictionaryAsync(h => h.Id, h => h.AnchorHabitId, ct);
+        if (!anchors.ContainsKey(anchorId)) return ApiResults.Validation("Hábito de \"Depois de…\" não encontrado.");
+        if (habitId is { } id && DayOrder.CreatesCycle(id, anchorId, anchors))
+            return ApiResults.Error(StatusCodes.Status400BadRequest, AnchorCycleCode,
+                "Esse encadeamento criaria um ciclo entre os hábitos.");
+        return null;
+    }
+
+    private static async Task<string?> ValidateFieldsAsync(HabitRequest r, AppDbContext db, CancellationToken ct)
     {
         if (!Text.LengthBetween(r.Name?.Trim(), 1, 80))
             return "O nome deve ter entre 1 e 80 caracteres.";
@@ -329,6 +396,19 @@ public static class HabitEndpoints
         habit.ReminderTime = Text.Clean(r.ReminderTime) is { } reminder && TryParseTime(reminder, out var time) ? time : null;
         habit.LevelUpWeeks = r.LevelUpWeeks;
         habit.LevelUpDaysPerWeek = r.LevelUpWeeks is null ? null : r.LevelUpDaysPerWeek;
+        // Absent fields keep their value (new habits start as Anytime with no anchor), so clients that predate
+        // the day order do not reset it. "Depois de…": a habit id replaces the text; anchorText "" removes the anchor.
+        if (r.TimeOfDay is { } period) habit.TimeOfDay = period;
+        if (r.AnchorHabitId is { } anchorId)
+        {
+            habit.AnchorHabitId = anchorId;
+            habit.AnchorText = null;
+        }
+        else if (r.AnchorText is not null)
+        {
+            habit.AnchorHabitId = null;
+            habit.AnchorText = Text.Clean(r.AnchorText);
+        }
 
         // The ladder ahead is replaced as a whole.
         habit.PlannedLevels.Clear();

@@ -164,7 +164,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
             e.Property(x => x.Name).HasMaxLength(80);
             e.Property(x => x.Emoji).HasMaxLength(32);
             e.Property(x => x.FrequencyType).HasConversion<string>().HasMaxLength(16);
+            e.Property(x => x.TimeOfDay).HasConversion<string>().HasMaxLength(16).HasDefaultValue(TimeOfDay.Anytime);
+            e.Property(x => x.AnchorText).HasMaxLength(60);
             e.HasOne(x => x.Goal).WithMany().HasForeignKey(x => x.GoalId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.AnchorHabit).WithMany().HasForeignKey(x => x.AnchorHabitId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(x => x.Levels).WithOne().HasForeignKey(l => l.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.PlannedLevels).WithOne().HasForeignKey(l => l.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.Ignore(x => x.CurrentLevel);

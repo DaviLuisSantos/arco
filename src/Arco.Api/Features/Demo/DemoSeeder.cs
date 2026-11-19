@@ -96,7 +96,15 @@ public static class DemoSeeder
                 Levels = [new HabitLevel { Level = 1, Description = "Escrever 200 palavras", MinimumDescription = "Escrever uma frase", ReachedAt = At(start) }],
             },
         };
+        // Ordem do dia: Meditação -> Leitura (manhã), Exercício (tarde), Escrever (noite, âncora de texto).
+        habits[2].TimeOfDay = TimeOfDay.Morning; habits[2].SortOrder = 0;
+        habits[0].TimeOfDay = TimeOfDay.Morning; habits[0].SortOrder = 1;
+        habits[1].TimeOfDay = TimeOfDay.Afternoon; habits[1].SortOrder = 0;
+        habits[3].TimeOfDay = TimeOfDay.Evening; habits[3].SortOrder = 0;
+        habits[3].AnchorText = "jantar"; // the UI prefixes "Depois de": "Depois de jantar"
         db.Habits.AddRange(habits);
+        await db.SaveChangesAsync(ct);
+        habits[0].AnchorHabitId = habits[2].Id;
         await db.SaveChangesAsync(ct);
 
         var events = new List<XpEvent>();

@@ -95,6 +95,7 @@ export function OnboardingPage() {
             frequencyType: 'Daily',
             levelDescription: t(`templates.${id}.dose`),
             minimumDescription: t(`templates.${id}.minimum`),
+            timeOfDay: HABIT_TEMPLATES.find((x) => x.id === id)?.timeOfDay ?? 'Anytime',
           })
         }
         if (customReady) {

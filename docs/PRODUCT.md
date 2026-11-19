@@ -155,6 +155,15 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 - **Uso só na revisão semanal** (visível só ao dono): as notas da semana (por dia, hábito e status) e o humor da semana, com média, dias bons (4–5) x ruins (1–2) e a consistência em cada grupo (Feito/Mínimo ÷ dias devidos, hábitos Diário e Dias específicos, sem dias dispensados; meta semanal fora). Sem dado suficiente, o app avisa em vez de mostrar número. Serve para responder "o que atrapalhou?" com evidência.
 - Funciona pela API e pelo MCP (`registrar_humor`, `fazer_checkin` com `nota`); entra na exportação (`dailyMoods`).
 
+## Ordem do dia
+- **Período** (`TimeOfDay`): `Anytime` (padrão), `Morning`, `Afternoon`, `Evening`. O período atual vem da hora local (fuso de `Settings`): manhã 05:00–11:59, tarde 12:00–17:59, noite 18:00–04:59.
+- **Âncora "Depois de…":** opcional, ou um hábito (`anchorHabitId`) ou um texto (`anchorText`, ≤ 60), nunca os dois (400 `anchor_conflict`). O hábito âncora deve ser do próprio usuário, não o próprio hábito, e sem ciclo (A depois de B depois de A = 400 `anchor_cycle`). Âncora arquivada ou excluída: o vínculo fica, mas o Hoje a ignora (sem posição especial, sem rótulo).
+- **Ordem** (`SortOrder`): manual dentro do período. Hábito novo entra no fim do período; trocar de período leva o hábito para o fim do novo período.
+- **Ordem do dia:** por período (Manhã, Tarde, Noite, A qualquer hora), depois `SortOrder`, depois nome; em seguida cada hábito encadeado a um hábito do mesmo período vai para logo depois da âncora (cadeias A→B→C ficam em sequência). Âncora em outro período vale só como rótulo.
+- **Destaque da vez:** `anchorDone` é verdadeiro quando a âncora-hábito teve Feito/Mínimo hoje e o hábito ainda não tem check-in hoje.
+- **Hoje:** grupos por período (só os não vazios); o do período atual vem marcado "Agora", sem reordenar os grupos; "A qualquer hora" fica no fim. Pausados e "fora de hoje" continuam nas seções atuais, também na ordem do dia.
+- **Organizar:** modo no Hoje com setas subir/descer por grupo (só hábitos ativos do período, inclusive os não devidos hoje), salvo por `PUT /api/habits/order`.
+
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
@@ -232,7 +241,7 @@ O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.jso
 ### Adendos da pesquisa de concorrentes
 3. **Pausa e modo férias** (em andamento, ver seção própria): viagem ou doença não deve zerar a sequência; "pular ou pausar sem falhar" é o pedido mais comum (Strides, apps com férias).
 4. ~~**Nota e humor no check-in**~~ (feito, ver "Nota e humor"): registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
-5. **Ordem do dia por período e encadeamento:** manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
+5. ~~**Ordem do dia por período e encadeamento**~~ (feito, ver "Ordem do dia"): manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
 6. **Hábito quantitativo:** metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
 7. **Hábito negativo:** acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).
 8. **Desafio cooperativo com o parceiro:** meta compartilhada da semana, em vez de só ver o resumo do outro (Habitica).

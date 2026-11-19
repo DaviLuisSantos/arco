@@ -2,7 +2,10 @@ namespace Arco.Api.Domain;
 
 public enum FrequencyType { Daily, SpecificDays, WeeklyTarget }
 
-public enum CheckInStatus { Done, Minimum, Missed, Skipped }
+/// <summary>Fixed part of the day a habit belongs to; <c>Anytime</c> is the default.</summary>
+public enum TimeOfDay { Anytime, Morning, Afternoon, Evening }
+
+public enum CheckInStatus{ Done, Minimum, Missed, Skipped }
 
 public enum FocusSource { Timer, Manual }
 

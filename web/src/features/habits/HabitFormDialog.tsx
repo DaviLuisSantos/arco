@@ -2,7 +2,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { goalsApi, habitsApi } from "../../api/endpoints";
-import type { FrequencyType, Habit, HabitInput } from "../../api/types";
+import type {
+  FrequencyType,
+  Habit,
+  HabitInput,
+  TimeOfDay,
+} from "../../api/types";
 import { Button } from "../../components/ui/Button";
 import { Dialog, useDialogGuardedClose } from "../../components/ui/Dialog";
 import { Input, Select } from "../../components/ui/Input";
@@ -81,10 +86,20 @@ function CancelButton() {
 
 type Errors = Partial<
   Record<
-    "name" | "emoji" | "days" | "level" | "minimum" | "reminder" | "planned",
+    | "name"
+    | "emoji"
+    | "days"
+    | "level"
+    | "minimum"
+    | "reminder"
+    | "planned"
+    | "anchor",
     string
   >
 >;
+
+const PERIODS: TimeOfDay[] = ["Anytime", "Morning", "Afternoon", "Evening"];
+const ANCHOR_TEXT = "text";
 
 interface HabitFormProps {
   formId: string;
@@ -110,6 +125,23 @@ function HabitForm({
     queryFn: () => goalsApi.list(),
   });
 
+  const allHabits = useQuery({
+    queryKey: queryKeys.habits,
+    queryFn: () => habitsApi.list(true),
+  });
+
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(
+    habit?.timeOfDay ?? "Anytime",
+  );
+  // "" = sem âncora; "text" = texto livre; senão, o id do hábito âncora.
+  const [anchorSel, setAnchorSel] = useState(
+    habit?.anchorHabitId
+      ? String(habit.anchorHabitId)
+      : habit?.anchorText
+        ? ANCHOR_TEXT
+        : "",
+  );
+  const [anchorText, setAnchorText] = useState(habit?.anchorText ?? "");
   const [name, setName] = useState(habit?.name ?? "");
   const [emoji, setEmoji] = useState(habit?.emoji ?? "");
   const [goalId, setGoalId] = useState(
@@ -156,6 +188,9 @@ function HabitForm({
       reminderTime,
       planned,
       rule,
+      timeOfDay,
+      anchorSel,
+      anchorText,
     ]),
   );
   const snapshot = JSON.stringify([
@@ -170,6 +205,9 @@ function HabitForm({
     reminderTime,
     planned,
     rule,
+    timeOfDay,
+    anchorSel,
+    anchorText,
   ]);
   const isDirty = snapshot !== initial;
   useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
@@ -196,6 +234,12 @@ function HabitForm({
     goals.isSuccess &&
     !currentGoals.some((g) => g.id === habit.goalId);
 
+  const anchorOptions = (allHabits.data ?? []).filter(
+    (h) =>
+      h.id !== habit?.id &&
+      (h.archivedAt === null || String(h.id) === anchorSel),
+  );
+
   function toggleDay(day: number) {
     setDays((d) =>
       d.includes(day)
@@ -217,6 +261,11 @@ function HabitForm({
     if (!minimumDescription.trim()) e.minimum = t("form.minimumRequired");
     else if (minimumDescription.trim().length > 120)
       e.minimum = t("form.maxChars", { max: 120 });
+    if (anchorSel === ANCHOR_TEXT) {
+      if (!anchorText.trim()) e.anchor = t("form.anchorTextRequired");
+      else if (anchorText.trim().length > 60)
+        e.anchor = t("form.maxChars", { max: 60 });
+    }
     if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime))
       e.reminder = t("form.timeFormat");
     if (
@@ -259,6 +308,10 @@ function HabitForm({
         })),
         levelUpWeeks: rule.weeks,
         levelUpDaysPerWeek: rule.weeks === null ? null : rule.daysPerWeek,
+        timeOfDay,
+        anchorHabitId:
+          anchorSel && anchorSel !== ANCHOR_TEXT ? Number(anchorSel) : null,
+        anchorText: anchorSel === ANCHOR_TEXT ? anchorText.trim() : "",
       },
       { onSettled: () => onPendingChange(false) },
     );
@@ -314,6 +367,47 @@ function HabitForm({
           </option>
         )}
       </Select>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1.5 text-sm font-medium">
+          {t("form.timeOfDay")}
+        </legend>
+        <Segmented
+          label={t("form.timeOfDay")}
+          value={timeOfDay}
+          onChange={setTimeOfDay}
+          options={PERIODS.map((p) => ({
+            value: p,
+            label: t(`form.period.${p}`),
+          }))}
+        />
+      </fieldset>
+
+      <Select
+        label={t("form.anchor")}
+        value={anchorSel}
+        onChange={(e) => setAnchorSel(e.target.value)}
+        hint={t("form.anchorHint")}
+      >
+        <option value="">{t("form.anchorNone")}</option>
+        {anchorOptions.map((h) => (
+          <option key={h.id} value={h.id}>
+            {h.emoji ? `${h.emoji} ${h.name}` : h.name}
+          </option>
+        ))}
+        <option value={ANCHOR_TEXT}>{t("form.anchorOther")}</option>
+      </Select>
+      {anchorSel === ANCHOR_TEXT && (
+        <Input
+          label={t("form.anchorTextLabel")}
+          value={anchorText}
+          onChange={(e) => setAnchorText(e.target.value)}
+          placeholder={t("form.anchorTextPlaceholder")}
+          maxLength={60}
+          onBlur={() => checkField("anchor")}
+          error={errors.anchor}
+        />
+      )}
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-medium">

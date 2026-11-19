@@ -1,17 +1,20 @@
+import type { TimeOfDay } from '../../api/types'
+
+/** `timeOfDay` é o período sugerido para o modelo. */
 export const HABIT_TEMPLATES = [
-  { id: 'water', emoji: '💧' },
-  { id: 'walk', emoji: '🚶' },
-  { id: 'read', emoji: '📖' },
-  { id: 'meditate', emoji: '🧘' },
-  { id: 'workout', emoji: '💪' },
-  { id: 'sleep', emoji: '😴' },
-  { id: 'write', emoji: '✍️' },
-  { id: 'study', emoji: '🎓' },
-  { id: 'stretch', emoji: '🤸' },
-  { id: 'tidy', emoji: '🧹' },
-  { id: 'language', emoji: '🗣️' },
-  { id: 'gratitude', emoji: '🙏' },
-] as const
+  { id: 'water', emoji: '💧', timeOfDay: 'Anytime' },
+  { id: 'walk', emoji: '🚶', timeOfDay: 'Afternoon' },
+  { id: 'read', emoji: '📖', timeOfDay: 'Evening' },
+  { id: 'meditate', emoji: '🧘', timeOfDay: 'Morning' },
+  { id: 'workout', emoji: '💪', timeOfDay: 'Morning' },
+  { id: 'sleep', emoji: '😴', timeOfDay: 'Evening' },
+  { id: 'write', emoji: '✍️', timeOfDay: 'Morning' },
+  { id: 'study', emoji: '🎓', timeOfDay: 'Afternoon' },
+  { id: 'stretch', emoji: '🤸', timeOfDay: 'Morning' },
+  { id: 'tidy', emoji: '🧹', timeOfDay: 'Evening' },
+  { id: 'language', emoji: '🗣️', timeOfDay: 'Afternoon' },
+  { id: 'gratitude', emoji: '🙏', timeOfDay: 'Evening' },
+] as const satisfies readonly { id: string; emoji: string; timeOfDay: TimeOfDay }[]
 
 export type TemplateId = (typeof HABIT_TEMPLATES)[number]['id']
 

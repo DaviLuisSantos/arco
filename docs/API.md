@@ -17,7 +17,7 @@
 
 | Status | Codes |
 |---|---|
-| 400 | `validation`, `invalid_token`, `invalid_two_factor_code` (ativar/desativar 2FA) |
+| 400 | `validation`, `anchor_conflict`, `anchor_cycle`, `order_mismatch`, `invalid_token`, `invalid_two_factor_code` (ativar/desativar 2FA) |
 | 401 | `unauthorized`, `invalid_credentials`, `invalid_two_factor_code` (login com 2FA) |
 | 403 | `forbidden`, `plan_limit` |
 | 404 | `not_found`, `stripe_disabled` |
@@ -83,6 +83,8 @@ interface CheckIn { habitId: number; date: string; status: CheckInStatus; xp: nu
 // Pausa de um hábito (período em que os dias são dispensados).
 interface HabitPause { id: number; startDate: string; endDate: string | null; reason: string | null; } // endDate incluso; null = até retomar
 
+type TimeOfDay = 'Anytime' | 'Morning' | 'Afternoon' | 'Evening';
+
 interface Habit {
   id: number; name: string; emoji: string | null;
   goalId: number | null;
@@ -98,6 +100,10 @@ interface Habit {
   levelUpWeeks: number | null;         // regra "N semanas seguidas com X+ dias"; null = regra padrão (80% em 14 dias)
   levelUpDaysPerWeek: number | null;
   pauses: HabitPause[];                // pausas em curso e futuras, por início
+  timeOfDay: TimeOfDay;                // período fixo do dia; padrão Anytime (ver "Ordem do dia")
+  anchorHabitId: number | null;        // "Depois de…" um hábito (ou anchorText, nunca os dois)
+  anchorText: string | null;           // "Depois de…" texto livre, até 60 caracteres
+  sortOrder: number;                   // ordem manual dentro do período
   archivedAt: string | null;
   createdAt: string;
 }
@@ -259,6 +265,7 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 ```ts
 {
   date: string;                       // hoje no fuso configurado
+  currentTimeOfDay: TimeOfDay;        // período atual pela hora local (ver "Ordem do dia")
   player: Player;
   xpToday: number;                    // soma dos XpEvents com data = hoje
   cycle: Cycle | null;                // ciclo ativo
@@ -276,7 +283,12 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
     levelUpWeeksDone: number | null;  // semanas seguidas que contam para a regra de semanas (null na regra padrão)
     levelDownSuggested: boolean;      // ver "Sugestão de voltar um nível"
     streak: Streak;
-  }>;                                 // só não arquivados; ordem: devidos hoje primeiro, depois por nome
+    timeOfDay: TimeOfDay;             // ver "Ordem do dia"
+    sortOrder: number;
+    anchorHabitId: number | null;     // âncora-hábito ativa (arquivada/excluída = null)
+    anchorName: string | null;        // nome da âncora-hábito ativa ou o texto; null sem âncora
+    anchorDone: boolean;              // âncora-hábito com Feito/Mínimo hoje e este hábito ainda sem check-in hoje
+  }>;                                 // só não arquivados; na ordem do dia (pausados no fim)
   weeklyReview: {
     weekStart: string; weekEnd: string; // semana revisável (ver "Revisão semanal")
     due: boolean;                     // a semana teve check-ins e ainda não foi revisada
@@ -324,7 +336,7 @@ Dia dispensado = dia pausado ou com check-in `Skipped`. Se o dia tiver Feito/Mí
 
 ## Hábitos
 
-- `GET /api/habits?includeArchived=false` → `Habit[]` (com `pauses`)
+- `GET /api/habits?includeArchived=false` → `Habit[]` (com `pauses`), na ordem do dia (ver "Ordem do dia")
 - `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, levelUpWeeksDone: number | null, levelDownSuggested: boolean, streak: Streak }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 
@@ -332,19 +344,22 @@ Dia dispensado = dia pausado ou com check-in `Skipped`. Se o dia tiver Feito/Mí
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
     levelDescription, minimumDescription, reminderTime?,
     plannedLevels?: Array<{ description, minimumDescription }>,
-    levelUpWeeks?, levelUpDaysPerWeek? }
+    levelUpWeeks?, levelUpDaysPerWeek?,
+    timeOfDay?, anchorHabitId?, anchorText? }
   ```
 
-  Cria o nível 1.
+  Cria o nível 1. `timeOfDay` ausente = `Anytime`; o hábito entra no fim do período. `anchorHabitId` e `anchorText`: ver "Ordem do dia".
 - `PUT /api/habits/{id}` → `Habit`. Corpo:
 
   ```
   { name, emoji?, goalId?, frequencyType, frequencyDays?, timesPerWeek?,
     levelDescription, minimumDescription, reminderTime?,
     plannedLevels?: Array<{ description, minimumDescription }>,
-    levelUpWeeks?, levelUpDaysPerWeek? }
+    levelUpWeeks?, levelUpDaysPerWeek?,
+    timeOfDay?, anchorHabitId?, anchorText? }
   ```
 
+  `timeOfDay`, `anchorHabitId` e `anchorText`: campo ausente **mantém** o valor atual (ver "Ordem do dia").
   `levelDescription` e `minimumDescription` editam o nível atual. `reminderTime` ausente ou null remove o lembrete.
   `plannedLevels` substitui a escada inteira (ausente = sem níveis planejados). Cada item usa os mesmos nomes de
   `Habit.plannedLevels`, então a escada lida no GET pode voltar como está no PUT (o `level` é ignorado: a ordem define
@@ -358,6 +373,32 @@ Dia dispensado = dia pausado ou com check-in `Skipped`. Se o dia tiver Feito/Mí
   planejado. Não mexe no XP. Nível 1 ou hábito arquivado → 400.
 - `POST /api/habits/{id}/level-down-suggestion/dismiss` → **204**. Esconde a sugestão de voltar por 7 dias.
 - `POST /api/habits/{id}/archive` → `Habit`; `POST /api/habits/{id}/restore` → `Habit`.
+- `PUT /api/habits/order` `{ timeOfDay, habitIds: number[] }` → **204**. Ver "Ordem do dia".
+
+### Ordem do dia
+
+O Hoje é um roteiro: cada hábito tem um **período fixo** e, opcionalmente, uma âncora "Depois de…".
+
+- `TimeOfDay = 'Anytime' | 'Morning' | 'Afternoon' | 'Evening'` (padrão `Anytime`). Período atual pela hora local (fuso de
+  `Settings`): manhã 05:00–11:59, tarde 12:00–17:59, noite 18:00–04:59.
+- `Habit` ganha `timeOfDay: TimeOfDay`, `anchorHabitId: number | null`, `anchorText: string | null` (até 60 caracteres) e
+  `sortOrder: number` (ordem manual dentro do período; hábito novo entra no fim, `max + 1`; trocar de período leva o
+  hábito para o fim do novo período).
+- **Âncora**: ou um hábito (`anchorHabitId`) ou um texto (`anchorText`), nunca os dois (400 `anchor_conflict`). O hábito âncora
+  deve ser do próprio usuário e diferente do próprio hábito (senão 400 `validation`) e não pode formar ciclo (A depois de B
+  depois de A → 400 `anchor_cycle`). Âncora arquivada ou excluída: o vínculo fica, mas o Hoje ignora (sem posição especial
+  nem rótulo); a exclusão zera `anchorHabitId`.
+- **No PUT**: campo ausente mantém o valor; `anchorHabitId` troca a âncora (e limpa o texto); `anchorText` troca a âncora
+  pelo texto (e limpa o hábito); `anchorText: ""` remove a âncora. O formulário web envia sempre os três (`anchorText: ""`
+  quando não há âncora).
+- **Ordem**: por período (Manhã, Tarde, Noite, A qualquer hora), depois `sortOrder`, depois nome; em seguida cada hábito
+  encadeado a um hábito **do mesmo período** vai para logo depois da âncora (cadeias A→B→C ficam em sequência). Âncora em
+  outro período = só o rótulo. `GET /api/habits` e `habits` de `GET /api/today` vêm nessa ordem (no Hoje, pausados no fim).
+- `PUT /api/habits/order` `{ timeOfDay, habitIds: number[] }` → **204**. `habitIds` deve ser exatamente o conjunto dos
+  hábitos ativos (não arquivados) daquele período, na nova ordem; senão 400 `order_mismatch`. Grava `sortOrder = índice`.
+- Erros 400: `anchor_conflict`, `anchor_cycle`, `order_mismatch`.
+- MCP: `criar_habito` aceita `periodo` (`manha`|`tarde`|`noite`|`qualquer`) e `depoisDe` (id do hábito ou texto);
+  `editar_habito(habitoId, periodo?, depoisDe?, nome?)` altera só o informado (`depoisDe: ""` remove a âncora).
 
 Sugestão de subir de nível (`levelUpSuggested`): hábito não arquivado e sem adiamento ativo, e:
 - regra padrão: `consistency.rate ≥ 0.8`, `expected > 0`, a janela inteira no nível atual (nível alcançado em `from`
@@ -487,7 +528,8 @@ Sessões de foco (tempo dedicado a um hábito). Não dão XP. Os minutos enchem 
 
 - `GET /api/backup` → JSON (`arco-export-AAAA-MM-DD.json`) com tudo o que o usuário atual possui (ciclos, objetivos,
   hábitos, check-ins, foco, XP, conquistas, revisões, humores, configurações). `dailyMoods` traz
-  `{ date, value, createdAt, updatedAt }` por dia. Não inclui hashes de chaves de API nem chaves de push.
+  `{ date, value, createdAt, updatedAt }` por dia. Cada hábito traz `timeOfDay`, `anchorHabitId`, `anchorText` e
+  `sortOrder` (ver "Ordem do dia"). Não inclui hashes de chaves de API nem chaves de push.
 - O servidor continua fazendo a cópia diária do SQLite inteiro (14 dias), mas ela não é exposta pela API;
   `GET /api/backups` foi removido.
 

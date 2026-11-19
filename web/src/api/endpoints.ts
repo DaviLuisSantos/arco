@@ -31,6 +31,7 @@ import type {
   Habit,
   HabitDetail,
   HabitInput,
+  TimeOfDay,
   HabitLevelUpResult,
   Health,
   Me,
@@ -172,6 +173,8 @@ export const habitsApi = {
   dismissLevelDownSuggestion: (id: number) => api.post<void>(`/habits/${id}/level-down-suggestion/dismiss`),
   archive: (id: number) => api.post<Habit>(`/habits/${id}/archive`),
   restore: (id: number) => api.post<Habit>(`/habits/${id}/restore`),
+  /** Ordem manual de um período: os ids devem ser exatamente os hábitos ativos dele. */
+  reorder: (timeOfDay: TimeOfDay, habitIds: number[]) => api.put<void>('/habits/order', { timeOfDay, habitIds }),
 }
 
 export const pausesApi = {

@@ -61,7 +61,7 @@ public sealed class McpTests : IDisposable
         var tools = (await mcp.ListToolsAsync()).Select(t => t.Name).ToHashSet();
         Assert.Subset(tools, new HashSet<string>
         {
-            "ver_hoje", "fazer_checkin", "desfazer_checkin", "listar_habitos", "ver_habito", "criar_habito",
+            "ver_hoje", "fazer_checkin", "desfazer_checkin", "listar_habitos", "ver_habito", "criar_habito", "editar_habito",
             "subir_nivel", "voltar_nivel", "ver_ciclo_atual", "atualizar_objetivo", "marcar_marco",
             "ver_revisao_semanal", "fazer_revisao_semanal", "ver_estatisticas", "ver_conquistas",
             "ler_documentacao_api", "chamar_api", "registrar_foco", "registrar_humor", "ver_floresta", "ver_arco",
