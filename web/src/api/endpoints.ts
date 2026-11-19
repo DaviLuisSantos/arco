@@ -43,6 +43,8 @@ import type {
   TwoFactorEnabled,
   TwoFactorSetup,
   LevelUpInput,
+  Mood,
+  MoodInput,
   PlayerDetail,
   PushConfig,
   Settings,
@@ -230,6 +232,13 @@ export const playerApi = {
 export const settingsApi = {
   get: () => api.get<Settings>('/settings'),
   update: (input: SettingsInput) => api.put<Settings>('/settings', input),
+}
+
+export const moodsApi = {
+  list: (from: string, to: string) =>
+    api.get<Mood[]>(`/moods?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  upsert: (input: MoodInput) => api.put<Mood>('/moods', input),
+  remove: (date: string) => api.delete<void>(`/moods/${date}`),
 }
 
 export const reviewsApi = {

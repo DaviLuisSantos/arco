@@ -18,6 +18,8 @@ const errors_en: typeof errors = {
   plan_limit: 'Your plan has reached this limit. Upgrade to Pro to continue.',
   pause_overlap: 'This period overlaps another pause for this habit.',
   pause_invalid_range: 'Invalid pause period (up to 365 days, starting at most 7 days ago).',
+  mood_invalid_value: 'Mood must be a number from 1 to 5.',
+  date_out_of_range: 'This date is outside the allowed period (up to 7 days ago, no future dates).',
   habit_archived: 'Archived habits cannot be paused.',
   no_active_pause: 'This habit has no pause in progress.',
   slug_taken: 'This address is already taken.',

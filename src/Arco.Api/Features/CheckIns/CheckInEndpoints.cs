@@ -61,7 +61,8 @@ public static class CheckInEndpoints
         }
         checkIn.Status = status;
         checkIn.Xp = xp;
-        checkIn.Note = note;
+        // Note: absent/null keeps the saved one; "" (or whitespace) removes it; text replaces it.
+        if (request.Note is not null) checkIn.Note = note;
         checkIn.UpdatedAt = now;
 
         // The check-in's XP event is replaced (one event per check-in, none when 0 XP).

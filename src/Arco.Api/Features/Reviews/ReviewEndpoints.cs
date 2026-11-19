@@ -22,7 +22,14 @@ public static class ReviewEndpoints
         CheckInTotalsDto CheckIns,
         IReadOnlyList<HabitPeriodStatsDto> Habits,
         CycleDto? Cycle,
-        IReadOnlyList<GoalDto> Goals);
+        IReadOnlyList<GoalDto> Goals,
+        IReadOnlyList<WeekNoteDto> Notes,
+        MoodSummaryDto Mood);
+
+    public sealed record WeekNoteDto(int HabitId, string HabitName, DateOnly Date, CheckInStatus Status, string Note);
+
+    public sealed record MoodSummaryDto(
+        int Days, double? Average, int GoodDays, int BadDays, double? GoodConsistency, double? BadConsistency);
 
     public sealed record WeeklyReviewXpResult(WeeklyReviewDto Review, int XpDelta, PlayerDto Player,
         IReadOnlyList<AchievementDto> Achievements);
@@ -58,7 +65,47 @@ public static class ReviewEndpoints
             review is null ? null : WeeklyReviewDto.From(review),
             await ReviewStats.XpInRangeAsync(db, weekStart, weekEnd, ct),
             ReviewStats.Totals(habits), habits,
-            cycle is null ? null : CycleDto.From(cycle, today), goals);
+            cycle is null ? null : CycleDto.From(cycle, today), goals,
+            await NotesAsync(db, weekStart, weekEnd, ct),
+            await MoodAsync(db, weekStart, weekEnd, timezone, ct));
+    }
+
+    private static async Task<List<WeekNoteDto>> NotesAsync(AppDbContext db, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var rows = await db.CheckIns.AsNoTracking()
+            .Where(c => c.Date >= from && c.Date <= to && c.Note != null && c.Note != "")
+            .Select(c => new { c.HabitId, HabitName = c.Habit!.Name, c.Date, c.Status, c.Note })
+            .ToListAsync(ct);
+        return rows
+            .OrderBy(r => r.Date)
+            .ThenBy(r => r.HabitName, StringComparer.InvariantCultureIgnoreCase)
+            .ThenBy(r => r.HabitId)
+            .Select(r => new WeekNoteDto(r.HabitId, r.HabitName, r.Date, r.Status, r.Note!))
+            .ToList();
+    }
+
+    private static async Task<MoodSummaryDto> MoodAsync(
+        AppDbContext db, DateOnly from, DateOnly to, string timezone, CancellationToken ct)
+    {
+        var moods = await db.DailyMoods.AsNoTracking()
+            .Where(m => m.Date >= from && m.Date <= to)
+            .ToDictionaryAsync(m => m.Date, m => m.Value, ct);
+        if (moods.Count == 0) return new MoodSummaryDto(0, null, 0, 0, null, null);
+
+        var habits = await db.Habits.AsNoTracking().Include(h => h.Pauses).ToListAsync(ct);
+        var checkIns = (await db.CheckIns.AsNoTracking().ToListAsync(ct)).ToLookup(c => c.HabitId);
+
+        var days = habits.Select(h =>
+        {
+            var own = checkIns[h.Id].ToList();
+            var start = TimeZones.ToLocalDate(h.CreatedAt, timezone);
+            if (own.Count > 0 && own.Min(c => c.Date) is var first && first < start) start = first;
+            return new MoodRules.HabitDays(h.FrequencyType, h.FrequencyDays, Queries.Calendar(h, own),
+                own.ToDictionary(c => c.Date, c => c.Status), start);
+        });
+
+        var s = MoodRules.Summarize(moods, days);
+        return new MoodSummaryDto(s.Days, s.Average, s.GoodDays, s.BadDays, s.GoodConsistency, s.BadConsistency);
     }
 
     private static async Task<IResult> Create(CreateWeeklyReviewRequest? request, AppDbContext db, AppClock clock,

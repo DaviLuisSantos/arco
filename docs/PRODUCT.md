@@ -136,7 +136,7 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 - Nível do jogador: começa no 1. Para passar do nível L ao L+1 são necessários `100 + 50 × (L − 1)` XP (100, 150, 200, …).
 
 ## Pausa e modo férias
-- **Pulei** (`Skipped`): novo status de check-in, 0 XP, sem `XpEvent`, sem minutos; `note` opcional (≤ 280, qualquer status; a UI só mostra no Pulei). Funciona offline (vai pela fila do check-in).
+- **Pulei** (`Skipped`): novo status de check-in, 0 XP, sem `XpEvent`, sem minutos; `note` opcional (≤ 280, qualquer status; ver "Nota e humor"). Funciona offline (vai pela fila do check-in).
 - **Pausa** (`HabitPause`): período por hábito, `startDate` ≥ hoje − 7, `endDate` opcional (incluso, ≤ start + 365; nulo = até retomar), sem sobreposição no mesmo hábito, hábito arquivado não pausa. Retomar: pausa em curso com início hoje é apagada; senão `endDate = ontem`. Pausas futuras não mudam.
 - **Modo férias**: cria uma pausa (início, fim obrigatório) em todo hábito ativo sem pausa sobreposta. Essas pausas ficam marcadas como de férias: encerrar as férias retoma as que estão em curso e apaga as futuras, sem mexer nas pausas individuais.
 - **Dia dispensado** = dia pausado ou com check-in Pulei. Se o dia tiver Feito/Mínimo, conta normalmente (vale como sucesso). Senão é **neutro**:
@@ -148,6 +148,12 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
   - lembrete push: não sai em dia dispensado;
   - Hoje: hábito pausado hoje vai para "Pausados" (`isPaused`, `pausedUntil`), `isDueToday = false`;
   - conquistas e admin: Pulei não conta como check-in.
+
+## Nota e humor
+- **Humor** (`DailyMood`): um por usuário e dia, de 1 (muito ruim) a 5 (muito bom), registrado num card "Como foi seu dia?" na tela Hoje. Janela igual à do check-in (hoje e até 7 dias atrás). Alterar substitui; tocar de novo no mesmo valor remove. Não dá XP e não entra em conquistas, estatísticas, ciclo, perfil público nem parceiro.
+- **Nota do check-in:** opcional (≤ 280) em qualquer status. `note` ausente ou `null` mantém a nota salva (tocar em outro status não a perde); `""` remove; texto substitui.
+- **Uso só na revisão semanal** (visível só ao dono): as notas da semana (por dia, hábito e status) e o humor da semana, com média, dias bons (4–5) x ruins (1–2) e a consistência em cada grupo (Feito/Mínimo ÷ dias devidos, hábitos Diário e Dias específicos, sem dias dispensados; meta semanal fora). Sem dado suficiente, o app avisa em vez de mostrar número. Serve para responder "o que atrapalhou?" com evidência.
+- Funciona pela API e pelo MCP (`registrar_humor`, `fazer_checkin` com `nota`); entra na exportação (`dailyMoods`).
 
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
@@ -225,7 +231,7 @@ O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.jso
 
 ### Adendos da pesquisa de concorrentes
 3. **Pausa e modo férias** (em andamento, ver seção própria): viagem ou doença não deve zerar a sequência; "pular ou pausar sem falhar" é o pedido mais comum (Strides, apps com férias).
-4. **Nota e humor no check-in:** registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
+4. ~~**Nota e humor no check-in**~~ (feito, ver "Nota e humor"): registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
 5. **Ordem do dia por período e encadeamento:** manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
 6. **Hábito quantitativo:** metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
 7. **Hábito negativo:** acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).

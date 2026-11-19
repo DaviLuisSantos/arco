@@ -5,6 +5,13 @@ namespace Arco.Api.Features.Demo;
 /// <summary>Fills a fresh demo account with believable data. <c>CurrentUser</c> must already be set.</summary>
 public static class DemoSeeder
 {
+    private static readonly string[] NotesDone =
+        ["Foi tranquilo hoje.", "Rendeu bem de manhã.", "Fiz com vontade.", "Ritmo bom, sem pressa."];
+    private static readonly string[] NotesMinimum =
+        ["Dia corrido, fiz o mínimo.", "Pouca energia hoje.", "Reunião longa me cansou."];
+    private static readonly string[] NotesMissed =
+        ["Dormi mal e não rendeu.", "Imprevisto no trabalho.", "Esqueci no meio da correria."];
+
     public static async Task SeedAsync(AppDbContext db, DateOnly today, CancellationToken ct)
     {
         var rng = new Random(42);
@@ -94,6 +101,8 @@ public static class DemoSeeder
 
         var events = new List<XpEvent>();
         var checkIns = new List<CheckIn>();
+        var noteRng = new Random(7);
+        var dayRolls = new Dictionary<DateOnly, (double Sum, int Count)>();
         foreach (var habit in habits)
         {
             for (var d = start; d <= today; d = d.AddDays(1))
@@ -111,6 +120,17 @@ public static class DemoSeeder
                 var level = habit.Levels.Where(l => DateOnly.FromDateTime(l.ReachedAt) <= d).Max(l => l.Level);
                 var xp = XpRules.ForCheckIn(status, level);
                 var ci = new CheckIn { HabitId = habit.Id, Date = d, Status = status, Xp = xp, CreatedAt = At(d), UpdatedAt = At(d) };
+                if (noteRng.NextDouble() < 0.18)
+                {
+                    var notes = status switch
+                    {
+                        CheckInStatus.Done => NotesDone,
+                        CheckInStatus.Minimum => NotesMinimum,
+                        _ => NotesMissed,
+                    };
+                    ci.Note = notes[noteRng.Next(notes.Length)];
+                }
+                dayRolls[d] = dayRolls.TryGetValue(d, out var acc) ? (acc.Sum + roll, acc.Count + 1) : (roll, 1);
                 checkIns.Add(ci);
                 if (xp > 0)
                     events.Add(new XpEvent
@@ -121,6 +141,16 @@ public static class DemoSeeder
             }
         }
         db.CheckIns.AddRange(checkIns);
+
+        // Mood on most days, correlated with how the day went (lower roll = better day).
+        var moodRng = new Random(11);
+        foreach (var (d, (sum, count)) in dayRolls)
+        {
+            if (moodRng.NextDouble() < 0.2) continue;
+            var avg = sum / count + (moodRng.NextDouble() - 0.5) * 0.3;
+            var value = avg < 0.25 ? 5 : avg < 0.45 ? 4 : avg < 0.65 ? 3 : avg < 0.85 ? 2 : 1;
+            db.DailyMoods.Add(new DailyMood { Date = d, Value = value, CreatedAt = At(d), UpdatedAt = At(d) });
+        }
 
         events.Add(new XpEvent { Date = levelUpDate, Amount = XpRules.HabitLevelUp, Source = XpSource.HabitLevelUp, HabitId = habits[0].Id, CreatedAt = At(levelUpDate), Description = "Leitura: nível 2" });
         foreach (var m in milestones.Milestones.Where(m => m.DoneAt != null))

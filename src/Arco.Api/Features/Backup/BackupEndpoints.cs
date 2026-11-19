@@ -65,7 +65,9 @@ public static class BackupEndpoints
                 .Select(l => new { l.Id, l.HabitId, l.Position, l.Description, l.MinimumDescription }).ToListAsync(ct),
             checkIns = await db.CheckIns.AsNoTracking().OrderBy(c => c.Id)
                 .Select(c => new { c.Id, c.HabitId, c.Date, c.Status, c.Xp, c.CreatedAt, c.UpdatedAt }).ToListAsync(ct),
-            focusSessions = await db.FocusSessions.AsNoTracking().OrderBy(f => f.Id)
+            dailyMoods = await db.DailyMoods.AsNoTracking().OrderBy(m => m.Date)
+                .Select(m => new { m.Date, m.Value, m.CreatedAt, m.UpdatedAt }).ToListAsync(ct),
+            focusSessions =await db.FocusSessions.AsNoTracking().OrderBy(f => f.Id)
                 .Select(f => new { f.Id, f.HabitId, f.Date, f.Minutes, f.Source, f.StartedAt, f.CreatedAt }).ToListAsync(ct),
             xpEvents = await db.XpEvents.AsNoTracking().OrderBy(x => x.Id)
                 .Select(x => new

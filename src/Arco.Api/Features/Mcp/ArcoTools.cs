@@ -29,10 +29,20 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description(StatusDescription)] string status,
         [Description(DateDescription)] string? data = null,
         [Description("Minutos dedicados (0 a 480, opcional). Omitido = não mexe; 0 = remove os minutos manuais do dia. Não vale com Missed nem Skipped.")] int? minutos = null,
-        [Description("Nota opcional (até 280 caracteres), em qualquer status.")] string? nota = null,
+        [Description("Nota opcional (até 280 caracteres), em qualquer status. Omitida = mantém a nota já salva; texto vazio (\"\") = remove a nota; texto = substitui.")] string? nota = null,
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Put, "/api/checkins",
             new { habitId, date = data ?? await TodayAsync(ct), status, minutes = minutos, note = nota }, ct);
+
+    [McpServerTool(Name = "registrar_humor", Title = "Registrar humor", Idempotent = true)]
+    [Description("Registra (ou altera) o humor do dia, de 1 (muito ruim) a 5 (muito bom). Um por dia; não dá XP. " +
+                 "Alimenta a revisão semanal (humor médio e consistência em dias bons e ruins).")]
+    public async Task<string> RegistrarHumor(
+        [Description("Humor de 1 (muito ruim) a 5 (muito bom).")] int valor,
+        [Description(DateDescription)] string? data = null,
+        CancellationToken ct = default) =>
+        await api.SendAsync(HttpMethod.Put, "/api/moods",
+            new { date = data ?? await TodayAsync(ct), value = valor }, ct);
 
     [McpServerTool(Name = "registrar_foco", Title = "Registrar foco")]
     [Description("Registra uma sessão de foco (minutos) em um hábito. Não dá XP; vira uma árvore na floresta.")]

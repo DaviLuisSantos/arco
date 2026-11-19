@@ -10,6 +10,8 @@ export default {
     minutesQuestion: 'How many minutes?',
     optional: 'optional',
     noteLabel: 'Reason (optional)',
+    noteOptional: 'Note (optional)',
+    addNote: 'Add note',
     minutesHint: 'Saved when you leave the field',
   },
   feedback: {

@@ -12,7 +12,7 @@ export interface CheckInVars {
   status: CheckInStatus | null
   /** Minutos manuais do dia. Ausente = não mexe; 0 = remove. Serializável na fila offline. */
   minutes?: number
-  /** Anotação (Pulei). Ausente = não mexe; "" = limpa. Serializável na fila offline. */
+  /** Nota (qualquer status). Ausente = mantém; "" = remove. Serializável na fila offline. */
   note?: string
 }
 

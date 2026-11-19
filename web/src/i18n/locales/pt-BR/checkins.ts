@@ -10,6 +10,8 @@ const ns = {
     minutesQuestion: 'Quantos minutos?',
     optional: 'opcional',
     noteLabel: 'Motivo (opcional)',
+    noteOptional: 'Nota (opcional)',
+    addNote: 'Adicionar nota',
     minutesHint: 'Salva ao sair do campo',
   },
   feedback: {

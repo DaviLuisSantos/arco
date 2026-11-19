@@ -12,6 +12,8 @@ import { ProgressBar } from '../components/ui/ProgressBar'
 import { Skeleton } from '../components/ui/Skeleton'
 import { ErrorState, Spinner } from '../components/ui/States'
 import { PeriodStats } from '../features/reviews/PeriodStats'
+import { WeekMood } from '../features/reviews/WeekMood'
+import { WeekNotes } from '../features/reviews/WeekNotes'
 import { cleanAnswers, EMPTY_ANSWERS, WEEK_PROMPTS, type Answers } from '../features/reviews/review-answers'
 import { ReviewAnswersView, ReviewQuestions } from '../features/reviews/ReviewQuestions'
 import { formatDate } from '../lib/dates'
@@ -143,6 +145,8 @@ function WeekNumbers({ summary }: { summary: WeeklySummary }) {
           ))}
         </Card>
       )}
+      <WeekMood mood={summary.mood} />
+      <WeekNotes notes={summary.notes} />
     </section>
   )
 }
