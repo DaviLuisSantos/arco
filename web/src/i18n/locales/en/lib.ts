@@ -10,7 +10,7 @@ const lib_en: typeof ns = {
   streakWeeks: '{{count}} weeks',
   everyDay: 'Every day',
   timesPerWeek: '{{count}}x per week',
-  status: { Done: 'Done', Minimum: 'Minimum', Missed: 'Missed' },
+  status: { Done: 'Done', Minimum: 'Minimum', Missed: 'Missed', Skipped: 'Skipped' },
   xpSource: {
     CheckIn: 'Check-in',
     HabitLevelUp: 'Habit leveled up',

@@ -27,11 +27,12 @@ const CELL = {
   Done: 'bg-done text-bg',
   Minimum: 'bg-minimum text-bg',
   Missed: 'bg-missed/20 text-missed',
+  Skipped: 'border border-dashed border-muted/60 text-muted',
   none: 'bg-surface-2 text-muted',
   future: 'text-muted/40',
 }
 
-const STATUSES: CheckInStatus[] = ['Done', 'Minimum', 'Missed']
+const STATUSES: CheckInStatus[] = ['Done', 'Minimum', 'Missed', 'Skipped']
 
 /** Segunda a domingo, como a semana do app. */
 const WEEK_HEADER = [1, 2, 3, 4, 5, 6, 0].map((d) => WEEKDAY_INITIALS[d])

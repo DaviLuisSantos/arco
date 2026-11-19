@@ -2,7 +2,7 @@ namespace Arco.Api.Domain;
 
 public enum FrequencyType { Daily, SpecificDays, WeeklyTarget }
 
-public enum CheckInStatus { Done, Minimum, Missed }
+public enum CheckInStatus { Done, Minimum, Missed, Skipped }
 
 public enum FocusSource { Timer, Manual }
 

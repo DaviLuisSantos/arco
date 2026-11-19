@@ -92,7 +92,7 @@ public static class AdminEndpoints
             """
             SELECT c.Date AS Day, COUNT(DISTINCT c.UserId) AS Count
             FROM CheckIns c JOIN Users u ON u.Id = c.UserId
-            WHERE u.IsDemo = 0 AND c.Status <> 'Missed' AND c.Date >= @From AND c.Date <= @To
+            WHERE u.IsDemo = 0 AND c.Status IN ('Done','Minimum') AND c.Date >= @From AND c.Date <= @To
             GROUP BY c.Date
             """, new { From = Iso(from30), To = Iso(today) }, cancellationToken: ct)))
             .ToDictionary(r => Parse(r.Day), r => (int)r.Count);
@@ -101,14 +101,14 @@ public static class AdminEndpoints
             """
             SELECT COUNT(DISTINCT c.UserId)
             FROM CheckIns c JOIN Users u ON u.Id = c.UserId
-            WHERE u.IsDemo = 0 AND c.Status <> 'Missed' AND c.Date > @From AND c.Date <= @To
+            WHERE u.IsDemo = 0 AND c.Status IN ('Done','Minimum') AND c.Date > @From AND c.Date <= @To
             """, new { From = Iso(today.AddDays(-d)), To = Iso(today) }, cancellationToken: ct));
 
         var checkIns = (await conn.QueryAsync<CheckInRow>(new CommandDefinition(
             """
             SELECT DISTINCT c.UserId AS UserId, c.Date AS Day
             FROM CheckIns c JOIN Users u ON u.Id = c.UserId
-            WHERE u.IsDemo = 0 AND c.Status <> 'Missed' AND c.Date >= @Since
+            WHERE u.IsDemo = 0 AND c.Status IN ('Done','Minimum') AND c.Date >= @Since
             """, new { Since = Iso(since) }, cancellationToken: ct)))
             .ToLookup(c => (int)c.UserId, c => Parse(c.Day));
 

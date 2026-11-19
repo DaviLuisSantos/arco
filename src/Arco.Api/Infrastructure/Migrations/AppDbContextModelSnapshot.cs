@@ -72,6 +72,10 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int>("HabitId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(280)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -381,6 +385,43 @@ namespace Arco.Api.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("HabitLevels");
+                });
+
+            modelBuilder.Entity("Arco.Api.Domain.HabitPause", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HabitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsVacation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(140)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("HabitId", "StartDate");
+
+                    b.ToTable("HabitPauses");
                 });
 
             modelBuilder.Entity("Arco.Api.Domain.HabitPlannedLevel", b =>
@@ -1095,6 +1136,23 @@ namespace Arco.Api.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Arco.Api.Domain.HabitPause", b =>
+                {
+                    b.HasOne("Arco.Api.Domain.Habit", "Habit")
+                        .WithMany("Pauses")
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Arco.Api.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Habit");
+                });
+
             modelBuilder.Entity("Arco.Api.Domain.HabitPlannedLevel", b =>
                 {
                     b.HasOne("Arco.Api.Domain.Habit", null)
@@ -1271,6 +1329,8 @@ namespace Arco.Api.Infrastructure.Migrations
             modelBuilder.Entity("Arco.Api.Domain.Habit", b =>
                 {
                     b.Navigation("Levels");
+
+                    b.Navigation("Pauses");
 
                     b.Navigation("PlannedLevels");
                 });

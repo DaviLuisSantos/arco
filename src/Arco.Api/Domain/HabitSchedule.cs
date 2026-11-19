@@ -11,6 +11,16 @@ public static class HabitSchedule
     public static bool CountsTowardWeek(CheckInStatus status) =>
         status is CheckInStatus.Done or CheckInStatus.Minimum;
 
+    /// <summary>
+    /// Weekly target scaled down for excused days: <c>ceil(target × (7 − excused) / 7)</c>; 0 when the whole week is excused.
+    /// </summary>
+    public static int AdjustedWeekTarget(int target, int excusedDays)
+    {
+        if (excusedDays >= 7) return 0;
+        if (excusedDays <= 0) return target;
+        return (int)Math.Ceiling(target * (7 - excusedDays) / 7.0);
+    }
+
     /// <summary>Done/Minimum check-ins within the Monday–Sunday week containing <paramref name="today"/>.</summary>
     public static int WeekCount(IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, DateOnly today)
     {

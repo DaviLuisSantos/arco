@@ -27,19 +27,33 @@ public static class LevelDownSuggestion
     public static bool IsWeak(int days, int target) => days * 2 < target;
 
     public static bool ShouldSuggest(IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, int weeklyTarget,
-        int level, DateOnly levelReachedOn, DateOnly? snoozedUntil, DateOnly today, bool archived)
+        int level, DateOnly levelReachedOn, DateOnly? snoozedUntil, DateOnly today, bool archived,
+        PauseCalendar? calendar = null)
     {
         if (archived || level < 2 || snoozedUntil is { } until && today < until) return false;
+        calendar ??= PauseCalendar.None;
 
         var perWeek = checkIns
             .Where(c => c.Date < HabitSchedule.WeekStart(today) && HabitSchedule.CountsTowardWeek(c.Status))
             .GroupBy(c => HabitSchedule.WeekStart(c.Date))
             .ToDictionary(g => g.Key, g => g.Select(c => c.Date).Distinct().Count());
 
-        // The last finished weeks, each entirely at the current level.
-        var lastFinished = HabitSchedule.WeekStart(today).AddDays(-7);
-        return Enumerable.Range(0, Weeks)
-            .Select(i => lastFinished.AddDays(-7 * i))
-            .All(week => week >= levelReachedOn && IsWeak(perWeek.GetValueOrDefault(week), weeklyTarget));
+        // The last finished weeks, each entirely at the current level. Fully excused weeks are ignored
+        // (the last Weeks non-neutral ones count); partial weeks use a proportional target.
+        var week = HabitSchedule.WeekStart(today).AddDays(-7);
+        var evaluated = 0;
+        while (evaluated < Weeks)
+        {
+            if (week < levelReachedOn) return false;
+            var excused = calendar.ExcusedInWeek(week);
+            if (excused < 7)
+            {
+                var target = HabitSchedule.AdjustedWeekTarget(weeklyTarget, excused);
+                if (!IsWeak(perWeek.GetValueOrDefault(week), target)) return false;
+                evaluated++;
+            }
+            week = week.AddDays(-7);
+        }
+        return true;
     }
 }

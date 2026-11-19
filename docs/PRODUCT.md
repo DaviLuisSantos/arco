@@ -6,7 +6,7 @@ App multiusuário de hábitos com **progresso e objetivo**: cada check-in alimen
 Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerramento com revisão
  └─ Objetivo (com prazo)    → "Correr 10km até 30/11" — barra de progresso até a meta
      └─ Hábito (com níveis) → "Correr — Nível 2: 20 min, 3x/semana"
-         └─ Check-in diário → Feito / Mínimo / Não fiz → gera XP
+         └─ Check-in diário → Feito / Mínimo / Pulei / Não fiz → gera XP
 ```
 
 ## Conceitos
@@ -48,11 +48,13 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
   - A janela termina hoje se hoje já tem check-in; senão, ontem (um "hoje" ainda não marcado não derruba a taxa).
   - Esperado: Daily = 14; SpecificDays = dias da lista na janela; WeeklyTarget = N × 2.
   - "Agora não" esconde a sugestão por 7 dias.
+  - Dias dispensados (ver "Pausa e modo férias") saem do esperado; esperado 0 = sem sugestão.
 - **Voltar um nível** (sempre manual): na página do hábito, a partir do nível 2. O nível atual sai do histórico e volta
   para o topo da escada planejada (a próxima subida já vem com ele). O XP já ganho continua; subir de novo dá XP.
   - **Sugestão de voltar**: quando as 2 últimas semanas terminadas, inteiras no nível atual, ficaram abaixo da metade
     da meta semanal (Feito e Mínimo contam). Meta = dias da regra de semanas, se houver; senão a frequência (Diário 7,
     dias específicos = quantidade de dias, X/semana = X). Ex.: inglês com "5+ dias" → 2 dias ou menos em 2 semanas.
+  - Semanas totalmente dispensadas são ignoradas; nas parciais a meta é proporcional (ver "Pausa e modo férias").
   - Aparece na tela Hoje e na página do hábito; "Agora não" adia por 7 dias. Nunca aparece junto com a de subir.
 - Lembrete opcional por hábito (horário local): push nos dias em que ele é devido e ainda não foi marcado.
 - Arquivar e restaurar.
@@ -62,6 +64,7 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Diário e dias específicos: conta os **dias devidos** com Feito ou Mínimo. Meta semanal: conta as **semanas** com a meta batida.
 - Tolerância: **uma falha isolada por semana é perdoada** (mantém a sequência, mas não soma). Duas falhas seguidas,
   ou duas na mesma semana (segunda a domingo), zeram a sequência.
+  - Dia dispensado (pausado ou Pulei) é neutro: não soma nem quebra (ver "Pausa e modo férias").
   - Falha = dia devido com "Não fiz" ou sem check-in. Na meta semanal, uma semana com 1 a menos que a meta é a falha
     perdoável (meta de 1×/semana não tem tolerância); mais que isso zera.
   - Hoje ainda sem check-in (ou a semana atual sem a meta batida) fica pendente, não é falha. A primeira semana
@@ -91,7 +94,8 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Os esperados usam a frequência atual e começam na criação do hábito ou num check-in retroativo anterior a ela.
 
 ### Check-in
-- Um por hábito por dia: `Done` (Feito), `Minimum` (Mínimo) ou `Missed` (Não fiz).
+- Um por hábito por dia: `Done` (Feito), `Minimum` (Mínimo), `Skipped` (Pulei: 0 XP, não conta como check-in) ou `Missed` (Não fiz).
+- `note` opcional (até 280 caracteres) em qualquer status.
 - Pode ser alterado ou desfeito. Datas futuras são proibidas; até 7 dias no passado são permitidos.
 - "Hoje" é calculado no fuso configurado (padrão `America/Sao_Paulo`).
 
@@ -130,6 +134,20 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 
 - Alterar um check-in substitui o XP dele, e desfazer remove esse XP. Reabrir um marco também remove o XP correspondente.
 - Nível do jogador: começa no 1. Para passar do nível L ao L+1 são necessários `100 + 50 × (L − 1)` XP (100, 150, 200, …).
+
+## Pausa e modo férias
+- **Pulei** (`Skipped`): novo status de check-in, 0 XP, sem `XpEvent`, sem minutos; `note` opcional (≤ 280, qualquer status; a UI só mostra no Pulei). Funciona offline (vai pela fila do check-in).
+- **Pausa** (`HabitPause`): período por hábito, `startDate` ≥ hoje − 7, `endDate` opcional (incluso, ≤ start + 365; nulo = até retomar), sem sobreposição no mesmo hábito, hábito arquivado não pausa. Retomar: pausa em curso com início hoje é apagada; senão `endDate = ontem`. Pausas futuras não mudam.
+- **Modo férias**: cria uma pausa (início, fim obrigatório) em todo hábito ativo sem pausa sobreposta. Essas pausas ficam marcadas como de férias: encerrar as férias retoma as que estão em curso e apaga as futuras, sem mexer nas pausas individuais.
+- **Dia dispensado** = dia pausado ou com check-in Pulei. Se o dia tiver Feito/Mínimo, conta normalmente (vale como sucesso). Senão é **neutro**:
+  - sequência: não soma nem quebra (Diário/dias específicos);
+  - consistência, estatísticas, revisões e parceiro: sai dos esperados;
+  - meta semanal: alvo da semana = `ceil(alvo × (7 − dispensados) / 7)`; semana com 7 dispensados = neutra (não soma, não quebra, não conta como falha);
+  - subir de nível (80%/14d): esperados descontam os dispensados; esperado 0 = sem sugestão. Regra de semanas seguidas: semana neutra é pulada (não quebra nem soma);
+  - voltar de nível: semanas totalmente dispensadas são ignoradas (olha as 2 últimas semanas não neutras); nas parciais, meta proporcional como acima;
+  - lembrete push: não sai em dia dispensado;
+  - Hoje: hábito pausado hoje vai para "Pausados" (`isPaused`, `pausedUntil`), `isDueToday = false`;
+  - conquistas e admin: Pulei não conta como check-in.
 
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
@@ -204,3 +222,11 @@ O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.jso
 1. **Tipos de resposta nas rotas antigas** do OpenAPI (as novas já têm `.Produces<T>`).
 2. **Chaves só de leitura.** Escopo por chave (`leitura` ou `leitura e escrita`), para integrações que só consultam
    (dashboards, relatórios) não poderem alterar nada.
+
+### Adendos da pesquisa de concorrentes
+3. **Pausa e modo férias** (em andamento, ver seção própria): viagem ou doença não deve zerar a sequência; "pular ou pausar sem falhar" é o pedido mais comum (Strides, apps com férias).
+4. **Nota e humor no check-in:** registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
+5. **Ordem do dia por período e encadeamento:** manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
+6. **Hábito quantitativo:** metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
+7. **Hábito negativo:** acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).
+8. **Desafio cooperativo com o parceiro:** meta compartilhada da semana, em vez de só ver o resumo do outro (Habitica).

@@ -13,6 +13,7 @@ import { FocusTimer } from '../features/focus/FocusTimer'
 import { HabitHistory } from '../features/habits/HabitHistory'
 import { HabitFormDialog } from '../features/habits/HabitFormDialog'
 import { LevelTimeline } from '../features/habits/LevelTimeline'
+import { HabitPausesCard } from '../features/pauses/HabitPausesCard'
 import { LevelUpDialog } from '../features/habits/LevelUpDialog'
 import { addDays, localDateOf, localToday } from '../lib/dates'
 import { formatPercent, frequencyText, streakText } from '../lib/format'
@@ -224,6 +225,8 @@ export function HabitDetailPage() {
           </Card>
         </section>
       )}
+
+      {!archived && <HabitPausesCard habitId={h.id} pauses={h.pauses} today={today.data ?? localToday()} />}
 
       <section aria-labelledby="grid-title">
         <h2 id="grid-title" className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">

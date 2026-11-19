@@ -12,8 +12,15 @@ public static class TodayEndpoints
         bool levelUpSuggested,
         int? levelUpWeeksDone,
         bool levelDownSuggested,
-        StreakDto streak) : HabitDto(habit)
+        StreakDto streak,
+        DateOnly today,
+        bool isPaused,
+        DateOnly? pausedUntil) : HabitDto(habit, today)
     {
+        /// <summary>Paused today: listed apart ("Pausados"), never due.</summary>
+        public bool IsPaused { get; } = isPaused;
+        /// <summary>Last paused day of the pause in progress (null = until resumed, or not paused).</summary>
+        public DateOnly? PausedUntil { get; } = pausedUntil;
         public bool IsDueToday { get; } = isDueToday;
         public int WeekCount { get; } = weekCount;
         public int? WeekTarget { get; } = habit.FrequencyType == FrequencyType.WeeklyTarget ? habit.TimesPerWeek : null;
@@ -58,6 +65,7 @@ public static class TodayEndpoints
             .Include(h => h.Levels)
             .Include(h => h.PlannedLevels)
             .Include(h => h.Goal)
+            .Include(h => h.Pauses)
             .Where(h => h.ArchivedAt == null)
             .ToListAsync(ct);
 
@@ -80,16 +88,22 @@ public static class TodayEndpoints
             var week = history.Where(c => c.Date >= weekStart).ToList();
             var todayCheckIn = week.FirstOrDefault(c => c.Date == today);
             var weekCount = HabitSchedule.WeekCount(week.Select(c => (c.Date, c.Status)), today);
-            var due = HabitSchedule.IsDueToday(h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, today, weekCount,
+            var calendar = Queries.Calendar(h, history);
+            var paused = calendar.IsPaused(today);
+            // Weekly target: the goal shrinks with the excused days of the week.
+            var target = h.TimesPerWeek is { } t ? HabitSchedule.AdjustedWeekTarget(t, calendar.ExcusedInWeek(weekStart)) : (int?)null;
+            var due = !paused && HabitSchedule.IsDueToday(h.FrequencyType, h.FrequencyDays, target, today, weekCount,
                 todayCheckIn?.Status);
-            var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone);
+            var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone, calendar);
             return new TodayHabitDto(h, due, weekCount,
                 todayCheckIn is null ? null
                     : CheckInDto.From(todayCheckIn) with { Minutes = manualMinutes.TryGetValue(h.Id, out var m) ? m : null }, h.Goal?.Title, consistency, suggested, weeksDone,
-                !suggested && Queries.LevelDown(h, history, today, timezone),
-                Queries.Streak(h, history, today, timezone));
+                !suggested && Queries.LevelDown(h, history, today, timezone, calendar),
+                Queries.Streak(h, history, today, timezone, calendar),
+                today, paused, paused ? calendar.PausedUntil(today) : null);
         })
-        .OrderByDescending(h => h.IsDueToday)
+        .OrderBy(h => h.IsPaused)
+        .ThenByDescending(h => h.IsDueToday)
         .ThenBy(h => h.Name, StringComparer.InvariantCultureIgnoreCase)
         .ThenBy(h => h.Id)
         .ToList();

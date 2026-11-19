@@ -77,7 +77,7 @@ public static class AchievementService
     {
         var today = await clock.GetTodayAsync(ct);
         var timezone = await clock.GetTimezoneAsync(ct);
-        var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).ToListAsync(ct);
+        var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.Pauses).ToListAsync(ct);
         var checkIns = (await db.CheckIns.AsNoTracking().Where(c => c.Date <= today).ToListAsync(ct))
             .ToLookup(c => c.HabitId);
 

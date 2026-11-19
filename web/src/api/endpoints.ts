@@ -10,6 +10,10 @@ import type {
   CheckIn,
   CheckInInput,
   CheckInResult,
+  HabitPause,
+  PauseInput,
+  Vacation,
+  VacationInput,
   CreatedApiKey,
   Cycle,
   CycleCompleteInput,
@@ -166,6 +170,18 @@ export const habitsApi = {
   dismissLevelDownSuggestion: (id: number) => api.post<void>(`/habits/${id}/level-down-suggestion/dismiss`),
   archive: (id: number) => api.post<Habit>(`/habits/${id}/archive`),
   restore: (id: number) => api.post<Habit>(`/habits/${id}/restore`),
+}
+
+export const pausesApi = {
+  create: (habitId: number, input: PauseInput) => api.post<HabitPause>(`/habits/${habitId}/pauses`, input),
+  remove: (habitId: number, pauseId: number) => api.delete<void>(`/habits/${habitId}/pauses/${pauseId}`),
+  resume: (habitId: number) => api.post<void>(`/habits/${habitId}/resume`),
+}
+
+export const vacationApi = {
+  get: () => api.get<Vacation>('/vacation'),
+  start: (input: VacationInput) => api.post<{ paused: number }>('/vacation', input),
+  end: () => api.delete<{ resumed: number }>('/vacation'),
 }
 
 export const cyclesApi = {

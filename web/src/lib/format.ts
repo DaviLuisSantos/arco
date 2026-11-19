@@ -39,7 +39,7 @@ function lazyRecord<K extends string>(keys: K[], label: (key: K) => string): Rec
   return record
 }
 
-export const STATUS_LABELS: Record<CheckInStatus, string> = lazyRecord(['Done', 'Minimum', 'Missed'], (k) =>
+export const STATUS_LABELS: Record<CheckInStatus, string> = lazyRecord(['Done', 'Minimum', 'Missed', 'Skipped'], (k) =>
   i18n.t(`lib:status.${k}`),
 )
 

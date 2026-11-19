@@ -208,9 +208,26 @@ public class Habit : IUserOwned
     public List<HabitLevel> Levels { get; set; } = [];
     /// <summary>The ladder ahead: the next levels, in order. Leveling up consumes the first one.</summary>
     public List<HabitPlannedLevel> PlannedLevels { get; set; } = [];
+    public List<HabitPause> Pauses { get; set; } = [];
 
     public HabitLevel? CurrentLevel => Levels.Count == 0 ? null : Levels.MaxBy(l => l.Level);
     public int CurrentLevelNumber => CurrentLevel?.Level ?? 1;
+}
+
+/// <summary>A period in which a habit is paused: its days are neutral (never break streaks or count as failures).</summary>
+public class HabitPause : IUserOwned
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int HabitId { get; set; }
+    public Habit? Habit { get; set; }
+    public DateOnly StartDate { get; set; }
+    /// <summary>Last paused day (inclusive); null = until resumed.</summary>
+    public DateOnly? EndDate { get; set; }
+    public string? Reason { get; set; }
+    /// <summary>Created by the vacation mode (POST /api/vacation); ending the vacation only touches these.</summary>
+    public bool IsVacation { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class HabitPlannedLevel : IUserOwned
@@ -242,8 +259,10 @@ public class CheckIn : IUserOwned
     public Habit? Habit { get; set; }
     public DateOnly Date { get; set; }
     public CheckInStatus Status { get; set; }
-    /// <summary>XP awarded by this check-in (mirrors its XpEvent; 0 when Missed).</summary>
+    /// <summary>XP awarded by this check-in (mirrors its XpEvent; 0 when Missed or Skipped).</summary>
     public int Xp { get; set; }
+    /// <summary>Optional note (up to 280 chars), allowed on any status.</summary>
+    public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

@@ -78,6 +78,7 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
     {
         var habits = (await db.Habits.AsNoTracking()
                 .Include(h => h.Levels)
+                .Include(h => h.Pauses)
                 .Where(h => h.ArchivedAt == null && h.ReminderTime != null)
                 .ToListAsync(ct))
             .Where(h => IsTime(h.ReminderTime!.Value, now))
@@ -97,8 +98,12 @@ public sealed class ReminderDispatcher(AppDbContext db, AppClock clock, PushNoti
         {
             var checkIns = week[habit.Id].ToList();
             if (checkIns.Any(c => c.Date == today)) continue;
+            // Paused (or skipped) days are excused: no reminder.
+            var calendar = Queries.Calendar(habit, checkIns);
+            if (calendar.IsExcused(today)) continue;
             var weekCount = HabitSchedule.WeekCount(checkIns.Select(c => (c.Date, c.Status)), today);
-            if (!HabitSchedule.IsDueToday(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek, today, weekCount))
+            var target = habit.TimesPerWeek is { } t ? HabitSchedule.AdjustedWeekTarget(t, calendar.ExcusedInWeek(weekStart)) : (int?)null;
+            if (!HabitSchedule.IsDueToday(habit.FrequencyType, habit.FrequencyDays, target, today, weekCount))
                 continue;
             if (!await TryClaimAsync($"habit:{habit.Id}:{today:yyyy-MM-dd}", ct)) continue;
 

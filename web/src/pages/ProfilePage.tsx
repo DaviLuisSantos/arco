@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { useToast } from '../components/ui/toast-context'
 import { AchievementsSection } from '../features/achievements/AchievementsSection'
 import { PlanCard } from '../features/billing/PlanCard'
+import { VacationCard } from '../features/pauses/VacationCard'
 import { PartnersCard } from '../features/partners/PartnersCard'
 import { PublicProfileCard } from '../features/publicProfile/PublicProfileCard'
 import { PlayerProgress } from '../features/player/PlayerProgress'
@@ -68,6 +69,7 @@ export function ProfilePage() {
         </Link>
       )}
       <PlanCard />
+      <VacationCard />
       <PublicProfileCard />
       <PartnersCard />
       <LogoutButton />

@@ -11,6 +11,7 @@ import { DayStone } from '../features/arch/DayStone'
 import { HabitCheckInCard } from '../features/checkins/HabitCheckInCard'
 import { CycleStrip } from '../features/cycle/CycleStrip'
 import { GoalMiniCard } from '../features/goals/GoalMiniCard'
+import { PausedHabitsSection } from '../features/pauses/PausedHabitsSection'
 import { OnboardingSlot } from '../features/onboarding/FirstSessionChecklist'
 import { TemplateShortcuts } from '../features/onboarding/TemplateShortcuts'
 import { PlayerProgress } from '../features/player/PlayerProgress'
@@ -27,8 +28,10 @@ export function TodayPage() {
 
   const { date, player, xpToday, cycle, goals, habits } = today.data
   // Hábito já marcado hoje continua na lista principal (ex.: meta semanal recém-batida).
-  const dueHabits = habits.filter((h) => h.isDueToday || h.checkIn !== null)
-  const otherHabits = habits.filter((h) => !h.isDueToday && h.checkIn === null)
+  // Pausado sem check-in vai para "Pausados"; com check-in (Feito/Mínimo/Pulei) segue na lista.
+  const pausedHabits = habits.filter((h) => h.isPaused && h.checkIn === null)
+  const dueHabits = habits.filter((h) => !pausedHabits.includes(h) && (h.isDueToday || h.checkIn !== null))
+  const otherHabits = habits.filter((h) => !pausedHabits.includes(h) && !h.isDueToday && h.checkIn === null)
   const pending = dueHabits.filter((h) => h.checkIn === null).length
   const doneCount = dueHabits.length - pending
 
@@ -112,6 +115,8 @@ export function TodayPage() {
           </div>
         </details>
       )}
+
+      <PausedHabitsSection habits={pausedHabits} />
 
       <CycleStrip cycle={cycle} />
 
