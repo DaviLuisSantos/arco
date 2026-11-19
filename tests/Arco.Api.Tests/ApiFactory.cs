@@ -37,6 +37,7 @@ public sealed class ApiFactory(DateTimeOffset? now = null) : WebApplicationFacto
         builder.UseSetting("Push:SchedulerEnabled", "false");
         builder.UseSetting("Backup:Enabled", "false");
         builder.UseSetting("Demo:CleanupEnabled", "false");
+        builder.UseSetting("NegativeHabits:SchedulerEnabled", "false");
         builder.UseSetting("Outbox:WorkerEnabled", "false");
         builder.UseSetting("Auth:ActionsPerMinute", "1000");
         builder.ConfigureTestServices(services =>

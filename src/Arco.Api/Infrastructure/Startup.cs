@@ -106,6 +106,10 @@ public static class Startup
         // Demo accounts are deleted after 24 hours.
         if (config.GetValue("Demo:CleanupEnabled", true)) services.AddHostedService<DemoCleanupService>();
 
+        // Negative habits: the days that pass without a relapse become clean (Done) check-ins, hourly.
+        services.AddSingleton<CleanDaysService>();
+        if (config.GetValue("NegativeHabits:SchedulerEnabled", true)) services.AddHostedService<CleanDaysHostedService>();
+
         // Backups: one automatic copy per day next to the database, plus downloads on demand.
         services.AddSingleton(new DatabaseBackup(Path.Combine(dataDir, "backups")));
         if (config.GetValue("Backup:Enabled", true)) services.AddHostedService<DatabaseBackupService>();

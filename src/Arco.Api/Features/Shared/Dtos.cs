@@ -122,6 +122,7 @@ public class HabitDto
         LevelDescription = current?.Description ?? "";
         MinimumDescription = current?.MinimumDescription ?? "";
         Unit = h.Unit;
+        Kind = h.Kind;
         Target = Tenths(current?.TargetTenths);
         MinimumTarget = Tenths(current?.MinimumTenths);
         Levels = levels.Select(l => new HabitLevelDto(l.Level, l.Description, l.MinimumDescription, l.ReachedAt,
@@ -143,6 +144,8 @@ public class HabitDto
 
     /// <summary>Unit of a quantitative habit (null = regular habit).</summary>
     public string? Unit { get; }
+    /// <summary>Positive (default) or Negative (a habit to quit).</summary>
+    public HabitKind Kind { get; }
     /// <summary>Goal of the current level (quantitative habits only).</summary>
     public decimal? Target { get; }
     /// <summary>Minimum of the current level (quantitative habits only).</summary>

@@ -171,7 +171,9 @@ function HabitForm({
       minimumTarget: formatQuantity(l.minimumTarget),
     })) ?? [],
   );
-  const [measure, setMeasure] = useState(!!habit?.unit);
+  // Tipo só se escolhe na criação; ao editar, vem do hábito.
+  const [quit, setQuit] = useState(habit?.kind === "Negative");
+  const [measure, setMeasure] = useState(!!habit?.unit);;
   const [unit, setUnit] = useState(habit?.unit ?? "");
   const [target, setTarget] = useState(formatQuantity(habit?.target));
   const [minimumTarget, setMinimumTarget] = useState(
@@ -207,6 +209,7 @@ function HabitForm({
       unit,
       target,
       minimumTarget,
+      quit,
     ]),
   );
   const snapshot = JSON.stringify([
@@ -228,6 +231,7 @@ function HabitForm({
     unit,
     target,
     minimumTarget,
+    quit,
   ]);
   const isDirty = snapshot !== initial;
   useEffect(() => onDirtyChange(isDirty), [isDirty, onDirtyChange]);
@@ -273,9 +277,15 @@ function HabitForm({
     if (!name.trim()) e.name = t("form.nameRequired");
     else if (name.trim().length > 80) e.name = t("form.maxChars", { max: 80 });
     if (emoji.trim().length > 8) e.emoji = t("form.maxChars", { max: 8 });
-    if (frequencyType === "SpecificDays" && days.length === 0)
+    if (!quit && frequencyType === "SpecificDays" && days.length === 0)
       e.days = t("form.daysRequired");
-    if (measure) {
+    if (quit) {
+      // Dose e mínimo são opcionais: vazios, o servidor grava "Sem recaída".
+      if (levelDescription.trim().length > 120)
+        e.level = t("form.maxChars", { max: 120 });
+      if (minimumDescription.trim().length > 120)
+        e.minimum = t("form.maxChars", { max: 120 });
+    } else if (measure) {
       const u = unit.trim();
       if (!u || u.length > 16) e.unit = t("form.unitRequired");
       if (parseQuantity(target) === null) e.target = t("form.targetInvalid");
@@ -300,7 +310,9 @@ function HabitForm({
     }
     if (reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime))
       e.reminder = t("form.timeFormat");
-    if (measure) {
+    if (quit) {
+      // Sem escada planejada em hábito para largar (os níveis vêm dos marcos).
+    } else if (measure) {
       if (planned.some((l) => !validTargets(l.target, l.minimumTarget)))
         e.planned = t("form.plannedQuantityIncomplete");
     } else if (
@@ -328,19 +340,21 @@ function HabitForm({
     onPendingChange(true);
     save.mutate(
       {
+        ...(habit ? {} : { kind: quit ? ("Negative" as const) : ("Positive" as const) }),
         name: name.trim(),
         emoji: emoji.trim() || null,
         goalId: goalId ? Number(goalId) : null,
-        frequencyType,
-        frequencyDays: frequencyType === "SpecificDays" ? days : [],
-        timesPerWeek: frequencyType === "WeeklyTarget" ? timesPerWeek : null,
+        frequencyType: quit ? "Daily" : frequencyType,
+        frequencyDays: !quit && frequencyType === "SpecificDays" ? days : [],
+        timesPerWeek:
+          !quit && frequencyType === "WeeklyTarget" ? timesPerWeek : null,
         levelDescription: levelDescription.trim(),
         minimumDescription: minimumDescription.trim(),
         reminderTime: reminderTime || null,
-        unit: measure ? unit.trim() : "",
-        levelTarget: measure ? parseQuantity(target) : null,
-        levelMinimumTarget: measure ? parseQuantity(minimumTarget) : null,
-        plannedLevels: planned.map((l) => ({
+        unit: measure && !quit ? unit.trim() : "",
+        levelTarget: measure && !quit ? parseQuantity(target) : null,
+        levelMinimumTarget: measure && !quit ? parseQuantity(minimumTarget) : null,
+        plannedLevels: quit ? [] : planned.map((l) => ({
           description: l.levelDescription.trim(),
           minimumDescription: l.minimumDescription.trim(),
           target: measure ? parseQuantity(l.target) : null,
@@ -449,6 +463,22 @@ function HabitForm({
         />
       )}
 
+      {!habit && (
+        <div className="flex flex-col gap-1">
+          <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={quit}
+              onChange={(e) => setQuit(e.target.checked)}
+              className="size-5"
+            />
+            {t("form.quit")}
+          </label>
+          <p className="text-xs text-muted">{t("form.quitHint")}</p>
+        </div>
+      )}
+
+      {!quit && (
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-medium">
           {t("form.frequency")}
@@ -511,7 +541,9 @@ function HabitForm({
           </Select>
         )}
       </fieldset>
+      )}
 
+      {!quit && (
       <div className="flex flex-col gap-1">
         <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
           <input
@@ -524,7 +556,8 @@ function HabitForm({
         </label>
         <p className="text-xs text-muted">{t("form.measureHint")}</p>
       </div>
-      {measure && (
+      )}
+      {measure && !quit && (
         <div className="grid grid-cols-3 gap-3">
           <Input
             label={t("form.unit")}
@@ -564,14 +597,16 @@ function HabitForm({
         value={levelDescription}
         onChange={(e) => setLevelDescription(e.target.value)}
         placeholder={
-          measure && parseQuantity(target) !== null
-            ? t("form.autoDescription", {
-                value: `${formatQuantity(parseQuantity(target))} ${unit.trim()}`.trim(),
-              })
-            : t("form.dosePlaceholder")
+          quit
+            ? t("form.quitDosePlaceholder")
+            : measure && parseQuantity(target) !== null
+              ? t("form.autoDescription", {
+                  value: `${formatQuantity(parseQuantity(target))} ${unit.trim()}`.trim(),
+                })
+              : t("form.dosePlaceholder")
         }
         maxLength={120}
-        hint={t("form.doseHint")}
+        hint={quit ? t("form.quitDoseHint") : t("form.doseHint")}
         onBlur={() => checkField("level")}
         error={errors.level}
       />
@@ -580,11 +615,13 @@ function HabitForm({
         value={minimumDescription}
         onChange={(e) => setMinimumDescription(e.target.value)}
         placeholder={
-          measure && parseQuantity(minimumTarget) !== null
-            ? t("form.autoDescription", {
-                value: `${formatQuantity(parseQuantity(minimumTarget))} ${unit.trim()}`.trim(),
-              })
-            : t("form.minimumPlaceholder")
+          quit
+            ? t("form.quitDosePlaceholder")
+            : measure && parseQuantity(minimumTarget) !== null
+              ? t("form.autoDescription", {
+                  value: `${formatQuantity(parseQuantity(minimumTarget))} ${unit.trim()}`.trim(),
+                })
+              : t("form.minimumPlaceholder")
         }
         maxLength={120}
         hint={t("form.minimumHint")}
@@ -605,26 +642,30 @@ function HabitForm({
           />
         </button>
         <div hidden={!advancedOpen} className="flex flex-col gap-4 px-3 pb-3">
-          <PlannedLevelsField
-            currentLevel={habit?.level ?? 1}
-            currentMinimum={minimumDescription.trim()}
-            currentMinimumTarget={minimumTarget}
-            unit={measure ? unit.trim() : undefined}
-            value={planned}
-            onChange={setPlanned}
-            error={errors.planned}
-          />
-          <LevelUpRuleField
-            value={rule}
-            onChange={setRule}
-            defaultDays={
-              frequencyType === "WeeklyTarget"
-                ? timesPerWeek
-                : frequencyType === "SpecificDays"
-                  ? Math.max(1, days.length)
-                  : 5
-            }
-          />
+          {!quit && (
+            <>
+              <PlannedLevelsField
+                currentLevel={habit?.level ?? 1}
+                currentMinimum={minimumDescription.trim()}
+                currentMinimumTarget={minimumTarget}
+                unit={measure ? unit.trim() : undefined}
+                value={planned}
+                onChange={setPlanned}
+                error={errors.planned}
+              />
+              <LevelUpRuleField
+                value={rule}
+                onChange={setRule}
+                defaultDays={
+                  frequencyType === "WeeklyTarget"
+                    ? timesPerWeek
+                    : frequencyType === "SpecificDays"
+                      ? Math.max(1, days.length)
+                      : 5
+                }
+              />
+            </>
+          )}
           <div className="flex items-end gap-2">
             <div className="min-w-0 flex-1">
               <Input

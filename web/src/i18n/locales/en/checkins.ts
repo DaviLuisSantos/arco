@@ -1,6 +1,11 @@
 export default {
   status: { Done: 'Done', Minimum: 'Minimum', Missed: 'Missed', Skipped: 'Skipped' },
+  statusNegative: { Done: 'Clean', Missed: 'Relapse', Skipped: 'Skipped' },
   card: {
+    clean_zero: '0 clean days · best {{best}}',
+    clean_one: '{{count}} clean day · best {{best}}',
+    clean_other: '{{count}} clean days · best {{best}}',
+    nextMilestone: 'Next milestone: {{days}} clean days',
     level: 'Lv {{level}}',
     minimum: 'Minimum: {{value}}',
     streakTitle: '{{current}} streak (best: {{best}})',
@@ -37,6 +42,8 @@ export default {
     Minimum: '{{name}}: the minimum counts too',
     Missed: '{{name}}: no worries, tomorrow is another day',
     Skipped: '{{name}}: skipped, no guilt',
+    DoneNegative: '{{name}}: clean day ✅',
+    MissedNegative: '{{name}}: relapse logged, starting over is progress too',
     removed: 'Check-in for {{name}} removed',
     dayComplete: 'Day complete! Everything checked 🎉',
   },

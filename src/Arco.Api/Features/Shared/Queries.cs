@@ -51,7 +51,8 @@ public static class Queries
         var created = TimeZones.ToLocalDate(habit.CreatedAt, timezone);
         var start = checkIns.Count == 0 ? created : DateOnly.FromDayNumber(Math.Min(created.DayNumber, checkIns.Min(c => c.Date).DayNumber));
         return StreakDto.Of(StreakRules.Compute(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
-            checkIns.Select(c => (c.Date, c.Status)), start, today, calendar ?? Calendar(habit, checkIns)));
+            checkIns.Select(c => (c.Date, c.Status)), start, today, calendar ?? Calendar(habit, checkIns),
+            forgiveMisses: habit.Kind != HabitKind.Negative));
     }
 
     /// <summary>
@@ -61,6 +62,7 @@ public static class Queries
     public static bool LevelDown(Habit habit, IEnumerable<CheckIn> checkIns, DateOnly today, string timezone,
         PauseCalendar? calendar = null)
     {
+        if (habit.Kind == HabitKind.Negative) return false;
         var list = checkIns as IReadOnlyCollection<CheckIn> ?? checkIns.ToList();
         var reachedOn = habit.CurrentLevel is { } level ? TimeZones.ToLocalDate(level.ReachedAt, timezone) : today;
         var target = LevelDownSuggestion.WeeklyTarget(habit.FrequencyType, habit.FrequencyDays, habit.TimesPerWeek,
@@ -85,6 +87,15 @@ public static class Queries
             list, today, calendar);
         var reachedOn = habit.CurrentLevel is { } level ? TimeZones.ToLocalDate(level.ReachedAt, timezone) : today;
         var archived = habit.ArchivedAt is not null;
+
+        if (habit.Kind == HabitKind.Negative)
+        {
+            // Clean-day milestones replace the consistency and weeks rules.
+            var clean = Streak(habit, source, today, timezone, calendar).Current;
+            var due = !archived && (habit.LevelUpSnoozedUntil is not { } until || today >= until)
+                && CleanMilestones.ShouldSuggest(clean, habit.CurrentLevelNumber);
+            return (ConsistencyDto.Of(consistency), null, due);
+        }
 
         if (habit is { LevelUpWeeks: { } weeks, LevelUpDaysPerWeek: { } days })
         {

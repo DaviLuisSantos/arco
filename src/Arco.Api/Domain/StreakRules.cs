@@ -20,7 +20,7 @@ public static class StreakRules
     /// <param name="today">A due "today" without a check-in (or an unfinished week) is pending, not a miss.</param>
     public static Streak Compute(FrequencyType type, IReadOnlyCollection<int> frequencyDays, int? timesPerWeek,
         IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, DateOnly start, DateOnly today,
-        PauseCalendar? calendar = null)
+        PauseCalendar? calendar = null, bool forgiveMisses = true)
     {
         var byDate = new Dictionary<DateOnly, CheckInStatus>();
         foreach (var (date, status) in checkIns)
@@ -29,7 +29,7 @@ public static class StreakRules
         calendar ??= PauseCalendar.None;
         return type == FrequencyType.WeeklyTarget
             ? Weeks(timesPerWeek ?? 1, byDate, start, today, calendar)
-            : Days(type, frequencyDays, byDate, start, today, calendar);
+            : Days(type, frequencyDays, byDate, start, today, calendar, forgiveMisses);
     }
 
     /// <summary>Excused day: paused or Skipped, unless a Done/Minimum check-in is on it.</summary>
@@ -39,7 +39,8 @@ public static class StreakRules
             : calendar.IsPaused(d);
 
     private static Streak Days(FrequencyType type, IReadOnlyCollection<int> frequencyDays,
-        Dictionary<DateOnly, CheckInStatus> byDate, DateOnly start, DateOnly today, PauseCalendar calendar)
+        Dictionary<DateOnly, CheckInStatus> byDate, DateOnly start, DateOnly today, PauseCalendar calendar,
+        bool forgiveMisses)
     {
         var tracker = new Tracker();
         for (var d = start; d <= today; d = d.AddDays(1))
@@ -50,7 +51,7 @@ public static class StreakRules
             if (hasStatus && HabitSchedule.CountsTowardWeek(status)) tracker.Hit();
             // Excused day: neutral, it neither adds to the streak nor breaks it.
             else if (IsExcused(d, byDate, calendar)) continue;
-            else tracker.Miss(HabitSchedule.WeekStart(d), forgivable: true);
+            else tracker.Miss(HabitSchedule.WeekStart(d), forgivable: forgiveMisses);
         }
         return new Streak(tracker.Current, tracker.Best, StreakUnit.Days);
     }

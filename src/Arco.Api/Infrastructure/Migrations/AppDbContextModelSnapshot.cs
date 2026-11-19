@@ -350,6 +350,13 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<int?>("GoalId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Positive");
+
                     b.Property<DateOnly?>("LevelDownSnoozedUntil")
                         .HasColumnType("TEXT");
 

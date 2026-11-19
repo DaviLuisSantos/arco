@@ -40,6 +40,8 @@ public static class TodayEndpoints
         public int? LevelUpWeeksDone { get; } = levelUpWeeksDone;
         public bool LevelDownSuggested { get; } = levelDownSuggested;
         public StreakDto Streak { get; } = streak;
+        /// <summary>Clean days that unlock the next level of a negative habit; null for regular habits or past the last milestone.</summary>
+        public int? NextMilestone { get; } = habit.Kind == HabitKind.Negative ? CleanMilestones.ForLevel(habit.CurrentLevelNumber) : null;
     }
 
     /// <param name="Due">The reviewable week has check-ins and no review yet.</param>

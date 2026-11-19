@@ -14,6 +14,11 @@ public static class McpInstructions
         Hábito quantitativo (com unidade, ex.: 8 copos): o status vem da quantidade do dia (meta = Feito, mínimo = Mínimo,
         abaixo = pendente). Registre com registrar_quantidade; fazer_checkin só aceita Não fiz e Pulei nele.
 
+        Hábito negativo (para largar, ex.: "não fumar"; criar_habito com tipo = negativo): o dia passa limpo por padrão
+        e os dias passados sem recaída viram Feito sozinhos (hoje fica pendente). fazer_checkin com Done confirma o dia
+        limpo; registre uma recaída com registrar_recaida (zera os dias limpos). Minimum não vale; a sequência é "N dias
+        limpo", sem tolerância, e os níveis sobem por marcos de dias limpos (7, 14, 30, 60, 90, 180, 365).
+
         Comece com ver_hoje: ele traz a data de hoje, os hábitos (com ids) e o que está pendente. Use as ferramentas
         próprias para o dia a dia; para o resto, ler_documentacao_api e chamar_api cobrem toda a API. Os textos para o
         usuário são em português do Brasil, e as datas são YYYY-MM-DD no fuso do usuário.

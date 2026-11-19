@@ -174,6 +174,16 @@ O XP fica num livro-razão (`XpEvent`); o total é a soma dos eventos.
 - **Offline:** o app envia o total absoluto (idempotente) pela mesma fila do check-in; o card deriva o status na hora (otimista) com a mesma regra do servidor.
 - **Conversão:** tornar um hábito quantitativo exige meta e mínimo no nível atual; voltar a não quantitativo (unidade vazia) mantém o histórico e apaga meta/mínimo dos níveis.
 
+## Hábito negativo
+Para acompanhar o que se quer **largar** ("não fumar", "sem açúcar"). Limpo por padrão: o dia sem recaída conta como limpo; o usuário só registra "Recaída" (e pode confirmar "Limpo" hoje).
+- **Tipo** (`HabitKind`): `Positive` (padrão) ou `Negative`. Definido na criação; não muda depois (400 `kind_change`). No PUT, `kind` ausente mantém.
+- **Regras do hábito:** frequência sempre `Daily` (outra → 400 `validation`); nunca quantitativo (`unit` → 400 `validation`); dose e mínimo opcionais (vazios: o servidor grava "Sem recaída" / "Sem recaída").
+- **Check-in:** `Done` = Limpo, `Missed` = Recaída, `Skipped` permitido; `Minimum` → 400 `invalid_status`. XP pelas regras atuais (Done = 10 + 2 × (nível − 1); Missed = 0).
+- **Dias limpos automáticos** (`CleanDaysService`, job a cada hora, chamável em teste): para cada usuário com hábito negativo ativo, sob `CurrentUser.Impersonate`, no fuso do usuário: para cada dia de `max(início do hábito, hoje − 7)` até **ontem** sem check-in e não dispensado (pausa), grava Done com XP (`CheckInEndpoints.ApplyStatusAsync`) e depois chama `AchievementService.UnlockAsync`. Idempotente. Hoje nunca é preenchido: fica pendente até virar o dia ou o usuário confirmar.
+- **Dias limpos e recorde:** sequência **sem tolerância**. Recaída zera; Pulei e pausa são neutros; hoje sem check-in é pendente. Exibidos como "N dias limpo · recorde M".
+- **Marcos** (`Domain/CleanMilestones.cs`): 7, 14, 30, 60, 90, 180, 365 dias. O nível L → L+1 é sugerido quando os dias limpos atuais ≥ marco[L−1] (respeita `LevelUpSnoozedUntil` e "Agora não"). Subir de nível gera a descrição automática "<marco> dias limpo". A sugestão de voltar de nível fica desligada para hábito negativo.
+- Revisões, estatísticas, parceiro, conquistas e pausa seguem pelo check-in resultante, sem mudança.
+
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
 4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
@@ -253,5 +263,5 @@ O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.jso
 4. ~~**Nota e humor no check-in**~~ (feito, ver "Nota e humor"): registrar o contexto do dia ajuda a entender falhas e alimenta a revisão (Habitify, Finch).
 5. ~~**Ordem do dia por período e encadeamento**~~ (feito, ver "Ordem do dia"): manhã/tarde/noite e "depois de X" tornam a lista do Hoje um roteiro (Habitify, Atoms).
 6. ~~**Hábito quantitativo**~~ (feito, ver "Hábito quantitativo"): metas com número (copos, páginas, km) que combinam com os níveis, em vez de só Feito/Mínimo e minutos (Habitify, Streaks).
-7. **Hábito negativo:** acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).
+7. ~~**Hábito negativo**~~ (feito, ver "Hábito negativo"): acompanhar "não fazer" (dias sem fumar, sem açúcar) contando os dias limpos (Streaks).
 8. **Desafio cooperativo com o parceiro:** meta compartilhada da semana, em vez de só ver o resumo do outro (Habitica).
