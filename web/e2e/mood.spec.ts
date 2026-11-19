@@ -14,7 +14,8 @@ test.describe('nota e humor', () => {
     await reachToday(page)
 
     // Humor do dia: 4 = Bom.
-    const bom = page.getByRole('button', { name: '4: Bom' })
+    // The name comes from the visible text ("4", ": ", "Bom"); the browser may space the parts differently.
+    const bom = page.getByRole('button', { name: /^4\s*:\s*Bom$/ })
     await bom.click()
     await expect(bom).toHaveAttribute('aria-pressed', 'true')
 

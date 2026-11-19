@@ -54,7 +54,6 @@ export function MoodCard({ date }: { date: string }) {
                 key={value}
                 type="button"
                 aria-pressed={selected}
-                aria-label={t('option', { value, label })}
                 title={label}
                 onClick={() => save.mutate(selected ? null : value)}
                 className={cn(
@@ -62,12 +61,10 @@ export function MoodCard({ date }: { date: string }) {
                   selected ? 'border-accent bg-accent/15 text-accent' : 'border-border bg-surface-2 text-muted hover:text-text',
                 )}
               >
-                <span className="text-base tabular-nums" aria-hidden>
-                  {value}
-                </span>
-                <span className="w-full truncate text-center text-[10px] font-medium leading-tight" aria-hidden>
-                  {label}
-                </span>
+                {/* The accessible name comes from the visible text ("1: Muito ruim"), so it always contains it (axe label-content-name-mismatch). */}
+                <span className="text-base tabular-nums">{value}</span>
+                <span className="sr-only">: </span>
+                <span className="w-full truncate text-center text-[10px] font-medium leading-tight">{label}</span>
               </button>
             )
           })}
