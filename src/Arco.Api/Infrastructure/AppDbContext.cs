@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
     public DbSet<Habit> Habits => Set<Habit>();
     public DbSet<HabitLevel> HabitLevels => Set<HabitLevel>();
     public DbSet<HabitPlannedLevel> HabitPlannedLevels => Set<HabitPlannedLevel>();
+    public DbSet<HabitPause> HabitPauses => Set<HabitPause>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<FocusSession> FocusSessions => Set<FocusSession>();
     public DbSet<XpEvent> XpEvents => Set<XpEvent>();
@@ -183,8 +184,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, CurrentUser? c
             e.Property(x => x.MinimumDescription).HasMaxLength(120);
         });
 
+        b.Entity<HabitPause>(e =>
+        {
+            e.Property(x => x.Reason).HasMaxLength(140);
+            e.HasOne(x => x.Habit).WithMany(h => h.Pauses).HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.HabitId, x.StartDate });
+        });
+
         b.Entity<CheckIn>(e =>
         {
+            e.Property(x => x.Note).HasMaxLength(280);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(16);
             e.HasOne(x => x.Habit).WithMany().HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();

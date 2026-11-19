@@ -141,7 +141,7 @@ public static class PartnerEndpoints
 
         // Streaks need each habit's whole history.
         var history = (await ownerDb.CheckIns.AsNoTracking().ToListAsync(ct)).ToLookup(c => c.HabitId);
-        var habitsById = (await ownerDb.Habits.AsNoTracking().ToListAsync(ct)).ToDictionary(h => h.Id);
+        var habitsById = (await ownerDb.Habits.AsNoTracking().Include(h => h.Pauses).ToListAsync(ct)).ToDictionary(h => h.Id);
 
         var weeks = new List<SummaryWeekDto>();
         foreach (var (start, end) in ranges)

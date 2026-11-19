@@ -12,7 +12,7 @@ public static class XpRules
     /// <summary>Done = 10 + 2 × (habit level − 1).</summary>
     public static int ForDone(int habitLevel) => 10 + 2 * (Math.Max(1, habitLevel) - 1);
 
-    /// <summary>Done → full; Minimum → half of Done rounded down; Missed → 0.</summary>
+    /// <summary>Done → full; Minimum → half of Done rounded down; Missed/Skipped → 0.</summary>
     public static int ForCheckIn(CheckInStatus status, int habitLevel) => status switch
     {
         CheckInStatus.Done => ForDone(habitLevel),

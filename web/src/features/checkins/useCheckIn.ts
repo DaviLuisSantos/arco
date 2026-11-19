@@ -9,9 +9,9 @@ import { queryKeys } from '../../lib/queryKeys'
 import { useApplyXpResult } from '../xp/useApplyXpResult'
 import { CHECK_IN_KEY, type CheckInVars } from './checkInMutation'
 
-const counts = (status: CheckInStatus | null | undefined) => (status && status !== 'Missed' ? 1 : 0)
+const counts = (status: CheckInStatus | null | undefined) => (status && status !== 'Missed' && status !== 'Skipped' ? 1 : 0)
 
-function optimistic(habit: TodayHabit, { date, status, minutes }: CheckInVars): TodayHabit {
+function optimistic(habit: TodayHabit, { date, status, minutes, note }: CheckInVars): TodayHabit {
   const delta = counts(status) - counts(habit.checkIn?.status)
   // Estimativa até o servidor responder: marcar hoje soma 1 dia na sequência, desfazer tira.
   const current = habit.streak.unit === 'Days' ? Math.max(0, habit.streak.current + delta) : habit.streak.current
@@ -25,7 +25,15 @@ function optimistic(habit: TodayHabit, { date, status, minutes }: CheckInVars): 
           date,
           status,
           xp: expectedCheckInXp(status, habit.level),
-          minutes: minutes === undefined ? (habit.checkIn?.minutes ?? null) : minutes > 0 ? minutes : null,
+          minutes:
+            status === 'Skipped'
+              ? null
+              : minutes === undefined
+                ? (habit.checkIn?.minutes ?? null)
+                : minutes > 0
+                  ? minutes
+                  : null,
+          note: note === undefined ? (habit.checkIn?.note ?? null) : note || null,
         }
       : null,
   }
@@ -33,7 +41,7 @@ function optimistic(habit: TodayHabit, { date, status, minutes }: CheckInVars): 
 
 const UNDO_MS = 6000
 
-const VIBRATION: Record<CheckInStatus, number | number[]> = { Done: 18, Minimum: 12, Missed: [10, 40, 10] }
+const VIBRATION: Record<CheckInStatus, number | number[]> = { Done: 18, Minimum: 12, Missed: [10, 40, 10], Skipped: 12 }
 
 /** Vibração curta onde houver suporte (Android; iOS e desktop ignoram). */
 function haptic(status: CheckInStatus | null) {
@@ -90,6 +98,7 @@ export function useCheckIn() {
           date: vars.date,
           status: before?.status ?? null,
           ...(before ? { minutes: before.minutes ?? 0 } : {}),
+          ...(before?.note ? { note: before.note } : {}),
         }
         toast.show({
           message: dayComplete
@@ -97,7 +106,7 @@ export function useCheckIn() {
             : vars.status === null
               ? t('feedback.removed', { name })
               : t(`feedback.${vars.status}`, { name }),
-          variant: dayComplete ? 'achievement' : vars.status === 'Missed' ? 'info' : 'success',
+          variant: dayComplete ? 'achievement' : vars.status === 'Missed' || vars.status === 'Skipped' ? 'info' : 'success',
           duration: UNDO_MS,
           action: {
             label: t('feedback.undo'),

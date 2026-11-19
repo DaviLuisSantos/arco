@@ -192,7 +192,7 @@ public static partial class ProfileEndpoints
         List<PublicHabitDto>? habitDtos = null;
         if (owner.PublicShowHabits)
         {
-            var habits = await db.Habits.AsNoTracking().Include(h => h.Levels)
+            var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.Pauses)
                 .Where(h => h.ArchivedAt == null)
                 .ToListAsync(ct);
             var checkIns = (await db.CheckIns.AsNoTracking()

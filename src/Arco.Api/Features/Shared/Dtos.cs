@@ -84,16 +84,26 @@ public sealed record HabitLevelDto(int Level, string Description, string Minimum
 public sealed record HabitPlannedLevelDto(int Level, string Description, string MinimumDescription);
 
 /// <param name="Minutes">Manual focus minutes logged for that habit and day (null when none).</param>
-public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp, int? Minutes = null)
+public sealed record CheckInDto(int HabitId, DateOnly Date, CheckInStatus Status, int Xp, int? Minutes = null, string? Note = null)
 {
-    public static CheckInDto From(CheckIn c) => new(c.HabitId, c.Date, c.Status, c.Xp);
+    public static CheckInDto From(CheckIn c) => new(c.HabitId, c.Date, c.Status, c.Xp, null, c.Note);
+}
+
+public sealed record HabitPauseDto(int Id, DateOnly StartDate, DateOnly? EndDate, string? Reason)
+{
+    public static HabitPauseDto From(HabitPause p) => new(p.Id, p.StartDate, p.EndDate, p.Reason);
 }
 
 public class HabitDto
 {
     /// <param name="h">Habit with Levels and PlannedLevels loaded.</param>
-    public HabitDto(Habit h)
+    /// <param name="today">When given, only pauses in progress or in the future are listed.</param>
+    public HabitDto(Habit h, DateOnly? today = null)
     {
+        Pauses = h.Pauses
+            .Where(p => today is not { } t || p.EndDate is null || p.EndDate >= t)
+            .OrderBy(p => p.StartDate).ThenBy(p => p.Id)
+            .Select(HabitPauseDto.From).ToList();
         var levels = h.Levels.OrderBy(l => l.Level).ToList();
         var current = levels.LastOrDefault();
         Id = h.Id;
@@ -135,6 +145,8 @@ public class HabitDto
     public int? LevelUpDaysPerWeek { get; }
     public DateTime? ArchivedAt { get; }
     public DateTime CreatedAt { get; }
+    /// <summary>Pauses in progress and future ones, by start date.</summary>
+    public IReadOnlyList<HabitPauseDto> Pauses { get; }
 }
 
 public sealed record ConsistencyDto(DateOnly From, DateOnly To, int Done, int Expected, double Rate)

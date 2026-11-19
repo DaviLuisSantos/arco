@@ -1,4 +1,4 @@
-import { Check, Flag, Minus, X } from 'lucide-react'
+import { Check, Flag, Minus, SkipForward, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,7 @@ const OPTIONS: Array<{ status: CheckInStatus; icon: typeof Check; active: string
   { status: 'Done', icon: Check, active: 'bg-done text-bg border-done' },
   { status: 'Minimum', icon: Minus, active: 'bg-minimum text-bg border-minimum' },
   { status: 'Missed', icon: X, active: 'bg-missed/15 text-missed border-missed/60' },
+  { status: 'Skipped', icon: SkipForward, active: 'bg-surface-2 text-text border-text/40' },
 ]
 
 export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: string }) {
@@ -24,20 +25,31 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   const parsed = text.trim() === '' ? 0 : Number(text)
   const validMinutes = Number.isInteger(parsed) && parsed >= 0 && parsed <= 480
   const changed = validMinutes && parsed !== (savedMinutes ?? 0)
+  const savedNote = habit.checkIn?.note ?? ''
+  // null = acompanha a nota salva; string = rascunho em edição
+  const [noteDraft, setNoteDraft] = useState<string | null>(null)
+  const noteText = noteDraft ?? savedNote
+  const noteChanged = noteText.trim() !== savedNote
   const statusGroup = useRef<HTMLDivElement>(null)
 
   function handleTap(status: CheckInStatus) {
     // tocar no status atual desfaz
     const next = current === status ? null : status
     // Minutos digitados vão junto com a troca de status: uma só mutação, sem disputa com o blur.
-    const withMinutes = next !== null && changed ? { minutes: parsed } : {}
+    const withMinutes = (next === 'Done' || next === 'Minimum') && changed ? { minutes: parsed } : {}
     setDraft(null)
+    setNoteDraft(null)
     checkIn.mutate({ habit, date, status: next, ...withMinutes })
   }
 
   function saveMinutes() {
     if (!current || !changed) return
     checkIn.mutate({ habit, date, status: current, minutes: parsed }, { onSuccess: () => setDraft(null) })
+  }
+
+  function saveNote() {
+    if (current !== 'Skipped' || !noteChanged) return
+    checkIn.mutate({ habit, date, status: 'Skipped', note: noteText.trim() }, { onSuccess: () => setNoteDraft(null) })
   }
 
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
@@ -94,7 +106,7 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
         </div>
       </div>
 
-      <div ref={statusGroup} className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
+      <div ref={statusGroup} className="mt-3 grid grid-cols-4 gap-1.5" role="group" aria-label={t('card.checkInOf', { name: habit.name })}>
         {OPTIONS.map(({ status, icon: Icon, active }) => {
           const selected = current === status
           return (
@@ -117,6 +129,31 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           )
         })}
       </div>
+
+      {current === 'Skipped' && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            saveNote()
+          }}
+          className="mt-2 flex items-center gap-2"
+        >
+          <label htmlFor={`note-${habit.id}`} className="sr-only">
+            {t('card.noteLabel')}
+          </label>
+          <input
+            id={`note-${habit.id}`}
+            type="text"
+            enterKeyHint="done"
+            maxLength={280}
+            placeholder={t('card.noteLabel')}
+            value={noteText}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            onBlur={saveNote}
+            className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-3 text-sm"
+          />
+        </form>
+      )}
 
       {(current === 'Done' || current === 'Minimum') && (
         <form

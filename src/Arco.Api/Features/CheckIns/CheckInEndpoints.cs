@@ -5,8 +5,9 @@ public static class CheckInEndpoints
 {
     public const int MaxDaysInPast = 7;
     public const int MaxRangeDays = 366;
+    public const int MaxNoteLength = 280;
 
-    public sealed record UpsertCheckInRequest(int? HabitId, DateOnly? Date, CheckInStatus? Status, int? Minutes = null);
+    public sealed record UpsertCheckInRequest(int? HabitId, DateOnly? Date, CheckInStatus? Status, int? Minutes = null, string? Note = null);
 
     public static IEndpointRouteBuilder MapCheckIns(this IEndpointRouteBuilder api)
     {
@@ -28,6 +29,11 @@ public static class CheckInEndpoints
             return ApiResults.Validation($"Os minutos devem estar entre 0 e {FocusRules.MaxMinutes}.");
         if (minutes > 0 && status == CheckInStatus.Missed)
             return ApiResults.Validation("Não é possível registrar minutos em um dia marcado como não feito.");
+        if (minutes > 0 && status == CheckInStatus.Skipped)
+            return ApiResults.Validation("Não é possível registrar minutos em um dia marcado como pulado.");
+        var note = Text.Clean(request.Note);
+        if (note is not null && note.Length > MaxNoteLength)
+            return ApiResults.Validation($"A nota deve ter no máximo {MaxNoteLength} caracteres.");
 
         var today = await clock.GetTodayAsync(ct);
         if (date > today) return ApiResults.Validation("Não é possível registrar check-in em uma data futura.");
@@ -55,6 +61,7 @@ public static class CheckInEndpoints
         }
         checkIn.Status = status;
         checkIn.Xp = xp;
+        checkIn.Note = note;
         checkIn.UpdatedAt = now;
 
         // The check-in's XP event is replaced (one event per check-in, none when 0 XP).
@@ -145,7 +152,8 @@ public static class CheckInEndpoints
             .Select(c => new CheckInDto(c.HabitId, c.Date, c.Status, c.Xp,
                 db.FocusSessions
                     .Where(s => s.HabitId == c.HabitId && s.Date == c.Date && s.Source == FocusSource.Manual)
-                    .OrderBy(s => s.Id).Select(s => (int?)s.Minutes).FirstOrDefault()))
+                    .OrderBy(s => s.Id).Select(s => (int?)s.Minutes).FirstOrDefault(),
+                c.Note))
             .ToListAsync(ct);
         return Results.Ok(checkIns);
     }

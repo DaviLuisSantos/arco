@@ -40,7 +40,8 @@ public static class HabitEndpoints
         bool levelUpSuggested,
         int? levelUpWeeksDone,
         bool levelDownSuggested,
-        StreakDto streak) : HabitDto(habit)
+        StreakDto streak,
+        DateOnly? today = null) : HabitDto(habit, today)
     {
         public IReadOnlyList<CheckInDto> RecentCheckIns { get; } = recentCheckIns;
         public ConsistencyDto Consistency { get; } = consistency;
@@ -68,19 +69,20 @@ public static class HabitEndpoints
 
     private const string HabitNotFound = "Hábito não encontrado.";
 
-    private static async Task<List<HabitDto>> List(AppDbContext db, CancellationToken ct, bool includeArchived = false)
+    private static async Task<List<HabitDto>> List(AppDbContext db, AppClock clock, CancellationToken ct, bool includeArchived = false)
     {
-        var query = db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels).AsQueryable();
+        var query = db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).AsQueryable();
         if (!includeArchived) query = query.Where(h => h.ArchivedAt == null);
         var habits = await query.ToListAsync(ct);
+        var today = await clock.GetTodayAsync(ct);
         return habits
             .OrderBy(h => h.Name, StringComparer.InvariantCultureIgnoreCase).ThenBy(h => h.Id)
-            .Select(h => new HabitDto(h)).ToList();
+            .Select(h => new HabitDto(h, today)).ToList();
     }
 
     private static async Task<IResult> Get(int id, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        var habit = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels)
+        var habit = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses)
             .FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
@@ -101,7 +103,7 @@ public static class HabitEndpoints
             checkIns.Select(c => CheckInDto.From(c) with { Minutes = manualMinutes.TryGetValue(c.Date, out var m) ? m : null }).ToList(),
             consistency, suggested,
             weeksDone, !suggested && Queries.LevelDown(habit, history, today, timezone),
-            Queries.Streak(habit, history, today, timezone)));
+            Queries.Streak(habit, history, today, timezone), today));
     }
 
     /// <summary>Hides the level-up suggestion for <see cref="LevelUpSuggestion.SnoozeDays"/> days.</summary>
@@ -132,7 +134,7 @@ public static class HabitEndpoints
     /// </summary>
     private static async Task<IResult> LevelDown(int id, AppDbContext db, CancellationToken ct)
     {
-        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Não é possível mudar o nível de um hábito arquivado.");
         if (habit.CurrentLevel is not { Level: >= 2 } current) return ApiResults.Validation("O hábito já está no nível 1.");
@@ -177,7 +179,7 @@ public static class HabitEndpoints
     private static async Task<IResult> Update(int id, HabitRequest? request, AppDbContext db, CancellationToken ct)
     {
         if (request is null) return ApiResults.Validation("Corpo da requisição ausente.");
-        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
 
         var error = await ValidateAsync(request, db, ct);
@@ -196,7 +198,7 @@ public static class HabitEndpoints
 
     private static async Task<IResult> LevelUp(int id, LevelUpRequest? request, AppDbContext db, AppClock clock, CancellationToken ct)
     {
-        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
         if (habit.ArchivedAt is not null) return ApiResults.Validation("Não é possível subir de nível um hábito arquivado.");
 
@@ -249,7 +251,7 @@ public static class HabitEndpoints
 
     private static async Task<IResult> SetArchived(int id, bool archive, AppDbContext db, AppClock clock, CurrentUser user, CancellationToken ct)
     {
-        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).FirstOrDefaultAsync(h => h.Id == id, ct);
+        var habit = await db.Habits.Include(h => h.Levels).Include(h => h.PlannedLevels).Include(h => h.Pauses).FirstOrDefaultAsync(h => h.Id == id, ct);
         if (habit is null) return ApiResults.NotFound(HabitNotFound);
         if (!archive && habit.ArchivedAt is not null && await PlanGate.CheckHabitLimitAsync(db, user, ct) is { } limit) return limit;
 

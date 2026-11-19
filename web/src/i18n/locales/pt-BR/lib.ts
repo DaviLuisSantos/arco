@@ -8,7 +8,7 @@ const ns = {
   streakWeeks: '{{count}} semanas',
   everyDay: 'Todo dia',
   timesPerWeek: '{{count}}x por semana',
-  status: { Done: 'Feito', Minimum: 'Mínimo', Missed: 'Não fiz' },
+  status: { Done: 'Feito', Minimum: 'Mínimo', Missed: 'Não fiz', Skipped: 'Pulei' },
   xpSource: {
     CheckIn: 'Check-in',
     HabitLevelUp: 'Hábito subiu de nível',

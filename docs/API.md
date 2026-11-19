@@ -33,7 +33,7 @@
 
 ```ts
 type FrequencyType = 'Daily' | 'SpecificDays' | 'WeeklyTarget';
-type CheckInStatus = 'Done' | 'Minimum' | 'Missed';
+type CheckInStatus = 'Done' | 'Minimum' | 'Missed' | 'Skipped'; // Skipped = "Pulei": dia dispensado, 0 XP
 type GoalType = 'Numeric' | 'Milestones';
 type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted' | 'WeeklyReview';
 
@@ -78,7 +78,10 @@ interface HabitLevel { level: number; description: string; minimumDescription: s
 // Degrau planejado (ainda não alcançado); level = número que ele vai ter (nível atual + 1, + 2…).
 interface HabitPlannedLevel { level: number; description: string; minimumDescription: string; }
 
-interface CheckIn { habitId: number; date: string; status: CheckInStatus; xp: number; }
+interface CheckIn { habitId: number; date: string; status: CheckInStatus; xp: number; minutes: number | null; note: string | null; } // note: até 280 caracteres, em qualquer status
+
+// Pausa de um hábito (período em que os dias são dispensados).
+interface HabitPause { id: number; startDate: string; endDate: string | null; reason: string | null; } // endDate incluso; null = até retomar
 
 interface Habit {
   id: number; name: string; emoji: string | null;
@@ -94,6 +97,7 @@ interface Habit {
   plannedLevels: HabitPlannedLevel[];  // a escada à frente, em ordem; subir de nível consome o primeiro
   levelUpWeeks: number | null;         // regra "N semanas seguidas com X+ dias"; null = regra padrão (80% em 14 dias)
   levelUpDaysPerWeek: number | null;
+  pauses: HabitPause[];                // pausas em curso e futuras, por início
   archivedAt: string | null;
   createdAt: string;
 }
@@ -264,6 +268,8 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
     weekCount: number;                // check-ins Done/Minimum na semana atual (segunda a domingo)
     weekTarget: number | null;        // timesPerWeek em WeeklyTarget, senão null
     checkIn: CheckIn | null;          // check-in de hoje
+    isPaused: boolean;                // pausado hoje: vai para "Pausados" e isDueToday = false
+    pausedUntil: string | null;       // fim da pausa em curso (YYYY-MM-DD); null = indefinida ou sem pausa (use isPaused)
     goalTitle: string | null;
     consistency: Consistency;
     levelUpSuggested: boolean;        // ver "Sugestão de subir de nível"
@@ -280,16 +286,30 @@ Exemplo: `curl -H "Authorization: Bearer arco_…" https://<host>/api/today`
 
 ## Check-ins
 
-- `PUT /api/checkins` `{ habitId, date, status, minutes? }`: cria ou atualiza o check-in do dia. Responde **200** `{ checkIn: CheckIn, xpDelta: number, player: Player }`.
+- `PUT /api/checkins` `{ habitId, date, status, minutes?, note? }`: cria ou atualiza o check-in do dia. Responde **200** `{ checkIn: CheckIn, xpDelta: number, player: Player }`.
   - Data futura ou mais de 7 dias atrás → 400 `validation`.
   - Hábito arquivado → 400 `validation`.
+  - `status: "Skipped"` ("Pulei") dispensa o dia: 0 XP, sem `XpEvent` (trocar um Feito/Mínimo por Pulei remove o XP, com `xpDelta` negativo) e não conta como check-in em conquistas e no admin. Não quebra a sequência nem entra nos esperados de consistência, estatísticas, revisões e parceiro. `minutes > 0` com `Skipped` → 400 `validation`.
+  - `note` (opcional, até 280 caracteres, texto limpo) vale para qualquer status; maior que isso → 400 `validation`. Ausente = sem nota.
   - `minutes` (0–480, opcional): ausente = não mexe; `0` = remove a sessão de foco Manual do dia; `>0` = cria/substitui a única sessão Manual de (hábito, data). `minutes > 0` com status `Missed` → 400 `validation`. `checkIn.minutes` (`number | null`) devolve os minutos manuais do dia; aparece também em `GET /api/today` e no `recentCheckIns` de `GET /api/habits/{id}`.
 - `DELETE /api/checkins/{habitId}/{date}` → **200** `{ xpDelta, player }` (xpDelta ≤ 0). Inexistente → 404. Remove também a sessão de foco Manual do dia (as de Timer permanecem).
 - `GET /api/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&habitId=` → `CheckIn[]` (intervalo máximo de 366 dias; `habitId` opcional filtra um hábito).
 
+## Pausas e modo férias
+
+Dia dispensado = dia pausado ou com check-in `Skipped`. Se o dia tiver Feito/Mínimo, conta normalmente; senão é neutro: não soma nem quebra a sequência, sai dos esperados (consistência, estatísticas, revisões, parceiro, subir/voltar de nível), reduz a meta semanal (`ceil(alvo × (7 − dispensados) / 7)`; semana com 7 dispensados é neutra) e não gera lembrete push. Sem limite de pausas ou dias.
+
+- `POST /api/habits/{id}/pauses` `{ startDate, endDate?, reason? }` → **201** `HabitPause`. `startDate` obrigatória e não anterior a hoje − 7 dias; `endDate` opcional (incluso, ≥ `startDate`, no máximo `startDate` + 365 dias; ausente = até retomar); `reason` até 140 caracteres.
+  - Período inválido → 400 `pause_invalid_range`. Sobreposição com outra pausa do mesmo hábito → 400 `pause_overlap`. Hábito arquivado → 400 `habit_archived`. Motivo longo → 400 `validation`. Hábito inexistente → 404.
+- `DELETE /api/habits/{id}/pauses/{pauseId}` → **204**. Inexistente → 404.
+- `POST /api/habits/{id}/resume` → **204**. Retoma a pausa em curso: se começou hoje (ou no futuro) é apagada; senão `endDate` vira ontem. Pausas futuras não mudam. Sem pausa em curso → 404 `no_active_pause`.
+- `GET /api/vacation` → `{ active: boolean, startDate?: string, endDate?: string }`. É a primeira pausa de férias em curso ou futura; `active: false` sem datas quando não há.
+- `POST /api/vacation` `{ startDate, endDate, reason? }` → **200** `{ paused: number }`. Cria uma pausa de férias (marcada como férias) em cada hábito ativo sem pausa sobreposta; `paused` é quantos hábitos foram pausados. `endDate` é obrigatório; mesmas validações de `POST /pauses` (`pause_invalid_range`).
+- `DELETE /api/vacation` → **200** `{ resumed: number }`. Retoma as pausas de férias em curso (`resumed`) e apaga as futuras; pausas individuais permanecem.
+
 ## Hábitos
 
-- `GET /api/habits?includeArchived=false` → `Habit[]`
+- `GET /api/habits?includeArchived=false` → `Habit[]` (com `pauses`)
 - `GET /api/habits/{id}` → `Habit & { recentCheckIns: CheckIn[], consistency: Consistency, levelUpSuggested: boolean, levelUpWeeksDone: number | null, levelDownSuggested: boolean, streak: Streak }` (check-ins dos últimos 28 dias)
 - `POST /api/habits` → **201** `Habit`. Corpo:
 

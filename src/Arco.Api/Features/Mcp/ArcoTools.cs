@@ -12,7 +12,7 @@ namespace Arco.Api.Features.Mcp;
 [McpServerToolType]
 public sealed class ArcoTools(ArcoApiClient api)
 {
-    private const string StatusDescription = "Done (Feito, dose completa), Minimum (Mínimo, versão mínima) ou Missed (Não fiz).";
+    private const string StatusDescription = "Done (Feito, dose completa), Minimum (Mínimo, versão mínima) Missed (Não fiz) ou Skipped (Pulei: dispensa o dia sem XP e sem quebrar a sequência).";
     private const string DateDescription = "Data no formato YYYY-MM-DD. Omitida = hoje (no fuso configurado). Aceita até 7 dias para trás.";
 
     // --- Dia a dia ---
@@ -28,10 +28,11 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description("Id do hábito (veja ver_hoje ou listar_habitos).")] int habitId,
         [Description(StatusDescription)] string status,
         [Description(DateDescription)] string? data = null,
-        [Description("Minutos dedicados (0 a 480, opcional). Omitido = não mexe; 0 = remove os minutos manuais do dia.")] int? minutos = null,
+        [Description("Minutos dedicados (0 a 480, opcional). Omitido = não mexe; 0 = remove os minutos manuais do dia. Não vale com Missed nem Skipped.")] int? minutos = null,
+        [Description("Nota opcional (até 280 caracteres), em qualquer status.")] string? nota = null,
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Put, "/api/checkins",
-            new { habitId, date = data ?? await TodayAsync(ct), status, minutes = minutos }, ct);
+            new { habitId, date = data ?? await TodayAsync(ct), status, minutes = minutos, note = nota }, ct);
 
     [McpServerTool(Name = "registrar_foco", Title = "Registrar foco")]
     [Description("Registra uma sessão de foco (minutos) em um hábito. Não dá XP; vira uma árvore na floresta.")]
@@ -64,6 +65,50 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description(DateDescription)] string? data = null,
         CancellationToken ct = default) =>
         await api.SendAsync(HttpMethod.Delete, $"/api/checkins/{habitId}/{data ?? await TodayAsync(ct)}", null, ct);
+
+    // --- Pausas ---
+
+    [McpServerTool(Name = "pausar_habito", Title = "Pausar hábito")]
+    [Description("Pausa um hábito por um período: os dias pausados não quebram a sequência nem contam como falha, e não dão XP. " +
+                 "Sem data de fim, a pausa dura até retomar_habito.")]
+    public async Task<string> PausarHabito(
+        [Description("Id do hábito.")] int habitId,
+        [Description("Início, YYYY-MM-DD. Omitido = hoje. No máximo 7 dias para trás.")] string? inicio = null,
+        [Description("Fim (incluso), YYYY-MM-DD, até 365 dias após o início. Omitido = até retomar.")] string? fim = null,
+        [Description("Motivo (opcional, até 140 caracteres).")] string? motivo = null,
+        CancellationToken ct = default) =>
+        await api.SendAsync(HttpMethod.Post, $"/api/habits/{habitId}/pauses",
+            new { startDate = inicio ?? await TodayAsync(ct), endDate = fim, reason = motivo }, ct);
+
+    [McpServerTool(Name = "retomar_habito", Title = "Retomar hábito")]
+    [Description("Retoma um hábito pausado: encerra a pausa em curso (ela termina ontem, ou é apagada se começou hoje).")]
+    public async Task<string> RetomarHabito([Description("Id do hábito.")] int habitId, CancellationToken ct = default) =>
+        await api.SendAsync(HttpMethod.Post, $"/api/habits/{habitId}/resume", null, ct);
+
+    [McpServerTool(Name = "modo_ferias", Title = "Modo férias")]
+    [Description("Modo férias: 'ativar' pausa todos os hábitos ativos (sem pausa sobreposta) de inicio a fim; " +
+                 "'encerrar' retoma as pausas de férias em curso e apaga as futuras. Sem ação, mostra o estado atual.")]
+    public async Task<string> ModoFerias(
+        [Description("'ativar', 'encerrar' ou omitido para ver o estado atual.")] string? acao = null,
+        [Description("Início das férias, YYYY-MM-DD (ativar). Omitido = hoje.")] string? inicio = null,
+        [Description("Fim das férias, YYYY-MM-DD (ativar, obrigatório).")] string? fim = null,
+        [Description("Motivo (opcional, ativar).")] string? motivo = null,
+        CancellationToken ct = default)
+    {
+        switch (acao?.Trim().ToLowerInvariant())
+        {
+            case null or "":
+                return await api.GetAsync("/api/vacation", ct);
+            case "ativar":
+                if (string.IsNullOrWhiteSpace(fim)) throw new McpException("Informe 'fim' (YYYY-MM-DD) para ativar o modo férias.");
+                return await api.SendAsync(HttpMethod.Post, "/api/vacation",
+                    new { startDate = inicio ?? await TodayAsync(ct), endDate = fim, reason = motivo }, ct);
+            case "encerrar":
+                return await api.SendAsync(HttpMethod.Delete, "/api/vacation", null, ct);
+            default:
+                throw new McpException("Ação inválida: use 'ativar' ou 'encerrar'.");
+        }
+    }
 
     // --- Hábitos ---
 

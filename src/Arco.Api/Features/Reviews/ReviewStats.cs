@@ -42,7 +42,7 @@ public static class ReviewStats
             .GroupBy(f => f.HabitId)
             .ToDictionary(g => g.Key, g => g.Sum(f => f.Minutes));
 
-        var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).ToListAsync(ct);
+        var habits = await db.Habits.AsNoTracking().Include(h => h.Levels).Include(h => h.Pauses).ToListAsync(ct);
 
         return habits
             .Select(h => (Habit: h, InRange: checkIns[h.Id].Where(c => c.Date >= from && c.Date <= to).ToList()))
@@ -55,7 +55,10 @@ public static class ReviewStats
                 var created = TimeZones.ToLocalDate(h.CreatedAt, timezone);
                 if (x.InRange.Count > 0 && x.InRange.Min(c => c.Date) is var first && first < created) created = first;
                 var start = created > from ? created : from;
-                var expected = LevelUpSuggestion.ExpectedCount(h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, start, to);
+                // Excused days (paused / Skipped, no Done/Minimum) leave the expected count.
+                var calendar = PauseCalendar.From(h.Pauses.Select(p => (p.StartDate, p.EndDate)),
+                    checkIns[h.Id].Select(c => (c.Date, c.Status)));
+                var expected = LevelUpSuggestion.ExpectedCount(h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, start, to, calendar);
                 var done = x.InRange.Count(c => c.Status == CheckInStatus.Done);
                 var minimum = x.InRange.Count(c => c.Status == CheckInStatus.Minimum);
                 var missed = x.InRange.Count(c => c.Status == CheckInStatus.Missed);

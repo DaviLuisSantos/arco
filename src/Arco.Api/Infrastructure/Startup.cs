@@ -23,6 +23,7 @@ using Arco.Api.Features.CheckIns;
 using Arco.Api.Features.Cycles;
 using Arco.Api.Features.Goals;
 using Arco.Api.Features.Habits;
+using Arco.Api.Features.Pauses;
 using Arco.Api.Features.Health;
 using Arco.Api.Features.Player;
 using Arco.Api.Features.Push;
@@ -401,6 +402,8 @@ public static class Startup
         secured.MapCheckIns();
         secured.MapFocus();
         secured.MapHabits();
+        secured.MapPauses();
+        secured.MapVacation();
         secured.MapCycles();
         secured.MapCycleArch();
         secured.MapGoals();

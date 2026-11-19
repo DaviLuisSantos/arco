@@ -1,7 +1,7 @@
 // Tipos espelhando docs/API.md (Fase 2). Datas de calendário: "YYYY-MM-DD"; instantes: ISO-8601 UTC.
 
 export type FrequencyType = 'Daily' | 'SpecificDays' | 'WeeklyTarget'
-export type CheckInStatus = 'Done' | 'Minimum' | 'Missed'
+export type CheckInStatus = 'Done' | 'Minimum' | 'Missed' | 'Skipped'
 export type GoalType = 'Numeric' | 'Milestones'
 export type XpSource = 'CheckIn' | 'HabitLevelUp' | 'Milestone' | 'GoalCompleted' | 'CycleCompleted' | 'WeeklyReview'
 export type CycleStatus = 'Active' | 'Completed'
@@ -73,6 +73,34 @@ export interface CheckIn {
   xp: number
   /** Minutos manuais do dia. */
   minutes?: number | null
+  /** Motivo/anotação do dia (até 280). */
+  note?: string | null
+}
+
+/** Pausa de um hábito; `endDate` nulo = até retomar. */
+export interface HabitPause {
+  id: number
+  startDate: string
+  endDate: string | null
+  reason: string | null
+}
+
+export interface PauseInput {
+  startDate: string
+  endDate?: string | null
+  reason?: string | null
+}
+
+export interface Vacation {
+  active: boolean
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export interface VacationInput {
+  startDate: string
+  endDate: string
+  reason?: string | null
 }
 
 export interface Habit {
@@ -96,6 +124,8 @@ export interface Habit {
   levelUpDaysPerWeek: number | null
   archivedAt: string | null
   createdAt: string
+  /** Pausas em curso e futuras, por início. */
+  pauses: HabitPause[]
 }
 
 /** Nível planejado; `level` é o número que ele vai ter. */
@@ -139,6 +169,9 @@ export interface HabitDetail extends Habit {
 
 export interface TodayHabit extends Habit {
   isDueToday: boolean
+  /** Pausado hoje (vai para "Pausados"). */
+  isPaused: boolean
+  pausedUntil: string | null
   weekCount: number
   weekTarget: number | null
   checkIn: CheckIn | null
@@ -374,6 +407,8 @@ export interface CheckInInput {
   status: CheckInStatus
   /** Ausente = não mexe; 0 = remove a sessão manual do dia. */
   minutes?: number
+  /** Anotação do dia (até 280); a UI só usa no Pulei. */
+  note?: string
 }
 
 export interface CycleInput {

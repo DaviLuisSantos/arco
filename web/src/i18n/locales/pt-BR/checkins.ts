@@ -1,5 +1,5 @@
 const ns = {
-  status: { Done: 'Feito', Minimum: 'Mínimo', Missed: 'Não fiz' },
+  status: { Done: 'Feito', Minimum: 'Mínimo', Missed: 'Não fiz', Skipped: 'Pulei' },
   card: {
     level: 'Nv {{level}}',
     minimum: 'Mínimo: {{value}}',
@@ -9,6 +9,7 @@ const ns = {
     checkInOf: 'Check-in de {{name}}',
     minutesQuestion: 'Quantos minutos?',
     optional: 'opcional',
+    noteLabel: 'Motivo (opcional)',
     minutesHint: 'Salva ao sair do campo',
   },
   feedback: {
@@ -16,6 +17,7 @@ const ns = {
     Done: '{{name}}: concluído ✅',
     Minimum: '{{name}}: o mínimo também conta',
     Missed: '{{name}}: sem problema, amanhã tem mais',
+    Skipped: '{{name}}: pulado, sem culpa',
     removed: 'Check-in de {{name}} removido',
     dayComplete: 'Dia completo! Tudo marcado 🎉',
   },

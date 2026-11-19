@@ -1,5 +1,5 @@
 export default {
-  status: { Done: 'Done', Minimum: 'Minimum', Missed: 'Missed' },
+  status: { Done: 'Done', Minimum: 'Minimum', Missed: 'Missed', Skipped: 'Skipped' },
   card: {
     level: 'Lv {{level}}',
     minimum: 'Minimum: {{value}}',
@@ -9,6 +9,7 @@ export default {
     checkInOf: 'Check-in for {{name}}',
     minutesQuestion: 'How many minutes?',
     optional: 'optional',
+    noteLabel: 'Reason (optional)',
     minutesHint: 'Saved when you leave the field',
   },
   feedback: {
@@ -16,6 +17,7 @@ export default {
     Done: '{{name}}: done ✅',
     Minimum: '{{name}}: the minimum counts too',
     Missed: '{{name}}: no worries, tomorrow is another day',
+    Skipped: '{{name}}: skipped, no guilt',
     removed: 'Check-in for {{name}} removed',
     dayComplete: 'Day complete! Everything checked 🎉',
   },

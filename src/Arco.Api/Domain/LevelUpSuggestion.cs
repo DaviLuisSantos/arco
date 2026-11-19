@@ -23,20 +23,28 @@ public static class LevelUpSuggestion
     /// until then the run ends at the previous week.
     /// </summary>
     public static int QualifyingWeeks(IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, int daysPerWeek,
-        DateOnly levelReachedOn, DateOnly today)
+        DateOnly levelReachedOn, DateOnly today, PauseCalendar? calendar = null)
     {
+        calendar ??= PauseCalendar.None;
         var perWeek = checkIns
             .Where(c => c.Date <= today && HabitSchedule.CountsTowardWeek(c.Status))
             .GroupBy(c => HabitSchedule.WeekStart(c.Date))
             .ToDictionary(g => g.Key, g => g.Select(c => c.Date).Distinct().Count());
         int Count(DateOnly week) => perWeek.GetValueOrDefault(week);
+        // Fully excused week = neutral (skipped); partial weeks need a proportional number of days.
+        bool Neutral(DateOnly week) => calendar.ExcusedInWeek(week) >= 7;
+        int Target(DateOnly week) => HabitSchedule.AdjustedWeekTarget(daysPerWeek, calendar.ExcusedInWeek(week));
 
         var week = HabitSchedule.WeekStart(today);
-        if (Count(week) < daysPerWeek) week = week.AddDays(-7);
+        if (Neutral(week) || Count(week) < Target(week)) week = week.AddDays(-7);
         var weeks = 0;
-        while (week >= levelReachedOn && Count(week) >= daysPerWeek && weeks < MaxRuleWeeks)
+        while (week >= levelReachedOn && weeks < MaxRuleWeeks)
         {
-            weeks++;
+            if (!Neutral(week))
+            {
+                if (Count(week) < Target(week)) break;
+                weeks++;
+            }
             week = week.AddDays(-7);
         }
         return weeks;
@@ -63,27 +71,34 @@ public static class LevelUpSuggestion
     /// WeeklyTarget: timesPerWeek per 7 days, rounded up.
     /// </summary>
     public static int ExpectedCount(FrequencyType type, IReadOnlyCollection<int> frequencyDays, int? timesPerWeek,
-        DateOnly from, DateOnly to)
+        DateOnly from, DateOnly to, PauseCalendar? calendar = null)
     {
+        calendar ??= PauseCalendar.None;
         var days = to.DayNumber - from.DayNumber + 1;
         if (days <= 0) return 0;
+        // Excused days (paused / Skipped, no Done/Minimum) leave the expected count.
         return type switch
         {
-            FrequencyType.Daily => days,
+            FrequencyType.Daily => days - calendar.ExcusedInRange(from, to, _ => true),
             FrequencyType.SpecificDays => Enumerable.Range(0, days)
-                .Count(i => frequencyDays.Contains((int)from.AddDays(i).DayOfWeek)),
-            FrequencyType.WeeklyTarget => (int)Math.Ceiling((timesPerWeek ?? 1) * days / 7.0),
+                .Count(i =>
+                {
+                    var d = from.AddDays(i);
+                    return frequencyDays.Contains((int)d.DayOfWeek) && !calendar.IsExcused(d);
+                }),
+            FrequencyType.WeeklyTarget => (int)Math.Ceiling(
+                (timesPerWeek ?? 1) * (days - calendar.ExcusedInRange(from, to, _ => true)) / 7.0),
             _ => 0,
         };
     }
 
     public static Consistency Measure(FrequencyType type, IReadOnlyCollection<int> frequencyDays, int? timesPerWeek,
-        IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, DateOnly today)
+        IEnumerable<(DateOnly Date, CheckInStatus Status)> checkIns, DateOnly today, PauseCalendar? calendar = null)
     {
         var list = checkIns.ToList();
         var (from, to) = Window(today, list.Any(c => c.Date == today));
         var done = list.Count(c => c.Date >= from && c.Date <= to && c.Status == CheckInStatus.Done);
-        return new Consistency(from, to, done, ExpectedCount(type, frequencyDays, timesPerWeek, from, to));
+        return new Consistency(from, to, done, ExpectedCount(type, frequencyDays, timesPerWeek, from, to, calendar));
     }
 
     /// <param name="levelReachedOn">Local date the current level was reached: the whole window must be at this level.</param>
