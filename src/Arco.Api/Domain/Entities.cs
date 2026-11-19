@@ -205,6 +205,14 @@ public class Habit : IUserOwned
     public int? LevelUpDaysPerWeek { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public TimeOfDay TimeOfDay { get; set; } = TimeOfDay.Anytime;
+    /// <summary>"After…" anchor: another habit (SetNull on delete). At most one of this and <see cref="AnchorText"/>.</summary>
+    public int? AnchorHabitId { get; set; }
+    public Habit? AnchorHabit { get; set; }
+    /// <summary>"After…" anchor as free text (max 60).</summary>
+    public string? AnchorText { get; set; }
+    /// <summary>Manual order within the period.</summary>
+    public int SortOrder { get; set; }
     public List<HabitLevel> Levels { get; set; } = [];
     /// <summary>The ladder ahead: the next levels, in order. Leveling up consumes the first one.</summary>
     public List<HabitPlannedLevel> PlannedLevels { get; set; } = [];

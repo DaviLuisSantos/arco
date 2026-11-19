@@ -17,6 +17,8 @@ import { OnboardingSlot } from '../features/onboarding/FirstSessionChecklist'
 import { TemplateShortcuts } from '../features/onboarding/TemplateShortcuts'
 import { PlayerProgress } from '../features/player/PlayerProgress'
 import { TodayNudges } from '../features/reviews/TodayNudges'
+import { OrganizeButton } from '../features/today/OrganizeDialog'
+import { PERIODS, PeriodGroup } from '../features/today/PeriodGroup'
 import { formatLongDate } from '../lib/dates'
 import { queryKeys } from '../lib/queryKeys'
 
@@ -27,7 +29,7 @@ export function TodayPage() {
   if (today.isPending) return <TodaySkeleton />
   if (today.isLoadingError) return <ErrorState error={today.error} onRetry={() => void today.refetch()} />
 
-  const { date, player, xpToday, cycle, goals, habits } = today.data
+  const { date, currentTimeOfDay, player, xpToday, cycle, goals, habits } = today.data
   // Hábito já marcado hoje continua na lista principal (ex.: meta semanal recém-batida).
   // Pausado sem check-in vai para "Pausados"; com check-in (Feito/Mínimo/Pulei) segue na lista.
   const pausedHabits = habits.filter((h) => h.isPaused && h.checkIn === null)
@@ -35,6 +37,12 @@ export function TodayPage() {
   const otherHabits = habits.filter((h) => !pausedHabits.includes(h) && !h.isDueToday && h.checkIn === null)
   const pending = dueHabits.filter((h) => h.checkIn === null).length
   const doneCount = dueHabits.length - pending
+  // O servidor já manda `habits` na ordem do dia: o filtro preserva a ordem dentro de cada período.
+  const groups = PERIODS.map((period) => ({ period, items: dueHabits.filter((h) => h.timeOfDay === period) })).filter(
+    (g) => g.items.length > 0,
+  )
+  // Só "a qualquer hora": lista simples, sem título de período.
+  const showPeriodHeadings = groups.length > 1 || groups[0]?.period !== 'Anytime'
 
   return (
     <div className="flex flex-col gap-5">
@@ -58,6 +66,11 @@ export function TodayPage() {
             </span>
           )}
         </div>
+        {habits.length > 1 && (
+          <div className="mb-2 flex justify-end">
+            <OrganizeButton habits={habits} />
+          </div>
+        )}
         {dueHabits.length > 0 && (
           <ProgressBar
             value={doneCount / dueHabits.length}
@@ -91,9 +104,16 @@ export function TodayPage() {
             {t('nothingScheduled')}
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {dueHabits.map((h) => (
-              <HabitCheckInCard key={h.id} habit={h} date={date} />
+          <div className="flex flex-col gap-5">
+            {groups.map((g) => (
+              <PeriodGroup
+                key={g.period}
+                period={g.period}
+                habits={g.items}
+                date={date}
+                showHeading={showPeriodHeadings}
+                isCurrent={g.period === currentTimeOfDay}
+              />
             ))}
           </div>
         )}

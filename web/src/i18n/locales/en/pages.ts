@@ -15,6 +15,17 @@ const en: typeof ns = {
     outsideToday: 'Not today ({{count}})',
     dayProgressAria: 'Day progress: {{done}} of {{total}}',
     dayCount: '{{done}} of {{total}}',
+    now: 'Now',
+    organize: {
+      open: 'Organize',
+      title: 'Organize your day',
+      description: 'Set the order of your habits within each period.',
+      moveUp: 'Move {{name}} up',
+      moveDown: 'Move {{name}} down',
+      moved: '{{name}}: position {{position}} of {{total}}',
+      save: 'Save order',
+      saved: 'Order saved',
+    },
   },
   habits: {
     title: 'Habits',

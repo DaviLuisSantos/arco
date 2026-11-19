@@ -103,6 +103,8 @@ export interface VacationInput {
   reason?: string | null
 }
 
+export type TimeOfDay = 'Anytime' | 'Morning' | 'Afternoon' | 'Evening'
+
 export interface Habit {
   id: number
   name: string
@@ -122,6 +124,14 @@ export interface Habit {
   /** Regra "N semanas seguidas com X+ dias" (Feito e Mínimo contam); null = 80% de "Feito" em 14 dias. */
   levelUpWeeks: number | null
   levelUpDaysPerWeek: number | null
+  /** Período do dia em que o hábito acontece. */
+  timeOfDay: TimeOfDay
+  /** "Depois de…": hábito âncora (ou null). Nunca junto com `anchorText`. */
+  anchorHabitId: number | null
+  /** "Depois de…": texto livre (≤ 60) ou null. */
+  anchorText: string | null
+  /** Ordem manual dentro do período. */
+  sortOrder: number
   archivedAt: string | null
   createdAt: string
   /** Pausas em curso e futuras, por início. */
@@ -176,6 +186,10 @@ export interface TodayHabit extends Habit {
   weekTarget: number | null
   checkIn: CheckIn | null
   goalTitle: string | null
+  /** Nome da âncora-hábito ativa ou o texto; null se não houver. */
+  anchorName: string | null
+  /** A âncora-hábito foi feita hoje e este hábito ainda não tem check-in. */
+  anchorDone: boolean
   consistency: Consistency
   levelUpSuggested: boolean
   levelUpWeeksDone: number | null
@@ -192,6 +206,8 @@ export interface WeeklyReviewStatus {
 
 export interface Today {
   date: string
+  /** Período atual pela hora local (fuso das configurações). */
+  currentTimeOfDay: TimeOfDay
   player: Player
   xpToday: number
   cycle: Cycle | null
@@ -424,6 +440,10 @@ export interface HabitInput {
   plannedLevels?: Array<{ description: string; minimumDescription: string }>
   levelUpWeeks?: number | null
   levelUpDaysPerWeek?: number | null
+  timeOfDay?: TimeOfDay
+  anchorHabitId?: number | null
+  /** "" remove a âncora. */
+  anchorText?: string | null
 }
 
 /** Sem campos, usa o próximo nível planejado. */

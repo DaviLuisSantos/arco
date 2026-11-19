@@ -13,6 +13,17 @@ const ns = {
     outsideToday: 'Fora de hoje ({{count}})',
     dayProgressAria: 'Progresso do dia: {{done}} de {{total}}',
     dayCount: '{{done}} de {{total}}',
+    now: 'Agora',
+    organize: {
+      open: 'Organizar',
+      title: 'Organizar o dia',
+      description: 'Defina a ordem dos hábitos dentro de cada período.',
+      moveUp: 'Subir {{name}}',
+      moveDown: 'Descer {{name}}',
+      moved: '{{name}}: posição {{position}} de {{total}}',
+      save: 'Salvar ordem',
+      saved: 'Ordem salva',
+    },
   },
   habits: {
     title: 'Hábitos',

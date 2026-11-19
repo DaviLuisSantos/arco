@@ -13,6 +13,8 @@ const ns = {
     noteOptional: 'Nota (opcional)',
     addNote: 'Adicionar nota',
     minutesHint: 'Salva ao sair do campo',
+    after: 'Depois de {{name}}',
+    yourTurn: 'Sua vez',
   },
   feedback: {
     undo: 'Desfazer',

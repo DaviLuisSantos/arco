@@ -13,6 +13,8 @@ export default {
     noteOptional: 'Note (optional)',
     addNote: 'Add note',
     minutesHint: 'Saved when you leave the field',
+    after: 'After {{name}}',
+    yourTurn: 'Your turn',
   },
   feedback: {
     undo: 'Undo',

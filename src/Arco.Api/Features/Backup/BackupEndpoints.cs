@@ -56,7 +56,7 @@ public static class BackupEndpoints
                 {
                     h.Id, h.Name, h.Emoji, h.GoalId, h.FrequencyType, h.FrequencyDays, h.TimesPerWeek, h.ReminderTime,
                     h.LevelUpSnoozedUntil, h.LevelDownSnoozedUntil, h.LevelUpWeeks, h.LevelUpDaysPerWeek, h.ArchivedAt,
-                    h.CreatedAt,
+                    h.CreatedAt, h.TimeOfDay, h.AnchorHabitId, h.AnchorText, h.SortOrder,
                 }).ToListAsync(ct),
             habitLevels = await db.HabitLevels.AsNoTracking().OrderBy(l => l.Id)
                 .Select(l => new { l.Id, l.HabitId, l.Level, l.Description, l.MinimumDescription, l.ReachedAt })

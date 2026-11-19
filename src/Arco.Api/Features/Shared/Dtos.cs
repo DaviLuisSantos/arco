@@ -124,8 +124,16 @@ public class HabitDto
         LevelUpDaysPerWeek = h.LevelUpDaysPerWeek;
         ArchivedAt = h.ArchivedAt;
         CreatedAt = h.CreatedAt;
+        TimeOfDay = h.TimeOfDay;
+        AnchorHabitId = h.AnchorHabitId;
+        AnchorText = h.AnchorText;
+        SortOrder = h.SortOrder;
     }
 
+    public TimeOfDay TimeOfDay { get; }
+    public int? AnchorHabitId { get; }
+    public string? AnchorText { get; }
+    public int SortOrder { get; }
     public int Id { get; }
     public string Name { get; }
     public string? Emoji { get; }

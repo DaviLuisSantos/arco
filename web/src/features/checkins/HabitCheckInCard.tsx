@@ -61,7 +61,13 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
   }
 
   return (
-    <article className="rounded-2xl border border-border bg-surface p-4">
+    <article
+      className={cn(
+        'rounded-2xl border bg-surface p-4',
+        // Sua vez: a âncora foi feita e este hábito ainda está sem check-in.
+        habit.anchorDone ? 'border-accent/60' : 'border-border',
+      )}
+    >
       <div className="flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-surface-2 text-2xl" aria-hidden>
           {habit.emoji || '•'}
@@ -70,6 +76,14 @@ export function HabitCheckInCard({ habit, date }: { habit: TodayHabit; date: str
           <Link to={`/habits/${habit.id}`} className="line-clamp-2 font-semibold break-words hover:underline">
             {habit.name}
           </Link>
+          {(habit.anchorName || habit.anchorDone) && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+              {habit.anchorName && <span className="break-words">{t('card.after', { name: habit.anchorName })}</span>}
+              {habit.anchorDone && (
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 font-semibold text-accent">{t('card.yourTurn')}</span>
+              )}
+            </p>
+          )}
           <p className="truncate text-sm text-muted">
             {t('card.level', { level: habit.level })} · {habit.levelDescription}
           </p>

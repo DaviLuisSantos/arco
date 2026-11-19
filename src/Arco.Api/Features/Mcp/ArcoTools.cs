@@ -15,11 +15,16 @@ public sealed class ArcoTools(ArcoApiClient api)
     private const string StatusDescription = "Done (Feito, dose completa), Minimum (Mínimo, versão mínima) Missed (Não fiz) ou Skipped (Pulei: dispensa o dia sem XP e sem quebrar a sequência).";
     private const string DateDescription = "Data no formato YYYY-MM-DD. Omitida = hoje (no fuso configurado). Aceita até 7 dias para trás.";
 
+    private const string PeriodDescription = "Período do dia: manha, tarde, noite ou qualquer (a qualquer hora, o padrão).";
+    private const string AfterDescription = "Âncora \"depois de…\": o id de outro hábito (só dígitos) ou um texto livre (até 60 caracteres, ex.: \"o café\").";
+
     // --- Dia a dia ---
 
     [McpServerTool(Name = "ver_hoje", Title = "Ver o dia", ReadOnly = true)]
     [Description("Tela Hoje: data, jogador (nível e XP), ciclo e objetivos ativos e todos os hábitos com o check-in de hoje, " +
-                 "se são devidos hoje, sequência (streak) e sugestões de subir ou voltar de nível. Comece por aqui.")]
+                 "se são devidos hoje, sequência (streak) e sugestões de subir ou voltar de nível. Os hábitos vêm na ordem do dia " +
+                 "(período, ordem manual e encadeamento), com o período atual em currentTimeOfDay e, em cada hábito, a âncora " +
+                 "\"depois de…\" (anchorName) e se a vez dele chegou (anchorDone). Comece por aqui.")]
     public Task<string> VerHoje(CancellationToken ct) => api.GetAsync("/api/today", ct);
 
     [McpServerTool(Name = "fazer_checkin", Title = "Fazer check-in", Idempotent = true)]
@@ -149,19 +154,67 @@ public sealed class ArcoTools(ArcoApiClient api)
         [Description("Para WeeklyTarget: vezes por semana (1 a 7).")] int? vezesPorSemana = null,
         [Description("Id de um objetivo do ciclo para ligar o hábito.")] int? objetivoId = null,
         [Description("Horário do lembrete push, HH:mm.")] string? lembrete = null,
-        CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Post, "/api/habits", new
+        [Description(PeriodDescription)] string? periodo = null,
+        [Description(AfterDescription)] string? depoisDe = null,
+        CancellationToken ct = default)
+    {
+        var body = new JsonObject
         {
-            name = nome,
-            emoji,
-            goalId = objetivoId,
-            frequencyType = frequencia,
-            frequencyDays = diasDaSemana,
-            timesPerWeek = vezesPorSemana,
-            levelDescription = dose,
-            minimumDescription = minimo,
-            reminderTime = lembrete,
-        }, ct);
+            ["name"] = nome,
+            ["emoji"] = emoji,
+            ["goalId"] = objetivoId,
+            ["frequencyType"] = frequencia,
+            ["frequencyDays"] = diasDaSemana is null ? null : new JsonArray(diasDaSemana.Select(d => (JsonNode?)JsonValue.Create(d)).ToArray()),
+            ["timesPerWeek"] = vezesPorSemana,
+            ["levelDescription"] = dose,
+            ["minimumDescription"] = minimo,
+            ["reminderTime"] = lembrete,
+        };
+        if (periodo is not null) body["timeOfDay"] = ParsePeriod(periodo);
+        if (!string.IsNullOrWhiteSpace(depoisDe)) ApplyAnchor(body, depoisDe);
+        return api.SendAsync(HttpMethod.Post, "/api/habits", body, ct);
+    }
+
+    [McpServerTool(Name = "editar_habito", Title = "Editar hábito")]
+    [Description("Edita o período do dia, a âncora \"depois de…\" e/ou o nome de um hábito, mantendo todo o resto. " +
+                 "Só o que for informado muda. Para outros campos, use chamar_api (PUT /api/habits/{id}).")]
+    public async Task<string> EditarHabito(
+        [Description("Id do hábito.")] int habitoId,
+        [Description(PeriodDescription)] string? periodo = null,
+        [Description(AfterDescription + " Texto vazio (\"\") remove a âncora.")] string? depoisDe = null,
+        [Description("Novo nome (até 80 caracteres).")] string? nome = null,
+        CancellationToken ct = default)
+    {
+        var habit = await api.GetJsonAsync($"/api/habits/{habitoId}", ct);
+        // PUT takes the whole habit: copy what the GET returned, then apply only what was informed.
+        var body = new JsonObject();
+        foreach (var key in new[]
+                 {
+                     "name", "emoji", "goalId", "frequencyType", "frequencyDays", "timesPerWeek", "levelDescription",
+                     "minimumDescription", "reminderTime", "plannedLevels", "levelUpWeeks", "levelUpDaysPerWeek",
+                 })
+            body[key] = habit[key]?.DeepClone();
+        if (nome is not null) body["name"] = nome;
+        if (periodo is not null) body["timeOfDay"] = ParsePeriod(periodo);
+        if (depoisDe is not null) ApplyAnchor(body, depoisDe);
+        return await api.SendAsync(HttpMethod.Put, $"/api/habits/{habitoId}", body, ct);
+    }
+
+    private static string ParsePeriod(string periodo) => periodo.Trim().ToLowerInvariant() switch
+    {
+        "manha" or "manhã" => "Morning",
+        "tarde" => "Afternoon",
+        "noite" => "Evening",
+        "qualquer" => "Anytime",
+        _ => throw new McpException("Período inválido: use manha, tarde, noite ou qualquer."),
+    };
+
+    private static void ApplyAnchor(JsonObject body, string depoisDe)
+    {
+        var value = depoisDe.Trim();
+        if (int.TryParse(value, out var id)) body["anchorHabitId"] = id;
+        else body["anchorText"] = value;
+    }
 
     [McpServerTool(Name = "subir_nivel", Title = "Subir de nível")]
     [Description("Sobe o hábito para o próximo nível (+50 XP). Sem dose e mínimo, usa o próximo degrau da escada planejada.")]

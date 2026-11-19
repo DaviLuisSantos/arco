@@ -15,8 +15,14 @@ public static class TodayEndpoints
         StreakDto streak,
         DateOnly today,
         bool isPaused,
-        DateOnly? pausedUntil) : HabitDto(habit, today)
+        DateOnly? pausedUntil,
+        string? anchorName,
+        bool anchorDone) : HabitDto(habit, today)
     {
+        /// <summary>Name of the active anchor habit, or the free-text anchor; null when none (archived anchors are ignored).</summary>
+        public string? AnchorName { get; } = anchorName;
+        /// <summary>The anchor habit was done (Done/Minimum) today and this habit has no check-in yet: its turn.</summary>
+        public bool AnchorDone { get; } = anchorDone;
         /// <summary>Paused today: listed apart ("Pausados"), never due.</summary>
         public bool IsPaused { get; } = isPaused;
         /// <summary>Last paused day of the pause in progress (null = until resumed, or not paused).</summary>
@@ -38,6 +44,7 @@ public static class TodayEndpoints
 
     public sealed record TodayResponse(
         DateOnly Date,
+        TimeOfDay CurrentTimeOfDay,
         PlayerDto Player,
         int XpToday,
         CycleDto? Cycle,
@@ -51,10 +58,11 @@ public static class TodayEndpoints
         return api;
     }
 
-    private static async Task<TodayResponse> GetToday(AppDbContext db, AppClock clock, CancellationToken ct)
+    private static async Task<TodayResponse> GetToday(AppDbContext db, AppClock clock, TimeProvider time, CancellationToken ct)
     {
         var today = await clock.GetTodayAsync(ct);
         var timezone = await clock.GetTimezoneAsync(ct);
+        var currentPeriod = DayOrder.CurrentPeriod(TimeOnly.FromDateTime(TimeZones.LocalNow(time, timezone)));
         var player = await Queries.GetPlayerAsync(db, ct);
         var xpToday = await db.XpEvents.Where(e => e.Date == today).SumAsync(e => e.Amount, ct);
 
@@ -82,6 +90,10 @@ public static class TodayEndpoints
                 .OrderBy(s => s.Id).Select(s => new { s.HabitId, s.Minutes }).ToListAsync(ct))
             .GroupBy(s => s.HabitId).ToDictionary(g => g.Key, g => g.First().Minutes);
 
+        var habitsById = habits.ToDictionary(h => h.Id);
+        var dayRank = DayOrder.Order(habits.Select(h => new DayOrder.Item(h.Id, h.Name, h.TimeOfDay, h.SortOrder, h.AnchorHabitId)))
+            .Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
+
         var items = habits.Select(h =>
         {
             var history = allCheckIns[h.Id].ToList();
@@ -95,17 +107,22 @@ public static class TodayEndpoints
             var due = !paused && HabitSchedule.IsDueToday(h.FrequencyType, h.FrequencyDays, target, today, weekCount,
                 todayCheckIn?.Status);
             var (consistency, weeksDone, suggested) = Queries.LevelUp(h, history, today, timezone, calendar);
+            // Archived anchors are not in habitsById: the link stays but is ignored here.
+            var anchor = h.AnchorHabitId is { } aid && habitsById.TryGetValue(aid, out var a) ? a : null;
+            var anchorName = anchor?.Name ?? h.AnchorText;
+            var anchorDone = anchor is not null && todayCheckIn is null
+                && allCheckIns[anchor.Id].Any(c => c.Date == today && c.Status is CheckInStatus.Done or CheckInStatus.Minimum);
             return new TodayHabitDto(h, due, weekCount,
                 todayCheckIn is null ? null
                     : CheckInDto.From(todayCheckIn) with { Minutes = manualMinutes.TryGetValue(h.Id, out var m) ? m : null }, h.Goal?.Title, consistency, suggested, weeksDone,
                 !suggested && Queries.LevelDown(h, history, today, timezone, calendar),
                 Queries.Streak(h, history, today, timezone, calendar),
-                today, paused, paused ? calendar.PausedUntil(today) : null);
+                today, paused, paused ? calendar.PausedUntil(today) : null,
+                anchorName, anchorDone);
         })
         .OrderBy(h => h.IsPaused)
         .ThenByDescending(h => h.IsDueToday)
-        .ThenBy(h => h.Name, StringComparer.InvariantCultureIgnoreCase)
-        .ThenBy(h => h.Id)
+        .ThenBy(h => dayRank[h.Id])
         .ToList();
 
         var reviewStart = WeeklyReviewRules.ReviewableWeekStart(today);
@@ -113,7 +130,7 @@ public static class TodayEndpoints
         var reviewDue = !await db.WeeklyReviews.AnyAsync(r => r.WeekStart == reviewStart, ct)
                         && await db.CheckIns.AnyAsync(c => c.Date >= reviewStart && c.Date <= reviewEnd, ct);
 
-        return new TodayResponse(today, player, xpToday,
+        return new TodayResponse(today, currentPeriod, player, xpToday,
             cycle is null ? null : CycleDto.From(cycle, today), goals, items,
             new WeeklyReviewStatusDto(reviewStart, reviewEnd, reviewDue));
     }
