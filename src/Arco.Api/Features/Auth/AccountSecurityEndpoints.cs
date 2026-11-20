@@ -73,9 +73,11 @@ public static class AccountSecurityEndpoints
 
         var now = time.GetUtcNow();
         var secret = TwoFactor.UnprotectSecret(protection, user.TotpPendingSecretProtected);
-        if (secret is null || !Totp.Verify(secret, request?.Code, now)) return InvalidCode();
+        var step = secret is null ? null : Totp.MatchStep(secret, request?.Code, now);
+        if (step is null) return InvalidCode();
 
         user.TotpSecretProtected = user.TotpPendingSecretProtected;
+        user.TotpLastUsedStep = step;
         user.TotpPendingSecretProtected = null;
         user.TotpEnabledAt = now.UtcDateTime;
         await db.TotpRecoveryCodes.Where(c => c.UserId == user.Id).ExecuteDeleteAsync(ct);
@@ -100,6 +102,7 @@ public static class AccountSecurityEndpoints
         user.TotpSecretProtected = null;
         user.TotpPendingSecretProtected = null;
         user.TotpEnabledAt = null;
+        user.TotpLastUsedStep = null;
         await db.TotpRecoveryCodes.Where(c => c.UserId == user.Id).ExecuteDeleteAsync(ct);
         await db.SaveChangesAsync(ct);
         return Results.NoContent();

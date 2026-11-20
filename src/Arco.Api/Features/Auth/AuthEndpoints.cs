@@ -14,7 +14,7 @@ public static class AuthEndpoints
 {
     public const int MinPasswordLength = 8;
     public const int MaxPasswordLength = 72; // BCrypt ignores anything past 72 bytes.
-    private const int BcryptWorkFactor = 11;
+    public const int BcryptWorkFactor = 11;
     private const string CookieOnlyMessage = "Esta ação só pode ser feita pelo app, não por uma chave de API.";
 
     /// <summary>Verified against when the user does not exist, so both failures take the same time.</summary>
@@ -159,7 +159,7 @@ public static class AuthEndpoints
             return ApiResults.Error(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidTwoFactorCode, "Código inválido.");
         }
 
-        await db.SaveChangesAsync(ct); // a recovery code is now used
+        await db.SaveChangesAsync(ct); // the TOTP step or the recovery code is now used
         await AuthSession.SignInAsync(http, user, ticket.Method);
         return Results.NoContent();
     }

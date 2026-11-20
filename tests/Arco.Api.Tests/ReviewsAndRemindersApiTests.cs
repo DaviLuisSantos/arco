@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Arco.Api.Tests;
 
-public sealed class Phase2ApiTests : IDisposable
+public sealed class ReviewsAndRemindersApiTests : IDisposable
 {
     // Monday 2030-03-04, 12:00 in São Paulo.
     private readonly ApiFactory _factory = new(new DateTimeOffset(2030, 3, 4, 15, 0, 0, TimeSpan.Zero));

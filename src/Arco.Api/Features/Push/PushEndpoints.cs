@@ -49,8 +49,11 @@ public static class PushEndpoints
             subscription = new PushSubscription { Endpoint = endpoint, CreatedAt = clock.UtcNow };
             db.PushSubscriptions.Add(subscription);
         }
-        else
+        else if (subscription.UserId != userId)
         {
+            // Knowing the endpoint is not enough to take a subscription over: the device proves itself with its auth secret.
+            if (!string.Equals(subscription.Auth, auth, StringComparison.Ordinal))
+                return ApiResults.Validation("Inscrição inválida: este endpoint pertence a outro aparelho.");
             subscription.UserId = userId;
         }
         subscription.P256dh = p256dh!;

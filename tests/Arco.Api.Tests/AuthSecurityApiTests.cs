@@ -44,6 +44,8 @@ public sealed class AuthSecurityApiTests : IDisposable
         Assert.Equal(10, codes.Length);
         Assert.Equal(10, codes.Distinct().Count());
         Assert.True((bool)(await client.GetJsonAsync("/api/auth/me"))["twoFactorEnabled"]!);
+        // The code that enabled 2FA is spent; the next step gives a fresh one.
+        _factory.Time!.Advance(TimeSpan.FromSeconds(Totp.PeriodSeconds));
         return (email, secret, codes);
     }
 
@@ -76,6 +78,28 @@ public sealed class AuthSecurityApiTests : IDisposable
         // A forged ticket is refused.
         var forged = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login/2fa", new { ticket = "abc", code = CodeNow(secret) });
         Assert.Equal(HttpStatusCode.Unauthorized, forged.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_totp_code_is_accepted_only_once()
+    {
+        var (email, secret, _) = await UserWithTwoFactorAsync();
+
+        var client = _factory.CreateClient();
+        var ticket = await TicketAsync(client, email);
+        var code = CodeNow(secret);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await client.PostAsJsonAsync("/api/auth/login/2fa", new { ticket, code })).StatusCode);
+
+        // Still inside its 30-second step, the code that signed in is refused everywhere else.
+        var replay = await client.PostAsJsonAsync("/api/auth/2fa/disable", new { code });
+        Assert.Equal(HttpStatusCode.BadRequest, replay.StatusCode);
+        Assert.Equal("invalid_two_factor_code", (string?)(await replay.JsonAsync())["code"]);
+        Assert.True((bool)(await client.GetJsonAsync("/api/auth/me"))["twoFactorEnabled"]!);
+
+        _factory.Time!.Advance(TimeSpan.FromSeconds(Totp.PeriodSeconds));
+        var next = await client.PostAsJsonAsync("/api/auth/2fa/disable", new { code = CodeNow(secret) });
+        Assert.Equal(HttpStatusCode.NoContent, next.StatusCode);
     }
 
     [Fact]
@@ -112,6 +136,7 @@ public sealed class AuthSecurityApiTests : IDisposable
         Assert.Equal(HttpStatusCode.NoContent,
             (await client.PostAsJsonAsync("/api/auth/login/2fa", new { ticket, code = CodeNow(secret) })).StatusCode);
 
+        _factory.Time!.Advance(TimeSpan.FromSeconds(Totp.PeriodSeconds));
         var disable = await client.PostAsJsonAsync("/api/auth/2fa/disable", new { code = CodeNow(secret) });
         Assert.Equal(HttpStatusCode.NoContent, disable.StatusCode);
         Assert.False((bool)(await client.GetJsonAsync("/api/auth/me"))["twoFactorEnabled"]!);

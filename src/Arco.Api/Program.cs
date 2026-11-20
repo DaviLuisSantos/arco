@@ -8,7 +8,7 @@ if (args is ["hash-password", ..])
         Console.Error.WriteLine("Usage: hash-password <password>");
         return 1;
     }
-    Console.WriteLine(BCrypt.Net.BCrypt.HashPassword(args[1], workFactor: 12));
+    Console.WriteLine(BCrypt.Net.BCrypt.HashPassword(args[1], Arco.Api.Features.Auth.AuthEndpoints.BcryptWorkFactor));
     return 0;
 }
 

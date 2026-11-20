@@ -74,8 +74,9 @@ public static class TwoFactor
         code.Trim().Replace("-", "", StringComparison.Ordinal).Replace(" ", "", StringComparison.Ordinal).ToLowerInvariant();
 
     /// <summary>
-    /// Checks a TOTP code against the active secret, or else consumes a matching unused recovery code
-    /// (marked used on the tracked entity; the caller saves). Reads codes by explicit owner, so it also works
+    /// Checks a TOTP code against the active secret, or else consumes a matching unused recovery code.
+    /// Either way the code is single-use: the TOTP time step (or the recovery code) is marked used on the
+    /// tracked entity and the caller saves. Reads codes by explicit owner, so it also works
     /// before the request is authenticated.
     /// </summary>
     public static async Task<bool> VerifyAsync(AppDbContext db, IDataProtectionProvider provider, User user, string? code,
@@ -86,7 +87,11 @@ public static class TwoFactor
         if (Totp.Normalize(code) is not null)
         {
             var secret = UnprotectSecret(provider, user.TotpSecretProtected);
-            return secret is not null && Totp.Verify(secret, code, new DateTimeOffset(now, TimeSpan.Zero));
+            if (secret is null) return false;
+            var step = Totp.MatchStep(secret, code, new DateTimeOffset(now, TimeSpan.Zero));
+            if (step is null || step <= user.TotpLastUsedStep) return false;
+            user.TotpLastUsedStep = step;
+            return true;
         }
 
         var hash = HashRecoveryCode(code);

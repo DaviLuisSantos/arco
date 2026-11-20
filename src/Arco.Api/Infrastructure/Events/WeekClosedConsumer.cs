@@ -83,8 +83,18 @@ public sealed class WeekClosedConsumer(AppDbContext db, IServiceScopeFactory sco
 
         if (hasPush)
         {
-            var sent = await sp.GetRequiredService<PushNotifier>()
-                .SendToAllAsync(new PushMessage(title, body, path, $"week-closed-{e.OwnerUserId}"), ct);
+            int sent;
+            try
+            {
+                sent = await sp.GetRequiredService<PushNotifier>()
+                    .SendToAllAsync(new PushMessage(title, body, path, $"week-closed-{e.OwnerUserId}"), ct);
+            }
+            catch
+            {
+                // Nothing was delivered: release the claim, or the redelivery would skip this partner.
+                await pdb.PushDispatches.Where(d => d.Key == key).ExecuteDeleteAsync(CancellationToken.None);
+                throw;
+            }
             if (sent == 0)
             {
                 mail = EnqueueMail(pdb, partner.Email, title, body, path, en, now);
@@ -124,17 +134,6 @@ public static class EventsServiceCollectionExtensions
         s.AddScoped<WeekClosedConsumer>();
         s.AddScoped<IOutboxHandler, WeekClosedOutboxHandler>();
 
-        var connectionString = c["ServiceBus:ConnectionString"];
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            s.AddScoped<IEventBus, InMemoryEventBus>();
-        }
-        else
-        {
-            s.AddSingleton(new Azure.Messaging.ServiceBus.ServiceBusClient(connectionString));
-            s.AddSingleton<IEventBus, ServiceBusEventBus>();
-            s.AddHostedService<ServiceBusConsumerService>();
-        }
         return s;
     }
 }

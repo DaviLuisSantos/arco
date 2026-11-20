@@ -931,6 +931,9 @@ namespace Arco.Api.Infrastructure.Migrations
                     b.Property<DateTime?>("TotpEnabledAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("TotpLastUsedStep")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("TotpPendingSecretProtected")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");

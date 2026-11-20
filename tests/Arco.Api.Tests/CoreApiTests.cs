@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 
 namespace Arco.Api.Tests;
 
-public sealed class ApiTests : IDisposable
+public sealed class CoreApiTests : IDisposable
 {
     private readonly ApiFactory _factory = new();
 

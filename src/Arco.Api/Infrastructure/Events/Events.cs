@@ -7,19 +7,8 @@ namespace Arco.Api.Infrastructure.Events;
 /// <summary>The user closed their week (weekly review). Partners are told about it.</summary>
 public sealed record WeekClosed(int OwnerUserId, DateOnly WeekStart);
 
-public interface IEventBus
-{
-    Task PublishAsync(WeekClosed e, CancellationToken ct);
-}
-
-/// <summary>Default bus: calls the consumer in the same process.</summary>
-public sealed class InMemoryEventBus(WeekClosedConsumer consumer) : IEventBus
-{
-    public Task PublishAsync(WeekClosed e, CancellationToken ct) => consumer.HandleAsync(e, ct);
-}
-
-/// <summary>Outbox handler: publishes a saved <see cref="WeekClosed"/> on the bus (retried by the worker on failure).</summary>
-public sealed class WeekClosedOutboxHandler(IEventBus bus) : IOutboxHandler
+/// <summary>Outbox handler: hands a saved <see cref="WeekClosed"/> to its consumer (retried by the worker on failure).</summary>
+public sealed class WeekClosedOutboxHandler(WeekClosedConsumer consumer) : IOutboxHandler
 {
     public string Kind => OutboxKinds.WeekClosed;
 
@@ -27,6 +16,6 @@ public sealed class WeekClosedOutboxHandler(IEventBus bus) : IOutboxHandler
     {
         var e = JsonSerializer.Deserialize<WeekClosed>(m.Payload)
                 ?? throw new InvalidOperationException("Payload de semana fechada vazio.");
-        await bus.PublishAsync(e, ct);
+        await consumer.HandleAsync(e, ct);
     }
 }

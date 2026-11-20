@@ -36,10 +36,16 @@ public static class Totp
     }
 
     /// <summary>True when <paramref name="code"/> matches the current step or the one before/after it.</summary>
-    public static bool Verify(string secret, string? code, DateTimeOffset now)
+    public static bool Verify(string secret, string? code, DateTimeOffset now) => MatchStep(secret, code, now) is not null;
+
+    /// <summary>
+    /// The time step <paramref name="code"/> belongs to (current, previous or next), or null when it matches none.
+    /// Callers store it to refuse a code that was already used (RFC 6238, section 5.2).
+    /// </summary>
+    public static long? MatchStep(string secret, string? code, DateTimeOffset now)
     {
         var normalized = Normalize(code);
-        if (normalized is null) return false;
+        if (normalized is null) return null;
         byte[] key;
         try
         {
@@ -47,17 +53,18 @@ public static class Totp
         }
         catch (FormatException)
         {
-            return false;
+            return null;
         }
 
         var step = Step(now);
-        var ok = false;
+        long? matched = null;
         for (var drift = -1; drift <= 1; drift++)
         {
             var expected = Compute(key, step + drift);
-            ok |= CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(normalized));
+            if (CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(normalized)))
+                matched = step + drift;
         }
-        return ok;
+        return matched;
     }
 
     /// <summary>Six digits (spaces allowed, e.g. "123 456"), or null.</summary>
