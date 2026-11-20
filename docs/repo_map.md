@@ -3,7 +3,7 @@
 ## Pontos de entrada
 - `src/Arco.Api/Program.cs`: CLI `hash-password` ou sobe a API.
 - `src/Arco.Api/Infrastructure/Startup.cs`: `AddArco` (DI, auth, hosted services), `ApplyMigrations`, `UseArco`, `MapArco` (registra todas as rotas).
-- `web/src/main.tsx` → `web/src/app/router.tsx` (rotas: `/`, habits, habits/:id, cycle, profile, review, stats, login, register, forgot-password, reset-password, verify-email, welcome, admin, partners/:id, invite/:token).
+- `web/src/main.tsx` → `web/src/app/router.tsx` (rotas: `/`, habits, habits/:id, cycle, progress, profile, settings, login, register, forgot-password, reset-password, verify-email, welcome, admin, partners/:id, invite/:token).
 - `web/src/sw.ts`: service worker (push; nunca cacheia `/api`).
 - `web/public/landing/` (estático, fora do SPA): landing e `/landing/privacidade/`. Em `/`, quem não tem sessão recebe a landing (middleware em `Startup.UseArco`; com o shell do service worker, `RequireAuth` redireciona para `/landing/`).
 
@@ -19,7 +19,7 @@
 | `Features/Mcp/` | Servidor MCP (`ArcoTools` chama a API REST via `ArcoApiClient`) |
 | `Features/Push/ReminderDispatcher.cs` | Lembretes (`ReminderService`, 1×/min) |
 | `src/Arco.Api/Infrastructure/` | DbContext, migrations, `AppClock`, auth por cookie/chave, `ApiResults`, backup, Web Push, `CurrentUser` (filtro por usuário), `OwnerBootstrap`, `Email/` (Resend ou log) |
-| `tests/Arco.Api.Tests/` | `*DomainTests` (unitários), `*ApiTests`/`McpTests` (integração com `ApiFactory`) |
+| `tests/Arco.Api.Tests/` | `*DomainTests` (unitários), `*ApiTests`/`McpTests` (integração com `ApiFactory`), nomeados pela funcionalidade |
 | `web/src/api/` | Cliente tipado (espelho do `docs/API.md`) |
 | `web/src/features/` | Componentes e hooks por domínio |
 | `web/src/pages/` | Uma página por rota |
@@ -28,11 +28,11 @@
 | `web/src/features/{billing,security,publicProfile,partners}` | Plano, 2FA e sessões, perfil público, parceiros |
 | `web/e2e/` | Playwright (`npm run e2e`; `npm run screenshots` gera `docs/images`). Specs de produto: `public-profile`, `security`, `partners`, `plan-limit`, `locale`, `a11y` (axe nas telas principais); projetos `e2e` (desktop) e `e2e-mobile` (Pixel, sem `public-profile`); helper `totp.ts` |
 | `infra/` | Terraform do Azure (o job `terraform-plan` roda em PR no `deploy.yml`) |
-| `azure-pipelines.yml` | Pipeline do Azure DevOps: build e testes, sem deploy |
+| `azure-pipelines.yml` | Pipeline de infraestrutura no Azure DevOps: `terraform fmt` e `validate` a cada mudança em `infra/` (sem credencial) |
 | `Infrastructure/Outbox/` | Outbox transacional (`OutboxMessage`, `Outbox.Enqueue` na mesma transação da ação, `OutboxProcessor`, worker com `Outbox:WorkerEnabled`; handlers `email` e `week_closed`) |
 | `Infrastructure/Resilience.cs` | Políticas de retry/timeout/circuit breaker dos clientes HTTP de push e e-mail, com circuito por host |
 | `Infrastructure/Observability/Telemetry.cs` | OpenTelemetry: `ActivitySource`, `Meter` e contadores (check-ins, push enviado/falho, `plan_limit`) |
-| `Infrastructure/Events/` | `WeekClosed`, `IEventBus` (em memória, ou Azure Service Bus com `ServiceBus:ConnectionString`) e `WeekClosedConsumer` (aviso ao parceiro) |
+| `Infrastructure/Events/` | `WeekClosed`, o handler do outbox e `WeekClosedConsumer` (aviso ao parceiro, no mesmo processo) |
 | `Infrastructure/PlanGate.cs`, `Domain/Plans.cs` | Limites do plano Free (403 `plan_limit`) e filtro do MCP |
 | `web/src/components/ui/` | Primitivas visuais |
 

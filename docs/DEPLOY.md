@@ -48,7 +48,6 @@ No Web App, abra **Settings → Environment variables → App settings → + Add
 | `Sentry__Dsn` | opcional; liga o Sentry no backend (sem PII, só o id do usuário). Também aceita `Sentry__Environment` e `Sentry__TracesSampleRate` |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | opcional; liga traces (requisição, HttpClient, EF sem SQL) e contadores via OpenTelemetry/Application Insights, sem query string, IP nem user agent. Sem ela nada é registrado |
 | `Push__Subject` | `mailto:seu-email@...`: contato enviado aos serviços de push; a Apple recusa `example.com` |
-| `ServiceBus__ConnectionString` | opcional; usa uma fila `week-closed` do Azure Service Bus (que precisa existir) para o aviso de semana fechada ao parceiro. Sem ela o evento é tratado em memória, no próprio processo |
 
 Novos usuários se cadastram pelo app; as variáveis do dono só importam enquanto o usuário 1 ainda tem o e-mail provisório.
 
@@ -128,13 +127,14 @@ a managed identity `arco-github` com as credenciais OIDC e os role assignments.
 
 - **Segredos não passam pelo Terraform.** As settings sensíveis (`Auth__PasswordHash`, `Email__ResendApiKey`,
   `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Auth__Google__ClientSecret`, `Push__VapidPrivateKey`, `Sentry__Dsn`,
-  `APPLICATIONINSIGHTS_CONNECTION_STRING`, `ServiceBus__ConnectionString`) viram referências `@Microsoft.KeyVault(...)`;
+  `APPLICATIONINSIGHTS_CONNECTION_STRING`) viram referências `@Microsoft.KeyVault(...)`;
   os valores são gravados no cofre por fora, para não irem ao state.
 - **`app_settings` é o mapa inteiro.** Depois de importar, o Terraform apaga qualquer setting que não esteja no código.
   Por isso o `plan` precisa dar zero destroy e zero setting removida antes do primeiro `apply`.
 - **OIDC:** a credencial `arco-production` só vale para jobs com `environment: production`. O Terraform cria também
   `arco-pull-request` (subject `...:pull_request`), usada pelo job `terraform-plan`.
-- **CI:** o job `terraform-plan` do `deploy.yml` roda só em PR, só com `vars.TF_PLAN_ENABLED == 'true'`, e nunca aplica.
+- **CI:** o `fmt` e o `validate` rodam no Azure Pipelines (`azure-pipelines.yml`) a cada mudança em `infra/`, sem credencial.
+  O job `terraform-plan` do `deploy.yml` roda só em PR, só com `vars.TF_PLAN_ENABLED == 'true'`, e nunca aplica.
   O deploy continua independente dele e mantém os `az webapp config` atuais (mesmos valores que o Terraform declara).
 - **Apply:** sempre manual, de uma máquina sua. O passo a passo (backend, import, conferência do plan) está em
   [`infra/IMPORT.md`](../infra/IMPORT.md).

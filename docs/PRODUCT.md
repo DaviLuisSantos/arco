@@ -112,7 +112,7 @@ Ciclo (6 semanas)           → começo, meio e fim; objetivos do ciclo; encerra
 - Mostra os números da semana (XP, check-ins, consistência por hábito, objetivos do ciclo) e pergunta: o que funcionou, o que atrapalhou e qual o foco da próxima semana. Ao menos uma resposta.
 - Uma por semana; dá XP. A tela Hoje avisa quando a semana revisável teve check-ins e ainda não foi revisada.
 - Lembrete push configurável (padrão: domingo, 18:00).
-- Ao concluir a revisão, cada parceiro aceito é avisado uma única vez por semana: push se tiver inscrição, senão e-mail (no idioma dele). O aviso sai do Outbox e do barramento de eventos, com reentrega sem duplicar.
+- Ao concluir a revisão, cada parceiro aceito é avisado uma única vez por semana: push se tiver inscrição, senão e-mail (no idioma dele). O aviso sai do Outbox, com reentrega sem duplicar.
 
 ### Notificações
 - Web Push (VAPID), por dispositivo, ativado no Perfil. No iPhone/iPad exige o app instalado na tela de início.
@@ -186,10 +186,10 @@ Para acompanhar o que se quer **largar** ("não fumar", "sem açúcar"). Limpo p
 
 ## Fases
 1. **MVP** — ciclo, objetivos, hábitos com níveis, check-in, XP e nível de jogador, PWA instalável, login.
-4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
 2. **Retenção** — push (lembrete por hábito e revisão semanal), revisão semanal e de fim de ciclo guiadas, sugestão de subir de nível (≥ 80% de consistência em 14 dias).
-5. **Vitrine SaaS** — planos Free/Pro com Stripe, onboarding, 2FA e sessões, perfil público, parceiro de responsabilidade, painel admin, pt-BR/en, OpenAPI e Scalar, Sentry.
 3. **Polimento** — streaks com tolerância (1 falha por semana), escada planejada e regra de subida por hábito, conquistas, histórico e estatísticas.
+4. **Multiusuário** — cadastro por e-mail e senha ou Google, verificação de e-mail, recuperação de senha, conta demo (dados de exemplo, apagada após 24h), troca de senha, exclusão de conta e exportação dos próprios dados em JSON. Cada usuário só vê os próprios dados.
+5. **Vitrine SaaS** — planos Free/Pro com Stripe, onboarding, 2FA e sessões, perfil público, parceiro de responsabilidade, painel admin, pt-BR/en, OpenAPI e Scalar, Sentry.
 
 ## Planos, perfil público e parceiro
 
@@ -233,23 +233,6 @@ O app abre e funciona sem internet para **ler** e **marcar check-in**:
 - As demais ações (criar/editar hábito, subir de nível, objetivos, revisões) precisam de internet: offline, elas
   falham na hora com o aviso "Você está offline. Sem internet, só o check-in funciona."
 - Indicador global: "Offline" (com quantos check-ins estão na fila) e "Sincronizando…" enquanto a fila é enviada.
-
-## Pendências (em 22/10/2026)
-
-**Verificar em produção e no uso real**
-- MCP: criar a chave "Claude Code" no Perfil e conectar
-  (`claude mcp add --transport http arco https://<host>/api/mcp --header "Authorization: Bearer arco_…"`).
-- Multiusuário: testar cadastro, link de verificação/reset (log ou Resend), Google e a conta demo; conferir que o dono antigo entra com `Auth:OwnerEmail` e vê os dados.
-- Offline: testar no celular em modo avião (check-in na fila, "Sincronizando…" ao voltar a conexão).
-- Escada do inglês: cadastrar 25/35/45/60 min com a regra "3 semanas seguidas, 5+ dias" e acompanhar as sugestões de
-  subir e de voltar.
-- Histórico: navegação entre meses (só aparece com dados de mais de um mês).
-
-**Opcionais de infraestrutura**
-- Backup externo automático (ex.: cópia diária para um Blob Storage); a cópia diária do SQLite fica só no servidor.
-- Infraestrutura como código (Bicep ou script `az`) para recriar o ambiente do Azure com um comando.
-- Ambiente local: a porta 5080 está ocupada por outro programa nesta máquina; `NODE_ENV=production` faz o
-  `npm install` pular as devDependencies (use `npm install --include=dev`).
 
 ## Próximos passos
 O servidor MCP, o multiusuário, a especificação OpenAPI (`/api/openapi/v1.json`, `/api/docs`) e a cobrança já estão feitos.

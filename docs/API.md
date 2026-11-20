@@ -152,7 +152,7 @@ Sessão pelo cookie `arco_auth`. Erros no formato `{ error, code }`. Senha de 8 
 |---|---|---|
 | `POST /api/auth/register` | `{ email, password, displayName?, locale? }` | **201** `Me` + cookie + e-mail de verificação; 409 `email_taken`; 400 `validation`. Sem `locale`, vem do `Accept-Language` (pt* → `pt-BR`, outro → `en`, ausente → `pt-BR`) |
 | `POST /api/auth/login` | `{ email, password }` | **204** + cookie; com 2FA, **200** `{ twoFactorRequired: true, ticket }` (sem cookie; ticket vale 5 min); 401 `invalid_credentials` |
-| `POST /api/auth/login/2fa` | `{ ticket, code }` | `code` = TOTP de 6 dígitos ou código de recuperação (uso único). **204** + cookie; 401 `invalid_two_factor_code` (código errado, ticket inválido/expirado ou senha trocada). Rate limit `login` |
+| `POST /api/auth/login/2fa` | `{ ticket, code }` | `code` = TOTP de 6 dígitos ou código de recuperação (os dois de uso único: um TOTP já aceito não vale de novo). **204** + cookie; 401 `invalid_two_factor_code` (código errado, ticket inválido/expirado ou senha trocada). Rate limit `login` |
 | `POST /api/auth/logout` | — | **204**; revoga a sessão atual |
 | `GET /api/auth/me` | — | **200** `Me` ou **401** |
 | `GET /api/auth/providers` | — | **200** `{ google: boolean }` |
