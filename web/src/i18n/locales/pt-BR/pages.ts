@@ -100,6 +100,7 @@ const ns = {
     backToButton: 'Voltar ao nível {{level}}',
     currentDose: 'Dose atual',
     minimum: 'Mínimo: {{description}}',
+    rulesSummary: 'Como contam a sequência e a subida de nível',
     streakTitle: 'Feito e Mínimo contam. Uma falha isolada por semana é perdoada; duas seguidas, ou duas na mesma semana, zeram.',
     streak: 'Sequência:',
     record: ' · recorde {{value}}',
@@ -122,6 +123,7 @@ const ns = {
   },
   profile: {
     title: 'Perfil',
+    openProgress: 'Ver nível, conquistas e XP em Progresso',
     total: 'Total acumulado:',
     stats: 'Estatísticas',
     arch: 'Arco do ciclo',

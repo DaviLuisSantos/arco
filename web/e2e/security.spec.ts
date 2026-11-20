@@ -42,7 +42,8 @@ test('2FA: ativa com QR, sai, entra com código e com código de recuperação',
   await expect(page).toHaveURL(/\/login$/)
   await fillLogin(page, email)
   await expect(page.getByRole('heading', { name: 'Verificação em duas etapas' })).toBeVisible()
-  await page.getByLabel('Código', { exact: true }).fill(totp(secret))
+  // O código que ativou a 2FA não vale de novo (sem replay): usa o do passo seguinte, aceito pela tolerância de ±1.
+  await page.getByLabel('Código', { exact: true }).fill(totp(secret, 1))
   await page.getByRole('button', { name: 'Verificar' }).click()
   await reachToday(page)
 

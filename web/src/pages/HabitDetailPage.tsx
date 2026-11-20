@@ -170,30 +170,21 @@ export function HabitDetailPage() {
           <p className="text-sm text-muted">{t('minimum', { description: h.minimumDescription })}</p>
           {!archived && (
             <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
-              <span
-                className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                title={t('streakTitle')}
-              >
+              <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">
                 <span aria-hidden>🔥 </span>
                 {t('streak')} <span className="font-semibold text-text">{streakText(h.streak)}</span>
                 {h.streak.best > h.streak.current &&
                   t('record', { value: streakText({ ...h.streak, current: h.streak.best }) })}
               </span>
               {h.levelUpWeeksDone !== null && h.levelUpWeeks !== null ? (
-                <span
-                  className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                  title={t('weeksTitle', { weeks: h.levelUpWeeks, days: h.levelUpDaysPerWeek })}
-                >
+                <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">
                   {t('weeksWith', { days: h.levelUpDaysPerWeek })}{' '}
                   <span className="font-semibold text-text">
                     {Math.min(h.levelUpWeeksDone, h.levelUpWeeks)}/{h.levelUpWeeks}
                   </span>
                 </span>
               ) : (
-                <span
-                  className="rounded-full bg-surface-2 px-2.5 py-1 text-muted"
-                  title={t('days14Title')}
-                >
+                <span className="rounded-full bg-surface-2 px-2.5 py-1 text-muted">
                   {t('days14')}{' '}
                   <span className="font-semibold text-text">
                     {h.consistency.done}/{h.consistency.expected} · {formatPercent(h.consistency.rate)}
@@ -205,6 +196,19 @@ export function HabitDetailPage() {
                 {h.reminderTime ? t('reminderAt', { time: h.reminderTime }) : t('noReminder')}
               </span>
             </div>
+          )}
+          {!archived && (
+            <details className="mt-2 text-xs text-muted">
+              <summary className="cursor-pointer py-1 font-medium">{t('rulesSummary')}</summary>
+              <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">
+                <li>{t('streakTitle')}</li>
+                <li>
+                  {h.levelUpWeeks !== null
+                    ? t('weeksTitle', { weeks: h.levelUpWeeks, days: h.levelUpDaysPerWeek })
+                    : t('days14Title')}
+                </li>
+              </ul>
+            </details>
           )}
         </div>
         {!archived && (

@@ -102,6 +102,7 @@ const en: typeof ns = {
     backToButton: 'Back to level {{level}}',
     currentDose: 'Current dose',
     minimum: 'Minimum: {{description}}',
+    rulesSummary: 'How the streak and levelling up are counted',
     streakTitle: 'Done and Minimum both count. One isolated miss per week is forgiven; two in a row, or two in the same week, reset it.',
     streak: 'Streak:',
     record: ' · best {{value}}',
@@ -124,6 +125,7 @@ const en: typeof ns = {
   },
   profile: {
     title: 'Profile',
+    openProgress: 'See level, achievements and XP in Progress',
     total: 'Total earned:',
     stats: 'Statistics',
     arch: 'Cycle arch',

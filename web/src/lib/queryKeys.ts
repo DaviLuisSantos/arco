@@ -18,4 +18,5 @@ export const queryKeys = {
   cycleSummary: (id: number) => ['cycles', id, 'summary'] as const,
   cycleArch: (id: number) => ['cycles', id, 'arch'] as const,
   pushConfig: ['push', 'config'] as const,
+  billing: ['billing'] as const,
 }

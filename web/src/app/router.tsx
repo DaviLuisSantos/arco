@@ -70,8 +70,9 @@ export const router = createBrowserRouter([
                     lazy: () => import('../pages/PartnerSummaryPage').then((m) => ({ Component: m.PartnerSummaryPage })),
                   },
                   { path: 'profile', lazy: () => import('../pages/ProfilePage').then((m) => ({ Component: m.ProfilePage })) },
-                  { path: 'review', lazy: () => import('../pages/ReviewPage').then((m) => ({ Component: m.ReviewPage })) },
-                  { path: 'stats', lazy: () => import('../pages/StatsPage').then((m) => ({ Component: m.StatsPage })) },
+                  // Endereços antigos (e o link do lembrete push) caem na aba certa do hub de Progresso.
+                  { path: 'review', element: <Navigate to="/progress?tab=review" replace /> },
+                  { path: 'stats', element: <Navigate to="/progress?tab=stats" replace /> },
                   { path: '*', element: <Navigate to="/" replace /> },
                 ],
               },

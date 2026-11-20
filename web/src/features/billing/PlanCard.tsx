@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { useToast } from '../../components/ui/toast-context'
 import { errorMessage } from '../../lib/errors'
+import { queryKeys } from '../../lib/queryKeys'
 import { useOnline } from '../../lib/useOnline'
 
 function formatDate(iso: string, locale: string): string {
@@ -20,7 +21,7 @@ export function PlanCard() {
   const language = i18n.language
   const toast = useToast()
   const online = useOnline()
-  const { data, refetch } = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const { data, refetch } = useQuery({ queryKey: queryKeys.billing, queryFn: billingApi.get })
 
   const redirect = useMutation({
     mutationFn: (kind: 'checkout' | 'portal') => (kind === 'checkout' ? billingApi.checkout() : billingApi.portal()),
@@ -61,7 +62,7 @@ export function PlanCard() {
     let tries = 0
     const timer = window.setInterval(() => {
       tries += 1
-      void queryClient.invalidateQueries({ queryKey: ['billing'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.billing })
       if (tries >= 5) {
         window.clearInterval(timer)
         setPolling(false)

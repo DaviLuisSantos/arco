@@ -36,7 +36,6 @@ import type {
   HabitInput,
   TimeOfDay,
   HabitLevelUpResult,
-  Health,
   Me,
   PartnerInvite,
   Partners,
@@ -76,7 +75,6 @@ export const authApi = {
   revokeSession: (id: number) => api.delete<void>(`/auth/sessions/${id}`),
   revokeOtherSessions: () => api.post<void>('/auth/sessions/revoke-others'),
   setDisplayName: (displayName: string) => api.put<void>('/auth/display-name', { displayName }),
-  setLocale: (locale: string) => api.put<void>('/auth/locale', { locale }),
   completeOnboarding: () => api.post<void>('/auth/onboarding/complete'),
   /** 401 (sem cookie) também conta como sessão encerrada. */
   logout: async (): Promise<void> => {
@@ -145,10 +143,6 @@ export const exportApi = {
     a.remove()
     URL.revokeObjectURL(url)
   },
-}
-
-export const healthApi = {
-  get: () => api.get<Health>('/health'),
 }
 
 export const todayApi = {

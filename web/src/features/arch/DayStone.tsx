@@ -17,6 +17,8 @@ export function DayStone({ date }: { date: string }) {
 
   if (q.isPending || q.isLoadingError) return null
   const { sessions, totalMinutes, byHabit } = q.data
+  // Sem foco hoje, a pedra não ocupa a tela.
+  if (sessions.length === 0) return null
 
   const ordered = byHabit.flatMap((h) =>
     sessions.filter((s) => s.habitId === h.habitId).map((s) => ({ ...s, name: h.name })),

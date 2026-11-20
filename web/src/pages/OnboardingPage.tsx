@@ -41,7 +41,7 @@ export function OnboardingPage() {
   const [weeks, setWeeks] = useState(6)
   const [hours, setHours] = useState(5)
 
-  const billing = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const billing = useQuery({ queryKey: queryKeys.billing, queryFn: billingApi.get })
   const room =
     billing.data?.limits.habits == null ? null : Math.max(0, billing.data.limits.habits - billing.data.usage.habits)
   const customReady = Boolean(customName.trim() && customDose.trim() && customMin.trim())
@@ -177,9 +177,10 @@ export function OnboardingPage() {
                     key={h.id}
                     type="button"
                     aria-pressed={on}
+                    disabled={!on && picked.length >= 3}
                     onClick={() => toggle(h.id)}
                     className={cn(
-                      'rounded-xl border p-3 text-left transition',
+                      'rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50',
                       on ? 'border-accent bg-surface-2' : 'border-border hover:border-accent',
                     )}
                   >

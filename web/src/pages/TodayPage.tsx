@@ -119,9 +119,9 @@ export function TodayPage() {
         )}
       </section>
 
-      <OnboardingSlot habits={habits} />
-
       <TodayNudges today={today.data} />
+
+      <OnboardingSlot habits={habits} />
 
       {otherHabits.length > 0 && (
         <details className="group">
@@ -139,11 +139,11 @@ export function TodayPage() {
 
       <PausedHabitsSection habits={pausedHabits} />
 
-      <CycleStrip cycle={cycle} />
-
       <MoodCard date={date} />
 
       <DayStone date={date} />
+
+      <CycleStrip cycle={cycle} />
 
       {goals.length > 0 && (
         <section aria-labelledby="goals-title">

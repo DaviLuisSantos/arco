@@ -41,7 +41,9 @@ test.describe('nota e humor', () => {
     expect(c.ok(), await c.text()).toBeTruthy()
 
     await page.goto('/review')
-    await expect(page.getByRole('heading', { name: 'Revisão da semana', level: 1 })).toBeVisible()
+    // O endereço antigo cai na aba Revisão do hub de Progresso.
+    await expect(page).toHaveURL(/\/progress\?tab=review$/)
+    await expect(page.getByRole('heading', { name: 'Progresso', level: 1 })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Humor da semana' })).toBeVisible()
     await expect(page.getByTestId('mood-average')).toHaveText('4.0')
     await expect(page.getByRole('heading', { name: 'Notas da semana' })).toBeVisible()

@@ -20,7 +20,7 @@ const NAV: NavItem[] = [
   { to: '/', key: 'nav.today', icon: Sun, paths: ['/'] },
   { to: '/habits', key: 'nav.habits', icon: ListChecks, paths: ['/habits'] },
   { to: '/cycle', key: 'nav.cycle', icon: Target, paths: ['/cycle'] },
-  { to: '/progress', key: 'nav.progress', icon: TrendingUp, paths: ['/progress', '/stats', '/review'] },
+  { to: '/progress', key: 'nav.progress', icon: TrendingUp, paths: ['/progress'] },
   { to: '/profile', key: 'nav.profile', icon: CircleUser, paths: ['/profile', '/settings'] },
 ]
 

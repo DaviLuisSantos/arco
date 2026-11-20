@@ -28,7 +28,7 @@ export function TodayNudges({ today }: { today: Today }) {
       )}
       {weeklyReview.due && (
         <Nudge
-          to="/review"
+          to="/progress?tab=review"
           icon={<NotebookPen className="size-5" aria-hidden />}
           title={t('weekReview')}
           description={t('weekDesc', { start: formatDate(weeklyReview.weekStart), end: formatDate(weeklyReview.weekEnd) })}

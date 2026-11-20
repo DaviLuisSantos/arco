@@ -22,7 +22,7 @@ export function HabitsPage() {
   const habits = useQuery({ queryKey: queryKeys.habits, queryFn: () => habitsApi.list(true) })
 
   const { t: tb } = useTranslation('billing')
-  const billing = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const billing = useQuery({ queryKey: queryKeys.billing, queryFn: billingApi.get })
   const limit = billing.data?.limits.habits
   const activeCount = billing.data?.usage.habits ?? 0
 

@@ -34,7 +34,7 @@ function Form({ me }: { me: Me }) {
   const [showHabits, setShowHabits] = useState(p.showHabits)
   const [theme, setTheme] = useState(p.theme)
   const [limit, setLimit] = useState(false)
-  const billing = useQuery({ queryKey: ['billing'], queryFn: billingApi.get })
+  const billing = useQuery({ queryKey: queryKeys.billing, queryFn: billingApi.get })
   const themeAllowed = billing.data?.limits.profileTheme ?? me.plan === 'pro'
 
   const slugInvalid = enabled && !SLUG.test(slug)
