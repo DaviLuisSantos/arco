@@ -1,40 +1,41 @@
-# CI no Azure DevOps. Só build e testes; o deploy continua no GitHub Actions.
+# Pipeline de infraestrutura (Azure DevOps): valida o Terraform de infra/ a cada mudança.
+# Não usa credencial: `fmt` e `validate` rodam sem acessar o Azure nem o state remoto.
+# O app (build, testes, E2E e deploy) e o `terraform plan` com OIDC ficam no GitHub Actions
+# (.github/workflows/deploy.yml). O `apply` é sempre manual (infra/IMPORT.md).
 trigger:
   branches:
     include:
       - main
+  paths:
+    include:
+      - infra
+      - azure-pipelines.yml
 
 pr:
   branches:
     include:
       - main
+  paths:
+    include:
+      - infra
+      - azure-pipelines.yml
 
 pool:
   vmImage: ubuntu-latest
 
 steps:
-  - task: UseDotNet@2
-    displayName: Instalar .NET 10
-    inputs:
-      packageType: sdk
-      version: 10.0.x
+  - script: terraform version
+    displayName: Versão do Terraform
 
-  - task: NodeTool@0
-    displayName: Instalar Node 24
-    inputs:
-      versionSpec: 24.x
+  - script: terraform fmt -check -recursive -diff
+    displayName: terraform fmt
+    workingDirectory: infra
 
-  - script: dotnet test
-    displayName: dotnet test
+  # Sem backend: baixa só os providers, o suficiente para validar a configuração.
+  - script: terraform init -backend=false -input=false
+    displayName: terraform init (sem backend)
+    workingDirectory: infra
 
-  - script: npm ci
-    displayName: npm ci
-    workingDirectory: web
-
-  - script: npm run lint
-    displayName: npm run lint
-    workingDirectory: web
-
-  - script: npm run build
-    displayName: npm run build
-    workingDirectory: web
+  - script: terraform validate -no-color
+    displayName: terraform validate
+    workingDirectory: infra

@@ -97,7 +97,8 @@ jobs:
           path: web/test-results
           retention-days: 7
 
-  # Só mostra o plan do Terraform (infra/) no PR; nunca aplica. Desligado até TF_PLAN_ENABLED=true
+  # Só mostra o plan do Terraform (infra/) no PR; nunca aplica. O fmt e o validate rodam no
+  # Azure Pipelines (azure-pipelines.yml), que não precisa de credencial. Desligado até TF_PLAN_ENABLED=true
   # (docs/DEPLOY.md, seção Terraform). Não bloqueia o deploy: nenhum outro job depende dele.
   terraform-plan:
     if: github.event_name == 'pull_request' && vars.TF_PLAN_ENABLED == 'true'
@@ -120,9 +121,6 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform — fmt
-        run: terraform fmt -check -recursive
-
       - name: Terraform — init
         run: |
           terraform init -input=false \
@@ -131,9 +129,6 @@ jobs:
             -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
             -backend-config="key=arco.tfstate" \
             -backend-config="use_azuread_auth=true"
-
-      - name: Terraform — validate
-        run: terraform validate
 
       # Variáveis sem segredo (nomes, IDs, e-mails) vêm da variável de repositório TF_VARS_JSON.
       - name: Terraform — plan (sem apply)
